@@ -108,6 +108,30 @@ test.describe("auth callback (mocked service)", () => {
     await expect(page).toHaveURL(/\/library$/);
     await expect(page.getByLabel("Search library")).toBeVisible();
   });
+  test("older emails targeting library still establish a session", async ({
+    page,
+  }) => {
+    await mockCloud(page);
+    const data = session();
+    await page.goto(
+      "/library#" +
+        new URLSearchParams({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          expires_in: "3600",
+          token_type: "bearer",
+          type: "signup",
+        }),
+    );
+    await expect(page.getByLabel("Search library")).toBeVisible();
+    expect(
+      await page.evaluate(
+        (key) =>
+          !!JSON.parse(localStorage.getItem(key) || "null")?.access_token,
+        storageKey,
+      ),
+    ).toBe(true);
+  });
   test("supports token-hash email templates and prevents external redirects", async ({
     page,
   }) => {
