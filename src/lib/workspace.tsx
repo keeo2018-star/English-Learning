@@ -3,14 +3,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
-type Word = {
-  id: string;
-  word: string;
-  meaning: string;
-  example: string;
-  due_at: string;
-  interval_days: number;
-};
+import { DEMO_STORAGE_KEY, type LearningItem as Word } from "./learning";
 function errorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -27,7 +20,7 @@ function errorMessage(error: unknown, fallback: string) {
     ? error.message
     : fallback;
 }
-const storageKey = "wordbook-demo-v1";
+const storageKey = DEMO_STORAGE_KEY;
 export default function Workspace({
   page,
 }: {
@@ -79,6 +72,7 @@ export default function Workspace({
     const timer = setInterval(() => setNow(Date.now()), 30000);
     const initial = setTimeout(() => {
       setNow(Date.now());
+      setQuery(new URLSearchParams(window.location.search).get("q") || "");
       if (!supabase) void load(null);
     }, 0);
     if (!supabase)
@@ -266,6 +260,22 @@ export default function Workspace({
   }
   const due = words.filter((w) => new Date(w.due_at).getTime() <= now);
   const card = due[0];
+  const [view, setView] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(
+      () =>
+        setView(new URLSearchParams(window.location.search).get("view") || ""),
+      0,
+    );
+    return () => clearTimeout(timer);
+  }, []);
+  const visibleWords = words.filter((word) =>
+    view === "new"
+      ? word.interval_days === 0
+      : view === "learning"
+        ? word.interval_days > 0
+        : true,
+  );
   return (
     <div className="shell">
       <aside>
@@ -411,7 +421,7 @@ export default function Workspace({
             {page === "library" && (
               <>
                 <div className="library-tools">
-                  <span>{words.length} words collected</span>
+                  <span>{visibleWords.length} words collected</span>
                   <input
                     aria-label="Search library"
                     placeholder="Search words or meanings…"
@@ -419,7 +429,7 @@ export default function Workspace({
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-                {words
+                {visibleWords
                   .filter((w) =>
                     (w.word + " " + w.meaning)
                       .toLowerCase()
@@ -509,7 +519,7 @@ export default function Workspace({
                       </div>
                     </article>
                   ))}
-                {!words.length && (
+                {!visibleWords.length && (
                   <section className="panel">
                     <h2>Your next discovery starts here.</h2>
                     <p>Add your first word to begin building your library.</p>
@@ -518,8 +528,8 @@ export default function Workspace({
                     </Link>
                   </section>
                 )}
-                {words.length > 0 &&
-                  !words.some((w) =>
+                {visibleWords.length > 0 &&
+                  !visibleWords.some((w) =>
                     (w.word + " " + w.meaning)
                       .toLowerCase()
                       .includes(query.toLowerCase()),
