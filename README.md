@@ -18,7 +18,7 @@ Routes: `/` welcome, `/auth` sign in / sign up / request password reset, `/auth/
 1. Create a Supabase project and enable email/password authentication.
 2. Run `supabase/schema.sql` in its SQL editor once. It creates the words table, owner-only row-level security policies, and a due-date index.
 3. Copy `.env.example` to `.env.local` and provide `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the project's API settings. The legacy anonymous key is also supported through `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Never use a service-role key in the frontend.
-4. In Supabase Authentication URL settings, set the application Site URL and allow its `/library` and `/auth/reset` redirect URLs. Use your actual development/deployment origin.
+4. In Supabase Authentication URL settings, set Site URL to your production Vercel origin (for example `https://your-app.vercel.app`). Allow that origin’s `/auth/callback` redirect, including the query parameters used for recovery and SDK flow IDs. Use a Supabase redirect allowlist pattern such as `https://your-app.vercel.app/auth/callback**` if required for those query strings. Add localhost separately for local development. Keep the production hostname explicit.
 5. Restart development or rebuild production after changing public environment variables. These variables are included at build time.
 6. Sign up, confirm the email, sign in, save a word, refresh, review it, and sign out. Verify a second account cannot see the first account's words. Hosted email delivery, redirects, and row-level security require a real configured project and are not covered by local demo tests.
 
@@ -62,3 +62,13 @@ NODE_USE_ENV_PROXY=1 npx playwright test tests/live-supabase.spec.ts --grep-inve
 ```
 
 The single-account test checks sign-in, saving, reload persistence, search, review scheduling, editing and persistence of edits, deletion, and sign-out. It deletes only its uniquely named test item afterward. The two-account test runs only when explicitly enabled with `RUN_TWO_ACCOUNT_TESTS=1`; it is not required for this workflow. Sign-up with email confirmation needs an inbox owner to click the confirmation link before the authenticated lifecycle can run.
+
+## Production email callbacks
+
+`/auth/callback` is a browser-rendered App Router route because this app stores Supabase sessions in browser storage. It exchanges PKCE codes with the verifier from the originating browser, persists the returned session, and navigates to `/library`. Recovery links navigate to `/auth/reset`. It also accepts legacy implicit access/refresh-token fragments. `/auth/confirm` supports custom email templates containing `token_hash` and an email verification `type` (for example `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`). The default Supabase `{{ .ConfirmationURL }}` template works with the callback URL sent by sign-up.
+
+Use the same browser for PKCE sign-up and confirmation. Custom token-hash templates can verify directly without a browser-local PKCE verifier. Failed, expired, missing, or reused credentials redirect to `/auth?error=auth_callback` with a friendly explanation. Callback credentials are removed from the address bar, and return destinations are restricted to app routes.
+
+In Vercel, deploy the repository root as a Next.js application and configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the production deployment before building. Do not select a static-output directory. No localhost callback hostname or additional site-URL variable is hardcoded: email redirects use the origin where the user starts authentication. After deployment and updating Supabase’s redirect allowlist, request a fresh confirmation email; old emails retain their old redirect target.
+
+Focused regression suite: `npx playwright test tests/auth-callback.spec.ts` with a Supabase-configured build. These tests mock the provider and cover PKCE, flow-specific verifiers, legacy implicit sessions, token-hash confirmation, recovery, failure messages, and a complete sign-up/callback round trip at a simulated HTTPS Vercel origin. They do not establish that a particular live Vercel deployment or its Supabase dashboard settings have been updated.

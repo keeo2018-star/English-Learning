@@ -1,12 +1,17 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-export default function Auth() {
+function AuthForm() {
+  const params = useSearchParams();
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin"),
-    [message, setMessage] = useState(""),
+    [message, setMessage] = useState(
+      params.get("error") === "auth_callback"
+        ? "We couldn’t complete the email confirmation. The link may have expired or already been used. Open a new link in the browser where you signed up, or sign in if your email is already confirmed."
+        : "",
+    ),
     [busy, setBusy] = useState(false);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,7 +24,10 @@ export default function Auth() {
     try {
       if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: location.origin + "/auth/reset",
+          redirectTo: new URL(
+            "/auth/callback?next=/auth/reset",
+            location.origin,
+          ).toString(),
         });
         if (error) throw error;
         setMessage("Check your email for a password reset link.");
@@ -27,7 +35,12 @@ export default function Auth() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: location.origin + "/library" },
+          options: {
+            emailRedirectTo: new URL(
+              "/auth/callback",
+              location.origin,
+            ).toString(),
+          },
         });
         if (error) throw error;
         if (data.session) router.push("/library");
@@ -143,5 +156,19 @@ export default function Auth() {
       </section>
       <Link href="/">← Back to home</Link>
     </main>
+  );
+}
+
+export default function Auth() {
+  return (
+    <Suspense
+      fallback={
+        <main className="auth">
+          <p>Loading sign-in…</p>
+        </main>
+      }
+    >
+      <AuthForm />
+    </Suspense>
   );
 }
