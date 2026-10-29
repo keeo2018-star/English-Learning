@@ -781,3 +781,7 @@
   text-decoration-thickness: 0.07em;
   text-decoration-skip-ink: none;
 }
+
+.status {
+  margin-top: var(--wb-space-5);
+}

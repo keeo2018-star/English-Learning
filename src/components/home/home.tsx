@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/primitives";
 import { useHomeLibrary } from "./use-home-library";
 import { supabase } from "@/lib/supabase";
+import { LoadingState, StatePanel } from "@/components/ui/states";
 import styles from "./home.module.css";
 
 export default function Home() {
@@ -159,18 +160,17 @@ export default function Home() {
               <Pill>CONTINUE LEARNING</Pill>
             </div>
             {loading ? (
-              <div className={styles.state} role="status">
-                Opening your wordbook…
+              <div className={styles.status}>
+                <LoadingState label="Opening your wordbook…" />
               </div>
             ) : error ? (
-              <div className={styles.state} role="status">
-                <p>
-                  Your wordbook couldn’t be loaded. Your saved words are still
-                  yours.
-                </p>
-                <button onClick={retry}>
-                  Try again <ArrowIcon />
-                </button>
+              <div className={styles.status} role="status">
+                <StatePanel
+                  title="Your wordbook couldn’t be loaded."
+                  description="Your saved words are still yours."
+                  actionLabel="Try again"
+                  onAction={retry}
+                />
               </div>
             ) : (
               <div className={styles.continueGrid}>

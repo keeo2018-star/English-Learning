@@ -4,6 +4,16 @@ import Link from "next/link";
 import { supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
 import { DEMO_STORAGE_KEY, type LearningItem as Word } from "./learning";
+import { AppShell } from "@/components/ui/app-shell";
+import {
+  Card,
+  Pill,
+  Progress,
+  collectionColor,
+  ArrowIcon,
+} from "@/components/ui/primitives";
+import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 function errorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -35,9 +45,11 @@ export default function Workspace({
     [query, setQuery] = useState(""),
     [revealed, setRevealed] = useState<string | null>(null),
     [now, setNow] = useState(0),
-    [editing, setEditing] = useState<string | null>(null);
+    [editing, setEditing] = useState<string | null>(null),
+    [deleting, setDeleting] = useState<Word | null>(null);
   const loadVersion = useRef(0);
   const accountId = useRef<string | null>(null);
+  const librarySearch = useRef<HTMLInputElement>(null);
   const load = useCallback(async (u: User | null) => {
     const version = ++loadVersion.current;
     setMessage("");
@@ -98,6 +110,7 @@ export default function Workspace({
         setWords([]);
         setRevealed(null);
         setEditing(null);
+        setDeleting(null);
         setReady(false);
       }
       setUser(session?.user || null);
@@ -277,328 +290,365 @@ export default function Workspace({
         : true,
   );
   return (
-    <div className="shell">
-      <aside>
-        <Link className="brand" href="/">
-          wordbook<span>ENGLISH, EVERY DAY</span>
-        </Link>
-        <nav>
+    <AppShell
+      hideAddAction={page === "add"}
+      active={
+        page === "review" ? "Review" : page === "library" ? "Library" : null
+      }
+      account={
+        user ? (
+          <button
+            className="text-button"
+            disabled={busy}
+            onClick={() => void signOut()}
+          >
+            Sign out
+          </button>
+        ) : (
+          <Link className="wb-control wb-control-outline" href="/auth">
+            Sign in <ArrowIcon />
+          </Link>
+        )
+      }
+    >
+      <div className="wb-workspace-meta">
+        <Pill>
+          {supabase ? user?.email || "Account required" : "LOCAL DEMO"}
+        </Pill>
+        <nav className="wb-workspace-tabs" aria-label="Learning navigation">
           {(["add", "review", "library"] as const).map((p, i) => (
             <Link
-              aria-current={page === p ? "page" : undefined}
-              className={page === p ? "active" : ""}
-              href={"/" + p}
               key={p}
+              href={"/" + p}
+              aria-current={page === p ? "page" : undefined}
             >
-              <span>0{i + 1}</span>
-              {p[0].toUpperCase() + p.slice(1)}
+              <span>0{i + 1}</span> {p[0].toUpperCase() + p.slice(1)}
               {p === "review" && <small>{due.length}</small>}
             </Link>
           ))}
         </nav>
-        <div className="aside-bottom">
-          <p>
-            Small steps.
-            <br />
-            Lasting knowledge.
-          </p>
-          {user ? (
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => void signOut()}
-            >
-              Sign out
-            </button>
-          ) : (
-            <Link href="/auth">Sign in →</Link>
+      </div>
+      {!supabase && (
+        <div className="notice">
+          Demo mode · Words stay in this browser.{" "}
+          <Link href="/auth">Connect an account</Link> once Supabase is
+          configured.
+        </div>
+      )}
+      <div className="page-title">
+        <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>
+        <h1>
+          {page === "add"
+            ? "A new word, a new possibility."
+            : page === "review"
+              ? "Let’s make it stick."
+              : "Your growing vocabulary."}
+        </h1>
+        <p>
+          {page === "add"
+            ? "Save something worth remembering."
+            : page === "review"
+              ? "Take a moment to revisit the words you’re learning."
+              : "Every word is another way to express yourself."}
+        </p>
+      </div>
+      {message && <Feedback>{message}</Feedback>}
+      {!ready ? (
+        <LoadingState />
+      ) : supabase && !user ? (
+        <StatePanel
+          title="Your words belong to you."
+          description="Sign in to access your private library."
+          href="/auth"
+          actionLabel="Sign in"
+          color="lavender"
+        />
+      ) : loadError && page !== "add" ? (
+        <StatePanel
+          title="Your library couldn’t be loaded."
+          description="Your saved words haven’t been removed. Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => {
+            setReady(false);
+            void load(user);
+          }}
+        />
+      ) : (
+        <>
+          {page === "add" && (
+            <form className="panel word-form" onSubmit={add}>
+              <label>
+                Word or phrase
+                <input
+                  name="word"
+                  placeholder="e.g. serendipity"
+                  required
+                  maxLength={120}
+                />
+              </label>
+              <label>
+                Meaning
+                <textarea
+                  name="meaning"
+                  placeholder="What does it mean to you?"
+                  required
+                  maxLength={2000}
+                />
+              </label>
+              <label>
+                Example sentence <span className="muted">(optional)</span>
+                <textarea
+                  name="example"
+                  placeholder="Put your new word into context."
+                  maxLength={3000}
+                />
+              </label>
+              <div className="form-bottom">
+                <span>One word today. More confidence tomorrow.</span>
+                <button disabled={busy}>
+                  {busy ? "Saving…" : "Add to my library + "}
+                </button>
+              </div>
+            </form>
           )}
-        </div>
-      </aside>
-      <main className="content">
-        <header>
-          <span>YOUR PERSONAL WORD SPACE</span>
-          <span>
-            {supabase ? user?.email || "Account required" : "LOCAL DEMO"}
-          </span>
-        </header>
-        {!supabase && (
-          <div className="notice">
-            Demo mode · Words stay in this browser.{" "}
-            <Link href="/auth">Connect an account</Link> once Supabase is
-            configured.
-          </div>
-        )}
-        <div className="page-title">
-          <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>
-          <h1>
-            {page === "add"
-              ? "A new word, a new possibility."
-              : page === "review"
-                ? "Let’s make it stick."
-                : "Your growing vocabulary."}
-          </h1>
-          <p>
-            {page === "add"
-              ? "Save something worth remembering."
-              : page === "review"
-                ? "Take a moment to revisit the words you’re learning."
-                : "Every word is another way to express yourself."}
-          </p>
-        </div>
-        {message && (
-          <p className="feedback" role="status">
-            {message}
-          </p>
-        )}
-        {!ready ? (
-          <p role="status" aria-live="polite">
-            Loading your library…
-          </p>
-        ) : supabase && !user ? (
-          <section className="panel">
-            <h2>Your words belong to you.</h2>
-            <p>Sign in to access your private library.</p>
-            <Link className="button" href="/auth">
-              Sign in →
-            </Link>
-          </section>
-        ) : loadError && page !== "add" ? (
-          <section className="panel">
-            <h2>Your library couldn’t be loaded.</h2>
-            <p>
-              Your saved words haven’t been removed. Check your connection and
-              try again.
-            </p>
-            <button
-              disabled={busy}
-              onClick={() => {
-                setReady(false);
-                void load(user);
-              }}
-            >
-              Try again
-            </button>
-          </section>
-        ) : (
-          <>
-            {page === "add" && (
-              <form className="panel word-form" onSubmit={add}>
-                <label>
-                  Word or phrase
-                  <input
-                    name="word"
-                    placeholder="e.g. serendipity"
-                    required
-                    maxLength={120}
+          {page === "library" && (
+            <>
+              {view && (
+                <Card
+                  color={collectionColor(view)}
+                  className="wb-collection-header"
+                >
+                  <Pill>YOUR COLLECTION VIEW</Pill>
+                  <h2>
+                    {view === "new"
+                      ? "Fresh finds."
+                      : view === "learning"
+                        ? "In the making."
+                        : "Your wordbook."}
+                  </h2>
+                  <p>{visibleWords.length} words in this view</p>
+                  <Progress
+                    value={
+                      visibleWords.length
+                        ? (visibleWords.filter((word) => word.interval_days > 0)
+                            .length /
+                            visibleWords.length) *
+                          100
+                        : 0
+                    }
+                    label="Words on a longer review schedule"
                   />
-                </label>
-                <label>
-                  Meaning
-                  <textarea
-                    name="meaning"
-                    placeholder="What does it mean to you?"
-                    required
-                    maxLength={2000}
-                  />
-                </label>
-                <label>
-                  Example sentence <span className="muted">(optional)</span>
-                  <textarea
-                    name="example"
-                    placeholder="Put your new word into context."
-                    maxLength={3000}
-                  />
-                </label>
-                <div className="form-bottom">
-                  <span>One word today. More confidence tomorrow.</span>
-                  <button disabled={busy}>
-                    {busy ? "Saving…" : "Add to my library + "}
-                  </button>
-                </div>
-              </form>
-            )}
-            {page === "library" && (
-              <>
-                <div className="library-tools">
-                  <span>{visibleWords.length} words collected</span>
-                  <input
-                    aria-label="Search library"
-                    placeholder="Search words or meanings…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
-                {visibleWords
-                  .filter((w) =>
-                    (w.word + " " + w.meaning)
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                  )
-                  .map((w) => (
-                    <article className="word-row" key={w.id}>
-                      {editing === w.id ? (
-                        <form
-                          className="edit-form"
-                          aria-label={"Edit " + w.word}
-                          onSubmit={(e) => void edit(e, w)}
-                        >
-                          <label>
-                            Word or phrase
-                            <input
-                              name="word"
-                              defaultValue={w.word}
-                              required
-                              maxLength={120}
-                            />
-                          </label>
-                          <label>
-                            Meaning
-                            <textarea
-                              name="meaning"
-                              defaultValue={w.meaning}
-                              required
-                              maxLength={2000}
-                            />
-                          </label>
-                          <label>
-                            Example sentence
-                            <textarea
-                              name="example"
-                              defaultValue={w.example}
-                              maxLength={3000}
-                            />
-                          </label>
-                          <div className="actions">
-                            <button disabled={busy}>Save changes</button>
-                            <button
-                              type="button"
-                              className="secondary"
-                              disabled={busy}
-                              onClick={() => setEditing(null)}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <div>
-                          <h2>{w.word}</h2>
-                          <p>{w.meaning}</p>
-                          {w.example && <blockquote>{w.example}</blockquote>}
-                          <small>
-                            Next review:{" "}
-                            {new Date(w.due_at).toLocaleDateString()}
-                          </small>
-                        </div>
-                      )}
-                      <div className="word-actions">
-                        <button
-                          className="text-button"
-                          disabled={busy || editing === w.id}
-                          aria-label={"Edit " + w.word}
-                          onClick={() => setEditing(w.id)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="text-button"
-                          disabled={busy}
-                          aria-label={"Delete " + w.word}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Delete “" + w.word + "” from your library?",
-                              )
-                            )
-                              void remove(w.id);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                {!visibleWords.length && (
-                  <section className="panel">
-                    <h2>Your next discovery starts here.</h2>
-                    <p>Add your first word to begin building your library.</p>
-                    <Link className="button" href="/add">
-                      Add a word →
-                    </Link>
-                  </section>
-                )}
-                {visibleWords.length > 0 &&
-                  !visibleWords.some((w) =>
-                    (w.word + " " + w.meaning)
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                  ) && <p>No matching words. Try another search.</p>}
-              </>
-            )}
-            {page === "review" &&
-              (card ? (
-                <>
-                  <p className="eyebrow">
-                    {due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO
-                    REVIEW
-                  </p>
-                  <section className="panel review-card">
-                    <span className="eyebrow">
-                      CAN YOU REMEMBER THE MEANING?
-                    </span>
-                    <h2>{card.word}</h2>
-                    {revealed === card.id ? (
-                      <>
-                        <p>{card.meaning}</p>
-                        {card.example && (
-                          <blockquote>{card.example}</blockquote>
-                        )}
+                  <Link href="/library" className="wb-inline-link">
+                    All saved words <ArrowIcon />
+                  </Link>
+                </Card>
+              )}
+              <div className="library-tools">
+                <Pill>
+                  {visibleWords.length}{" "}
+                  {visibleWords.length === 1 ? "word" : "words"} collected
+                </Pill>
+                <input
+                  aria-label="Search library"
+                  ref={librarySearch}
+                  placeholder="Search words or meanings…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              {visibleWords
+                .filter((w) =>
+                  (w.word + " " + w.meaning)
+                    .toLowerCase()
+                    .includes(query.toLowerCase()),
+                )
+                .map((w) => (
+                  <Card
+                    color={
+                      w.interval_days === 0 ? "paper" : collectionColor(w.id)
+                    }
+                    className="word-row"
+                    key={w.id}
+                  >
+                    {editing === w.id ? (
+                      <form
+                        className="edit-form"
+                        aria-label={"Edit " + w.word}
+                        onSubmit={(e) => void edit(e, w)}
+                      >
+                        <label>
+                          Word or phrase
+                          <input
+                            name="word"
+                            defaultValue={w.word}
+                            required
+                            maxLength={120}
+                          />
+                        </label>
+                        <label>
+                          Meaning
+                          <textarea
+                            name="meaning"
+                            defaultValue={w.meaning}
+                            required
+                            maxLength={2000}
+                          />
+                        </label>
+                        <label>
+                          Example sentence
+                          <textarea
+                            name="example"
+                            defaultValue={w.example}
+                            maxLength={3000}
+                          />
+                        </label>
                         <div className="actions">
+                          <button disabled={busy}>Save changes</button>
                           <button
+                            type="button"
                             className="secondary"
                             disabled={busy}
-                            onClick={() => void grade(card, false)}
+                            onClick={() => setEditing(null)}
                           >
-                            Practice again · 10 min
-                          </button>
-                          <button
-                            disabled={busy}
-                            onClick={() => void grade(card, true)}
-                          >
-                            Got it · {Math.max(1, card.interval_days * 2)}{" "}
-                            day(s)
+                            Cancel
                           </button>
                         </div>
-                      </>
+                      </form>
                     ) : (
-                      <button onClick={() => setRevealed(card.id)}>
-                        Reveal meaning
-                      </button>
+                      <div className="wb-word-content">
+                        <Pill
+                          className={
+                            w.interval_days === 0 ? "wb-status-unlearned" : ""
+                          }
+                        >
+                          {w.interval_days === 0
+                            ? "First recall pending"
+                            : `Learning · ${w.interval_days}-day interval`}
+                        </Pill>
+                        <h2>{w.word}</h2>
+                        <p>{w.meaning}</p>
+                        {w.example && <blockquote>{w.example}</blockquote>}
+                        <Pill>
+                          Next review: {new Date(w.due_at).toLocaleDateString()}
+                        </Pill>
+                      </div>
                     )}
-                  </section>
-                </>
-              ) : (
-                <section className="panel review-card">
-                  <span className="eyebrow">A LITTLE PROGRESS, EVERY DAY</span>
-                  <h2>
-                    {words.length
+                    <div className="word-actions">
+                      <button
+                        className="text-button"
+                        disabled={busy || editing === w.id}
+                        aria-label={"Edit " + w.word}
+                        onClick={() => setEditing(w.id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="text-button"
+                        disabled={busy}
+                        aria-label={"Delete " + w.word}
+                        onClick={() => setDeleting(w)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </Card>
+                ))}
+              {!visibleWords.length && (
+                <StatePanel
+                  title="Your next discovery starts here."
+                  description="Add your first word to begin building your library."
+                  href="/add"
+                  actionLabel="Add a word"
+                  color="lavender"
+                />
+              )}
+              {visibleWords.length > 0 &&
+                !visibleWords.some((w) =>
+                  (w.word + " " + w.meaning)
+                    .toLowerCase()
+                    .includes(query.toLowerCase()),
+                ) && (
+                  <StatePanel
+                    title="Try a different word."
+                    description="No matching words. Try another search."
+                  />
+                )}
+            </>
+          )}
+          {page === "review" &&
+            (card ? (
+              <>
+                <p className="eyebrow">
+                  {due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO
+                  REVIEW
+                </p>
+                <Card
+                  color={collectionColor(card.id)}
+                  className="panel review-card"
+                >
+                  <span className="eyebrow">CAN YOU REMEMBER THE MEANING?</span>
+                  <h2>{card.word}</h2>
+                  {revealed === card.id ? (
+                    <>
+                      <p>{card.meaning}</p>
+                      {card.example && <blockquote>{card.example}</blockquote>}
+                      <div className="actions">
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          onClick={() => void grade(card, false)}
+                        >
+                          Practice again · 10 min
+                        </button>
+                        <button
+                          disabled={busy}
+                          onClick={() => void grade(card, true)}
+                        >
+                          Got it · {Math.max(1, card.interval_days * 2)} day(s)
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <button onClick={() => setRevealed(card.id)}>
+                      Reveal meaning
+                    </button>
+                  )}
+                </Card>
+              </>
+            ) : (
+              <div className="review-card">
+                <StatePanel
+                  title={
+                    words.length
                       ? "You’re all caught up."
-                      : "Make room for your first word."}
-                  </h2>
-                  <p>
-                    {words.length
+                      : "Make room for your first word."
+                  }
+                  description={
+                    words.length
                       ? "Come back when your next cards are due."
-                      : "Add a word, then come here to practice recalling it."}
-                  </p>
-                  <Link className="button" href="/add">
-                    Discover another word →
-                  </Link>
-                </section>
-              ))}
-          </>
-        )}
-      </main>
-    </div>
+                      : "Add a word, then come here to practice recalling it."
+                  }
+                  href="/add"
+                  actionLabel="Discover another word"
+                  color={words.length ? "green" : "paper"}
+                  completed={words.length > 0}
+                />
+              </div>
+            ))}
+        </>
+      )}
+      {deleting && (
+        <ConfirmDialog
+          word={deleting.word}
+          busy={busy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            await remove(deleting.id);
+            setDeleting(null);
+            requestAnimationFrame(() => librarySearch.current?.focus());
+          }}
+        />
+      )}
+    </AppShell>
   );
 }

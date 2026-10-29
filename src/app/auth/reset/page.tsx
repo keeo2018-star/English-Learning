@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { AppShell } from "@/components/ui/app-shell";
+import { Card, Pill } from "@/components/ui/primitives";
+import { Feedback } from "@/components/ui/states";
 export default function Reset() {
   const [ready, setReady] = useState(false),
     [message, setMessage] = useState(""),
@@ -39,8 +42,9 @@ export default function Reset() {
     }
   }
   return (
-    <main className="auth">
-      <section className="panel">
+    <AppShell active="Profile" compact>
+      <Card className="panel wb-auth-panel">
+        <Pill>A FRESH START</Pill>
         <h1>Choose a new password.</h1>
         {ready ? (
           <form onSubmit={submit}>
@@ -59,9 +63,9 @@ export default function Reset() {
         ) : (
           <p>Open the password recovery link from your email to continue.</p>
         )}
-        {message && <p role="status">{message}</p>}
+        {message && <Feedback>{message}</Feedback>}
         <Link href="/library">Go to library →</Link>
-      </section>
-    </main>
+      </Card>
+    </AppShell>
   );
 }

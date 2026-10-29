@@ -175,9 +175,12 @@ test.describe("real Supabase", () => {
       ).toBeVisible();
       const updated = await fetch(new URL(path, url), { headers: headers() });
       expect((await updated.json())[0].meaning).toBe("Updated learning item");
-      page.once("dialog", (dialog) => dialog.accept());
       await page
         .getByRole("button", { name: "Delete " + marker, exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Delete this word?" })
+        .getByRole("button", { name: "Delete word", exact: true })
         .click();
       await expect(
         page.getByRole("heading", { name: marker, exact: true }),
@@ -322,9 +325,12 @@ test.describe("real Supabase", () => {
       expect(Date.parse(updated[0].due_at)).toBeGreaterThan(Date.now());
       await a.goto("/library");
       await a.getByLabel("Search library").fill(marker);
-      a.once("dialog", (dialog) => dialog.accept());
       await a
         .getByRole("button", { name: "Delete " + marker, exact: true })
+        .click();
+      await a
+        .getByRole("dialog", { name: "Delete this word?" })
+        .getByRole("button", { name: "Delete word", exact: true })
         .click();
       await expect(
         a.getByRole("heading", { name: marker, exact: true }),

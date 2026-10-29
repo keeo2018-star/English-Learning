@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { AppShell } from "@/components/ui/app-shell";
+import { LoadingState } from "@/components/ui/states";
 
 // Browser-side callback matches the app's existing localStorage session model.
 // It also handles legacy implicit links whose fragments never reach a server route.
@@ -75,12 +77,12 @@ export default function AuthCallback() {
     };
   }, []);
   return (
-    <main className="auth">
-      <section className="panel">
-        <h1>Completing sign-in…</h1>
-        <p>Please wait while we confirm your email and open your wordbook.</p>
-        <Link href="/auth">Back to sign in</Link>
-      </section>
-    </main>
+    <AppShell active="Profile" compact>
+      <h1>Completing sign-in…</h1>
+      <LoadingState label="Please wait while we confirm your email and open your wordbook." />
+      <Link className="wb-inline-link" href="/auth">
+        Back to sign in
+      </Link>
+    </AppShell>
   );
 }

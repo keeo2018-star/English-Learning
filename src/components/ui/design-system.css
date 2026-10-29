@@ -210,3 +210,17 @@
   background: var(--wb-offwhite);
   color: var(--wb-black);
 }
+
+.wb-navigation .wb-nav-item {
+  align-items: center;
+}
+.wb-navigation .wb-nav-item[aria-current="page"] {
+  outline: 1px solid currentColor;
+  outline-offset: -4px;
+}
+
+/* Keep keyboard focus visible on both blue cards and the black navigation. */
+.wb-color-blue :focus-visible,
+.wb-navigation a:focus-visible {
+  outline-color: var(--wb-white);
+}

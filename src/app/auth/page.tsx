@@ -3,6 +3,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { AppShell } from "@/components/ui/app-shell";
+import { Card, Pill } from "@/components/ui/primitives";
+import { LoadingState, Feedback } from "@/components/ui/states";
 function AuthForm() {
   const params = useSearchParams();
   const router = useRouter();
@@ -65,12 +68,9 @@ function AuthForm() {
     }
   }
   return (
-    <main className="auth">
-      <Link className="brand" href="/">
-        wordbook
-      </Link>
-      <section className="panel">
-        <div className="eyebrow">YOUR WORDS, WHEREVER YOU GO</div>
+    <AppShell active="Profile" compact>
+      <Card className="panel wb-auth-panel">
+        <Pill>YOUR WORDS, WHEREVER YOU GO</Pill>
         <h1>
           {mode === "signup"
             ? "Start your wordbook."
@@ -150,14 +150,10 @@ function AuthForm() {
             </div>
           </>
         )}
-        {message && (
-          <p role="status" className="feedback">
-            {message}
-          </p>
-        )}
-      </section>
+        {message && <Feedback>{message}</Feedback>}
+      </Card>
       <Link href="/">← Back to home</Link>
-    </main>
+    </AppShell>
   );
 }
 
@@ -165,9 +161,9 @@ export default function Auth() {
   return (
     <Suspense
       fallback={
-        <main className="auth">
-          <p>Loading sign-in…</p>
-        </main>
+        <AppShell active="Profile" compact>
+          <LoadingState label="Loading sign-in…" />
+        </AppShell>
       }
     >
       <AuthForm />

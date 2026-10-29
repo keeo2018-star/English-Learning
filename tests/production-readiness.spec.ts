@@ -201,7 +201,9 @@ test.describe("production UX regressions (mocked service)", () => {
     await expect(
       page.getByRole("heading", { name: "Your next discovery starts here." }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add a word" })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Add a word" }),
+    ).toBeVisible();
     await page.goto("/review");
     await expect(
       page.getByRole("heading", { name: "Make room for your first word." }),

@@ -7,14 +7,20 @@ const entries = [
   { label: "Review", href: "/review", icon: "↻" },
   { label: "Profile", href: "/auth", icon: "○" },
 ];
-export function Navigation() {
+export type NavigationSection =
+  "Home" | "Dictionary" | "Library" | "Review" | "Profile";
+export function Navigation({
+  active = "Home",
+}: {
+  active?: NavigationSection | null;
+}) {
   return (
     <nav className="wb-navigation" aria-label="Main navigation">
       {entries.map((item) => (
         <Link
           key={item.label}
           href={item.href}
-          aria-current={item.label === "Home" ? "page" : undefined}
+          aria-current={item.label === active ? "page" : undefined}
           className={`wb-nav-item ${item.label === "Dictionary" ? "wb-nav-dictionary" : ""}`}
         >
           <span aria-hidden="true">

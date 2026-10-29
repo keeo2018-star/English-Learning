@@ -57,8 +57,14 @@ test("collect, persist, search, review, and delete a word in local demo", async 
   await expect(
     page.getByText("A fortunate discovery", { exact: true }),
   ).toBeVisible();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete serendipity" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Delete this word?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete word", exact: true })
+    .click();
   await expect(page.getByText("0 words collected")).toBeVisible();
 });
 test("empty review and unconfigured account are usable", async ({ page }) => {
