@@ -70,5 +70,10 @@ test("mocked missing schema displays the actionable database error", async ({
   await expect(page.getByRole("status")).toContainText(
     "Run supabase/schema.sql",
   );
-  await expect(page.getByLabel("Search library")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your library couldn’t be loaded." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Try again", exact: true }),
+  ).toBeVisible();
 });

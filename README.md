@@ -72,3 +72,16 @@ Use the same browser for PKCE sign-up and confirmation. Custom token-hash templa
 In Vercel, deploy the repository root as a Next.js application and configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the production deployment before building. Do not select a static-output directory. No localhost callback hostname or additional site-URL variable is hardcoded: email redirects use the origin where the user starts authentication. After deployment and updating Supabase’s redirect allowlist, request a fresh confirmation email; old emails retain their old redirect target.
 
 Focused regression suite: `npx playwright test tests/auth-callback.spec.ts` with a Supabase-configured build. These tests mock the provider and cover PKCE, flow-specific verifiers, legacy implicit sessions, token-hash confirmation, recovery, failure messages, and a complete sign-up/callback round trip at a simulated HTTPS Vercel origin. They do not establish that a particular live Vercel deployment or its Supabase dashboard settings have been updated.
+
+## Production readiness checks
+
+The production UX regression suite (`tests/production-readiness.spec.ts`) uses mocked cloud responses to check 320px layouts, mobile sign-out, honest loading/error/empty states, failed-save retry, existing six-character passwords, session refresh, and late review responses after sign-out. Run it alongside the auth callback suite against a cloud-configured production build:
+
+```sh
+npm run lint
+npm run build
+npm run typecheck
+npx playwright test tests/production-readiness.spec.ts tests/auth-callback.spec.ts tests/cloud-errors.spec.ts
+```
+
+For live deployed testing, securely supply one confirmed disposable test account as `SUPABASE_TEST_EMAIL` and `SUPABASE_TEST_PASSWORD`. Set `PLAYWRIGHT_BASE_URL` to the actual production HTTPS origin, then run `NODE_USE_ENV_PROXY=1 npx playwright test tests/live-supabase.spec.ts --grep-invert 'two confirmed accounts'`. The test signs in independently in desktop and mobile browser contexts (no copied browser storage), verifies cross-device visibility and persisted edits/deletion, and checks sign-out survives reload. It only deletes its own uniquely named temporary item. Omit `PLAYWRIGHT_BASE_URL` to use the locally built production server. Missing credentials skip the lifecycle test; invalid credentials fail it. Neither a skip nor a mocked-provider test establishes live production readiness. A fresh email-confirmation round trip requires an inbox owner to confirm the email.

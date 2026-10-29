@@ -12,28 +12,32 @@ const passwordB = process.env.SUPABASE_TEST_PASSWORD_B;
 // Route actual browser API calls through the environment's trusted HTTPS proxy.
 // No API responses, passwords, or tokens are written to test artifacts.
 async function connect(page: Page) {
-  await page.route(new URL(url!).origin + "/**", async (route) => {
-    const request = route.request();
-    try {
-      const response = await fetch(request.url(), {
-        method: request.method(),
-        headers: request.headers(),
-        body: ["GET", "HEAD"].includes(request.method())
-          ? undefined
-          : request.postData(),
-      });
-      const headers = Object.fromEntries(response.headers);
-      delete headers["content-encoding"];
-      delete headers["content-length"];
-      await route.fulfill({
-        status: response.status,
-        headers,
-        body: Buffer.from(await response.arrayBuffer()),
-      });
-    } catch {
-      await route.abort("failed");
-    }
-  });
+  const origins = [new URL(url!).origin];
+  if (process.env.PLAYWRIGHT_BASE_URL)
+    origins.push(new URL(process.env.PLAYWRIGHT_BASE_URL).origin);
+  for (const origin of origins)
+    await page.route(origin + "/**", async (route) => {
+      const request = route.request();
+      try {
+        const response = await fetch(request.url(), {
+          method: request.method(),
+          headers: request.headers(),
+          body: ["GET", "HEAD"].includes(request.method())
+            ? undefined
+            : request.postData(),
+        });
+        const headers = Object.fromEntries(response.headers);
+        delete headers["content-encoding"];
+        delete headers["content-length"];
+        await route.fulfill({
+          status: response.status,
+          headers,
+          body: Buffer.from(await response.arrayBuffer()),
+        });
+      } catch {
+        await route.abort("failed");
+      }
+    });
 }
 async function signIn(page: Page, email: string, password: string) {
   await connect(page);
@@ -64,7 +68,7 @@ test.describe("real Supabase", () => {
     );
     await expect(page).toHaveURL(/\/auth$/);
   });
-  test("single confirmed account lifecycle", async ({ page }) => {
+  test("single confirmed account lifecycle", async ({ page, browser }) => {
     const email = process.env.SUPABASE_TEST_EMAIL,
       password = process.env.SUPABASE_TEST_PASSWORD;
     test.skip(
@@ -73,6 +77,12 @@ test.describe("real Supabase", () => {
     );
     test.setTimeout(90000);
     const marker = "wordbook-single-" + Date.now();
+    const mobileContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const mobile = await mobileContext.newPage();
     let token: string | undefined;
     const headers = () => ({
       apikey: key!,
@@ -106,6 +116,20 @@ test.describe("real Supabase", () => {
       await expect(
         page.getByRole("heading", { name: marker, exact: true }),
       ).toBeVisible();
+      // A clean mobile context logs in independently: no copied local storage.
+      await signIn(mobile, email!, password!);
+      await mobile.getByLabel("Search library").fill(marker);
+      await expect(
+        mobile.getByRole("heading", { name: marker, exact: true }),
+      ).toBeVisible();
+      await expect(
+        mobile.getByRole("button", { name: "Sign out", exact: true }),
+      ).toBeVisible();
+      expect(
+        await mobile.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
       await page.getByLabel("Search library").fill(marker + "-missing");
       await expect(page.getByText("No matching words.")).toBeVisible();
       await page.goto("/review");
@@ -144,6 +168,11 @@ test.describe("real Supabase", () => {
       await expect(
         page.getByText("Updated learning item", { exact: true }),
       ).toBeVisible();
+      await mobile.reload();
+      await mobile.getByLabel("Search library").fill(marker);
+      await expect(
+        mobile.getByText("Updated learning item", { exact: true }),
+      ).toBeVisible();
       const updated = await fetch(new URL(path, url), { headers: headers() });
       expect((await updated.json())[0].meaning).toBe("Updated learning item");
       page.once("dialog", (dialog) => dialog.accept());
@@ -153,13 +182,23 @@ test.describe("real Supabase", () => {
       await expect(
         page.getByRole("heading", { name: marker, exact: true }),
       ).toHaveCount(0);
+      await mobile.reload();
+      await mobile.getByLabel("Search library").fill(marker);
+      await expect(
+        mobile.getByRole("heading", { name: marker, exact: true }),
+      ).toHaveCount(0);
       const deleted = await fetch(new URL(path, url), { headers: headers() });
       expect(await deleted.json()).toEqual([]);
       await page.getByRole("button", { name: "Sign out", exact: true }).click();
       await expect(
         page.getByRole("heading", { name: "Your words belong to you." }),
       ).toBeVisible();
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { name: "Your words belong to you." }),
+      ).toBeVisible();
     } finally {
+      await mobileContext.close();
       if (token)
         await fetch(new URL("/rest/v1/words?word=eq." + marker, url), {
           method: "DELETE",

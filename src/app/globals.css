@@ -356,8 +356,12 @@ button:focus-visible {
     font-size: 28px;
   }
   .brand span,
-  .aside-bottom {
+  .aside-bottom p {
     display: none;
+  }
+  .aside-bottom {
+    padding-top: 12px;
+    margin-top: 0;
   }
   nav {
     margin-top: 22px;
@@ -435,5 +439,27 @@ button:focus-visible {
   .word-actions {
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* Long saved phrases and account addresses must not expand flex layouts. */
+.content {
+  min-width: 0;
+}
+header > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.review-card,
+.review-card h2,
+.feedback {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  button.text-button,
+  .aside-bottom > a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 }

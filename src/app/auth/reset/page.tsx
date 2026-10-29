@@ -21,15 +21,22 @@ export default function Reset() {
     e.preventDefault();
     if (!supabase) return;
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({
-      password: String(new FormData(e.currentTarget).get("password")),
-    });
-    setMessage(
-      error
-        ? error.message
-        : "Password updated. You can return to your library.",
-    );
-    setBusy(false);
+    setMessage("");
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: String(new FormData(e.currentTarget).get("password")),
+      });
+      if (error) throw error;
+      setMessage("Password updated. You can return to your library.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not update password. Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <main className="auth">

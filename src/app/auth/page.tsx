@@ -106,7 +106,7 @@ function AuthForm() {
                   <input
                     type="password"
                     name="password"
-                    minLength={8}
+                    minLength={mode === "signup" ? 8 : undefined}
                     autoComplete={
                       mode === "signup" ? "new-password" : "current-password"
                     }
@@ -127,6 +127,7 @@ function AuthForm() {
             <div className="actions">
               <button
                 className="text-button"
+                disabled={busy}
                 onClick={() => {
                   setMode(mode === "signup" ? "signin" : "signup");
                   setMessage("");
@@ -138,6 +139,7 @@ function AuthForm() {
               </button>
               <button
                 className="text-button"
+                disabled={busy}
                 onClick={() => {
                   setMode("reset");
                   setMessage("");

@@ -214,5 +214,6 @@ test.describe("auth callback (mocked service)", () => {
     await page.goto(callback.toString());
     await expect(page).toHaveURL(production + "/library");
     await expect(page.getByLabel("Search library")).toBeVisible();
+    await page.unrouteAll({ behavior: "wait" });
   });
 });

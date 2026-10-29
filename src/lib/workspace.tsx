@@ -35,11 +35,12 @@ export default function Workspace({
 }) {
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
+    [loadError, setLoadError] = useState(false),
     [words, setWords] = useState<Word[]>([]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
-    [revealed, setRevealed] = useState(false),
+    [revealed, setRevealed] = useState<string | null>(null),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null);
   const loadVersion = useRef(0);
@@ -47,6 +48,7 @@ export default function Workspace({
   const load = useCallback(async (u: User | null) => {
     const version = ++loadVersion.current;
     setMessage("");
+    setLoadError(false);
     try {
       if (supabase && u) {
         const { data, error } = await supabase
@@ -66,6 +68,7 @@ export default function Workspace({
     } catch (error) {
       if (version === loadVersion.current) {
         setWords([]);
+        setLoadError(true);
         setMessage(errorMessage(error, "Could not load your library."));
       }
     } finally {
@@ -99,7 +102,7 @@ export default function Workspace({
         ++loadVersion.current;
         accountId.current = session?.user.id || null;
         setWords([]);
-        setRevealed(false);
+        setRevealed(null);
         setEditing(null);
         setReady(false);
       }
@@ -152,6 +155,7 @@ export default function Workspace({
     }
   }
   async function remove(id: string) {
+    const owner = accountId.current;
     setBusy(true);
     setMessage("");
     try {
@@ -163,7 +167,8 @@ export default function Workspace({
           .select("id")
           .single();
         if (error) throw error;
-        setWords(words.filter((w) => w.id !== id));
+        if (accountId.current !== owner) return;
+        setWords((previous) => previous.filter((w) => w.id !== id));
       } else persistLocal(words.filter((w) => w.id !== id));
     } catch (error) {
       setMessage(errorMessage(error, "Could not delete word."));
@@ -212,6 +217,7 @@ export default function Workspace({
     }
   }
   async function grade(word: Word, known: boolean) {
+    const owner = accountId.current;
     setNow(Date.now());
     setBusy(true);
     setMessage("");
@@ -232,11 +238,28 @@ export default function Workspace({
           .select("id")
           .single();
         if (error) throw error;
-        setWords(words.map((w) => (w.id === word.id ? updated : w)));
+        if (accountId.current !== owner) return;
+        setWords((previous) =>
+          previous.map((w) => (w.id === word.id ? updated : w)),
+        );
       } else persistLocal(words.map((w) => (w.id === word.id ? updated : w)));
-      setRevealed(false);
+      setRevealed(null);
     } catch (error) {
       setMessage(errorMessage(error, "Could not save review."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function signOut() {
+    if (!supabase) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setWords([]);
+    } catch (error) {
+      setMessage(errorMessage(error, "Could not sign out. Please try again."));
     } finally {
       setBusy(false);
     }
@@ -272,11 +295,8 @@ export default function Workspace({
           {user ? (
             <button
               className="text-button"
-              onClick={async () => {
-                const { error } = await supabase!.auth.signOut();
-                if (error) setMessage(error.message);
-                else setWords([]);
-              }}
+              disabled={busy}
+              onClick={() => void signOut()}
             >
               Sign out
             </button>
@@ -322,7 +342,9 @@ export default function Workspace({
           </p>
         )}
         {!ready ? (
-          <p>Loading your library…</p>
+          <p role="status" aria-live="polite">
+            Loading your library…
+          </p>
         ) : supabase && !user ? (
           <section className="panel">
             <h2>Your words belong to you.</h2>
@@ -330,6 +352,23 @@ export default function Workspace({
             <Link className="button" href="/auth">
               Sign in →
             </Link>
+          </section>
+        ) : loadError && page !== "add" ? (
+          <section className="panel">
+            <h2>Your library couldn’t be loaded.</h2>
+            <p>
+              Your saved words haven’t been removed. Check your connection and
+              try again.
+            </p>
+            <button
+              disabled={busy}
+              onClick={() => {
+                setReady(false);
+                void load(user);
+              }}
+            >
+              Try again
+            </button>
           </section>
         ) : (
           <>
@@ -499,7 +538,7 @@ export default function Workspace({
                       CAN YOU REMEMBER THE MEANING?
                     </span>
                     <h2>{card.word}</h2>
-                    {revealed ? (
+                    {revealed === card.id ? (
                       <>
                         <p>{card.meaning}</p>
                         {card.example && (
@@ -523,7 +562,7 @@ export default function Workspace({
                         </div>
                       </>
                     ) : (
-                      <button onClick={() => setRevealed(true)}>
+                      <button onClick={() => setRevealed(card.id)}>
                         Reveal meaning
                       </button>
                     )}
