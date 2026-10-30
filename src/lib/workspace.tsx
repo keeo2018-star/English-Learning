@@ -493,23 +493,10 @@ export default function Workspace({
                       </form>
                     ) : (
                       <div className="wb-word-content">
-                        <Pill
-                          className={
-                            w.interval_days === 0 ? "wb-status-unlearned" : ""
-                          }
-                        >
-                          {w.interval_days === 0
-                            ? "First recall pending"
-                            : `Learning · ${w.interval_days}-day interval`}
-                        </Pill>
                         <h2>{w.word}</h2>
                         <WordPronunciation key={w.word} word={w.word} />
-                        <Pill>My meaning</Pill>
                         <p>{w.meaning}</p>
                         {w.example && <blockquote>{w.example}</blockquote>}
-                        <Pill>
-                          Next review: {new Date(w.due_at).toLocaleDateString()}
-                        </Pill>
                       </div>
                     )}
                     <div className="word-actions">

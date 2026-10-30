@@ -25,6 +25,15 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
   }
   for (const path of ['/library', '/review']) {
     await page.goto(path);
+    if (path === '/library') {
+      const card = page.locator('.word-row');
+      await expect(card.getByText('My meaning', { exact: true })).toHaveCount(0);
+      await expect(card.getByText(/Next review:|First recall pending|Learning ·/)).toHaveCount(0);
+      for (const width of [320, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await card.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+      }
+    }
     await expect(page.getByText('həˈləʊ', { exact: true })).toBeVisible();
     await expect(page.getByText('həˈloʊ', { exact: true })).toBeVisible();
     for (const accent of ['UK', 'US']) {

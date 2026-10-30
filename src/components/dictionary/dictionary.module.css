@@ -9,7 +9,11 @@
 .reference p { line-height: 1.6; overflow-wrap: anywhere; }
 .reference section { border-top: 1px solid currentColor; padding-top: 24px; }
 .reference blockquote { margin: 20px 0; padding-left: 16px; border-left: 3px solid currentColor; }
-.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wb-space-3); }
+.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.pronunciation:empty { display: none; }
 .phonetic { display: inline-flex; align-items: center; gap: var(--wb-space-2); }
 .credit { font-size: .85rem; }
 @media(min-width: 700px) { .sheet { margin: auto; border-radius: 32px; padding: 36px; } }
+
+.phonetic { min-width: 0; flex-wrap: wrap; font-size: 15px; }
+.phonetic button { padding: 8px 12px; min-height: 40px; font-size: 12px; gap: 8px; }
