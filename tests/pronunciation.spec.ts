@@ -41,6 +41,11 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
       await expect(page.locator(`audio[src*="accent=${accent.toLowerCase()}"]`)).toHaveAttribute('data-played', 'true');
     }
   }
+  const ukAudio = page.locator('audio[src*="accent=uk"]');
+  await expect(ukAudio).toHaveAttribute('preload', 'auto');
+  await ukAudio.dispatchEvent('error');
+  await expect(page.getByText('Audio unavailable.', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Play pronunciation (UK)', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Reveal meaning' }).click();
   await page.getByRole('button', { name: 'Dictionary for hello' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2);

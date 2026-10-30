@@ -11,19 +11,30 @@ export function DictionaryButton({ word, meaning }: {
     const [open, setOpen] = useState(false);
     return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} onClick={() => setOpen(true)}>Dictionary ↗</button>{open && <DictionarySheet word={word} meaning={meaning} onClose={() => setOpen(false)}/>}</>;
 }
-function AccentPronunciation({ item }: { item: DictionaryResult["phonetics"][number] }) {
+function AccentPronunciation({ item, showErrors }: { item: DictionaryResult["phonetics"][number]; showErrors: boolean }) {
     const player = useRef<HTMLAudioElement>(null);
     const [failed, setFailed] = useState(false);
     const [playing, setPlaying] = useState(false);
     useEffect(() => {
         const audio = player.current;
-        return () => { audio?.pause(); };
+        if (!audio) return;
+        const observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) {
+                audio.preload = "auto";
+                audio.load();
+                observer.disconnect();
+            }
+        }, { rootMargin: "200px" });
+        if (audio.parentElement) observer.observe(audio.parentElement);
+        return () => { observer.disconnect(); audio.pause(); };
     }, []);
     async function play() {
         const audio = player.current;
         if (!audio) return;
+        setFailed(false);
         setPlaying(true);
         try {
+            if (audio.error) audio.load();
             audio.currentTime = 0;
             await audio.play();
         } catch {
@@ -33,19 +44,19 @@ function AccentPronunciation({ item }: { item: DictionaryResult["phonetics"][num
     return <span className={styles.phonetic}>
         <button type="button" className="secondary"
             aria-label={"Play pronunciation (" + item.accent + ")"}
-            disabled={!item.audio || playing || failed} onClick={() => void play()}>
+            disabled={!item.audio || playing} onClick={() => void play()}>
             {item.accent} <span aria-hidden="true">{playing ? "…" : "▶"}</span>
         </button>
         {item.text && <span>{item.text}</span>}
         {item.audio && <audio ref={player} hidden preload="none" src={item.audio}
             onEnded={() => setPlaying(false)}
             onError={() => { setFailed(true); setPlaying(false); }} />}
-        {failed && <small role="status">Audio unavailable.</small>}
+        {failed && showErrors && <small role="status">Audio unavailable.</small>}
     </span>;
 }
-function Pronunciation({ phonetics }: { phonetics: DictionaryResult["phonetics"] }) {
+function Pronunciation({ phonetics, showErrors = true }: { phonetics: DictionaryResult["phonetics"]; showErrors?: boolean }) {
     return <div className={styles.pronunciation}>
-        {phonetics.map(item => <AccentPronunciation key={item.accent + item.audio} item={item} />)}
+        {phonetics.map(item => <AccentPronunciation key={item.accent + item.audio} item={item} showErrors={showErrors} />)}
     </div>;
 }
 export function WordPronunciation({ word }: { word: string }) {
@@ -60,7 +71,7 @@ export function WordPronunciation({ word }: { word: string }) {
             }).catch(() => { /* Reference availability never blocks a saved word. */ });
         return () => controller.abort();
     }, [word]);
-    return <Pronunciation phonetics={phonetics} />;
+    return <Pronunciation phonetics={phonetics} showErrors={false} />;
 }
 function DictionarySheet({ word, meaning, onClose }: {
     word: string;
