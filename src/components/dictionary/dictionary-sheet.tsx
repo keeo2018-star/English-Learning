@@ -11,13 +11,10 @@ export function DictionaryButton({ word, meaning }: {
     const [open, setOpen] = useState(false);
     return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} onClick={() => setOpen(true)}>Dictionary ↗</button>{open && <DictionarySheet word={word} meaning={meaning} onClose={() => setOpen(false)}/>}</>;
 }
-function Pronunciation({ phonetics }: {
-    phonetics: DictionaryResult["phonetics"];
-}) {
+function AccentPronunciation({ item }: { item: DictionaryResult["phonetics"][number] }) {
     const player = useRef<HTMLAudioElement>(null);
     const [failed, setFailed] = useState(false);
     const [playing, setPlaying] = useState(false);
-    const sound = phonetics.find(item => item.audio);
     useEffect(() => {
         const audio = player.current;
         return () => { audio?.pause(); };
@@ -30,32 +27,40 @@ function Pronunciation({ phonetics }: {
             audio.currentTime = 0;
             await audio.play();
         } catch {
-            if (audio.isConnected) {
-                setFailed(true);
-                setPlaying(false);
-            }
+            if (audio.isConnected) { setFailed(true); setPlaying(false); }
         }
     }
-    return (
-        <div className={styles.pronunciation}>
-            {phonetics.map(item => (
-                <span key={item.accent} className={styles.phonetic}>
-                    <Pill>{item.accent}</Pill><span>{item.text}</span>
-                </span>
-            ))}
-            {sound && <>
-                <audio ref={player} hidden preload="none" src={sound.audio}
-                    onEnded={() => setPlaying(false)}
-                    onError={() => { setFailed(true); setPlaying(false); }} />
-                <button type="button" className="secondary"
-                    aria-label={"Play pronunciation (" + sound.accent + ")"}
-                    disabled={playing || failed} onClick={() => void play()}>
-                    <span aria-hidden="true">▶</span> {playing ? "Playing…" : "Play"}
-                </button>
-            </>}
-            {failed && <small role="status">Audio unavailable.</small>}
-        </div>
-    );
+    return <span className={styles.phonetic}>
+        <button type="button" className="secondary"
+            aria-label={"Play pronunciation (" + item.accent + ")"}
+            disabled={!item.audio || playing || failed} onClick={() => void play()}>
+            {item.accent} <span aria-hidden="true">{playing ? "…" : "▶"}</span>
+        </button>
+        {item.text && <span>{item.text}</span>}
+        {item.audio && <audio ref={player} hidden preload="none" src={item.audio}
+            onEnded={() => setPlaying(false)}
+            onError={() => { setFailed(true); setPlaying(false); }} />}
+        {failed && <small role="status">Audio unavailable.</small>}
+    </span>;
+}
+function Pronunciation({ phonetics }: { phonetics: DictionaryResult["phonetics"] }) {
+    return <div className={styles.pronunciation}>
+        {phonetics.map(item => <AccentPronunciation key={item.accent + item.audio} item={item} />)}
+    </div>;
+}
+export function WordPronunciation({ word }: { word: string }) {
+    const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"]>([]);
+    useEffect(() => {
+        const controller = new AbortController();
+        fetch("/api/dictionary?" + new URLSearchParams({ word, pronunciation: "1" }), { signal: controller.signal })
+            .then(async response => {
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!controller.signal.aborted && Array.isArray(data.phonetics)) setPhonetics(data.phonetics);
+            }).catch(() => { /* Reference availability never blocks a saved word. */ });
+        return () => controller.abort();
+    }, [word]);
+    return <Pronunciation phonetics={phonetics} />;
 }
 function DictionarySheet({ word, meaning, onClose }: {
     word: string;

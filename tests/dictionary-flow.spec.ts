@@ -45,14 +45,14 @@ test.describe('personal meanings and dictionary reference', () => {
         expect(stored).toMatchObject({ meaning: '做事特别仔细，一丝不苟', interval_days: 1 });
     });
     for (const width of [390, 1440])
-        test('reference layout ' + width, async ({ page }) => { await page.setViewportSize({ width, height: 844 }); await mockCloud(page, r => r.fulfill({ json: [{ ...sampleWord, word: 'meticulous', meaning: '做事特别仔细，一丝不苟' }] })); await page.route('**/api/dictionary?*', r => r.fulfill({ json: result })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for meticulous' }).click(); const sheet = page.getByRole('dialog'); await expect(sheet.getByRole('button', { name: /Play pronunciation/ })).toHaveCount(1); await expect(sheet.locator('audio[controls]')).toHaveCount(0); await expect(sheet.getByRole('heading', { name: 'Examples' })).toBeVisible(); expect(await sheet.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true); await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeFocused(); if (width === 390)
+        test('reference layout ' + width, async ({ page }) => { await page.setViewportSize({ width, height: 844 }); await mockCloud(page, r => r.fulfill({ json: [{ ...sampleWord, word: 'meticulous', meaning: '做事特别仔细，一丝不苟' }] })); await page.route('**/api/dictionary?*', r => r.fulfill({ json: result })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for meticulous' }).click(); const sheet = page.getByRole('dialog'); await expect(sheet.getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2); await expect(sheet.locator('audio[controls]')).toHaveCount(0); await expect(sheet.getByRole('heading', { name: 'Examples' })).toBeVisible(); expect(await sheet.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true); await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeFocused(); if (width === 390)
             await page.screenshot({ path: '/tmp/wordbook-dictionary-reference-mobile.png' }); });
     test('loading, not found, retry, sparse fields and audio failure', async ({ page }) => {
         await mockCloud(page, r => r.fulfill({ json: [sampleWord] }));
         let finish: () => void = () => { };
         const gate = new Promise<void>(r => finish = r);
         let calls = 0;
-        await page.route('**/api/dictionary?*', async (r) => { calls++; if (calls === 1) {
+        await page.route('**/api/dictionary?*', async (r) => { if (new URL(r.request().url()).searchParams.has('pronunciation')) return r.fulfill({ json: result }); calls++; if (calls === 1) {
             await gate;
             return r.fulfill({ status: 404, json: { message: 'No dictionary entry found. Your saved meaning is unchanged.' } });
         } return r.fulfill({ json: { ...result, chinese: [], english: [], examples: [], synonyms: [] } }); });
@@ -64,10 +64,10 @@ test.describe('personal meanings and dictionary reference', () => {
         await expect(page.getByText('No dictionary entry found. Your saved meaning is unchanged.')).toBeVisible();
         await page.getByRole('button', { name: 'Try again' }).click();
         await expect(page.getByText('No definitions or examples available for this entry.')).toBeVisible();
-        await page.getByRole('button', { name: 'Play pronunciation (UK)' }).click();
-        await expect(page.getByText('Audio unavailable.')).toBeVisible();
+        await page.getByRole('dialog').getByRole('button', { name: 'Play pronunciation (UK)' }).click();
+        await expect(page.getByRole('dialog').getByText('Audio unavailable.')).toBeVisible();
     });
-    test('one play button uses available audio and supports replay', async ({ page }) => {
+    test('accent buttons use available audio and support replay', async ({ page }) => {
         await page.addInitScript(() => {
             HTMLMediaElement.prototype.play = function () {
                 this.dataset.plays = String(Number(this.dataset.plays || 0) + 1);
@@ -81,18 +81,20 @@ test.describe('personal meanings and dictionary reference', () => {
         } }));
         await page.goto('/library');
         await page.getByRole('button', { name: 'Dictionary for serendipity' }).click();
-        const play = page.getByRole('button', { name: 'Play pronunciation (US)' });
+        const sheet = page.getByRole('dialog');
+        const play = sheet.getByRole('button', { name: 'Play pronunciation (US)' });
+        await expect(sheet.getByRole('button', { name: 'Play pronunciation (UK)' })).toBeDisabled();
         await expect(play).toBeVisible();
-        await expect(page.locator('audio')).not.toHaveAttribute('data-plays');
+        await expect(sheet.locator('audio')).not.toHaveAttribute('data-plays');
         await play.click();
-        await expect(page.locator('audio')).toHaveAttribute('data-plays', '1');
+        await expect(sheet.locator('audio')).toHaveAttribute('data-plays', '1');
         await expect(play).toBeDisabled();
-        await page.locator('audio').dispatchEvent('ended');
+        await sheet.locator('audio').dispatchEvent('ended');
         await expect(play).toBeEnabled();
         await play.click();
-        await expect(page.locator('audio')).toHaveAttribute('data-plays', '2');
+        await expect(sheet.locator('audio')).toHaveAttribute('data-plays', '2');
     });
-    test('API unavailable and network failure retain own meaning', async ({ page }) => { await mockCloud(page, r => r.fulfill({ json: [sampleWord] })); let calls = 0; await page.route('**/api/dictionary?*', r => ++calls === 1 ? r.abort() : r.fulfill({ status: 502, json: { message: 'The dictionary is unavailable right now.' } })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for serendipity' }).click(); await expect(page.getByText('The dictionary couldn’t be reached. Try again later.')).toBeVisible(); await page.getByRole('button', { name: 'Try again' }).click(); await expect(page.getByText('The dictionary is unavailable right now.')).toBeVisible(); await expect(page.getByRole('dialog').getByText(sampleWord.meaning, { exact: true })).toBeVisible(); });
+    test('API unavailable and network failure retain own meaning', async ({ page }) => { await mockCloud(page, r => r.fulfill({ json: [sampleWord] })); let calls = 0; await page.route('**/api/dictionary?*', r => new URL(r.request().url()).searchParams.has('pronunciation') ? r.fulfill({ json: result }) : ++calls === 1 ? r.abort() : r.fulfill({ status: 502, json: { message: 'The dictionary is unavailable right now.' } })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for serendipity' }).click(); await expect(page.getByText('The dictionary couldn’t be reached. Try again later.')).toBeVisible(); await page.getByRole('button', { name: 'Try again' }).click(); await expect(page.getByText('The dictionary is unavailable right now.')).toBeVisible(); await expect(page.getByRole('dialog').getByText(sampleWord.meaning, { exact: true })).toBeVisible(); });
 });
 test('dictionary API rejects empty and unsafe query', async ({ request }) => { for (const word of ['', '../bad'])
     expect((await request.get('/api/dictionary', { params: { word } })).status()).toBe(400); });

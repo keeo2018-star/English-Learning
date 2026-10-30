@@ -14,7 +14,7 @@ import {
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
-import { DictionaryButton } from "@/components/dictionary/dictionary-sheet";
+import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
@@ -503,6 +503,7 @@ export default function Workspace({
                             : `Learning · ${w.interval_days}-day interval`}
                         </Pill>
                         <h2>{w.word}</h2>
+                        <WordPronunciation key={w.word} word={w.word} />
                         <Pill>My meaning</Pill>
                         <p>{w.meaning}</p>
                         {w.example && <blockquote>{w.example}</blockquote>}
@@ -567,6 +568,7 @@ export default function Workspace({
                 >
                   <span className="eyebrow">CAN YOU REMEMBER THE MEANING?</span>
                   <h2>{card.word}</h2>
+                  <WordPronunciation key={card.word} word={card.word} />
                   {revealed === card.id ? (
                     <>
                       <p>{card.meaning}</p>
