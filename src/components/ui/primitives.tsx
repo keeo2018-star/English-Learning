@@ -44,21 +44,6 @@ export function Pill({
 }) {
   return <span className={`wb-pill ${className}`}>{children}</span>;
 }
-export function Progress({ value, label }: { value: number; label: string }) {
-  const percent = Math.max(0, Math.min(100, Math.round(value)));
-  return (
-    <div
-      className="wb-progress"
-      role="progressbar"
-      aria-label={label}
-      aria-valuenow={percent}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
-      <span style={{ width: percent + "%" }} />
-    </div>
-  );
-}
 export function ArrowIcon({
   direction = "up-right",
 }: {

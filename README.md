@@ -85,3 +85,15 @@ npx playwright test tests/production-readiness.spec.ts tests/auth-callback.spec.
 ```
 
 For live deployed testing, securely supply one confirmed disposable test account as `SUPABASE_TEST_EMAIL` and `SUPABASE_TEST_PASSWORD`. Set `PLAYWRIGHT_BASE_URL` to the actual production HTTPS origin, then run `NODE_USE_ENV_PROXY=1 npx playwright test tests/live-supabase.spec.ts --grep-invert 'two confirmed accounts'`. The test signs in independently in desktop and mobile browser contexts (no copied browser storage), verifies cross-device visibility and persisted edits/deletion, and checks sign-out survives reload. It only deletes its own uniquely named temporary item. Omit `PLAYWRIGHT_BASE_URL` to use the locally built production server. Missing credentials skip the lifecycle test; invalid credentials fail it. Neither a skip nor a mocked-provider test establishes live production readiness. A fresh email-confirmation round trip requires an inbox owner to confirm the email.
+
+## Personal meanings and dictionary reference
+
+`/add` saves the user's word, meaning and optional example through the existing Supabase/local flow. Review scheduling and ownership policies are unchanged. No dictionary definition is selected, copied, or saved automatically.
+
+Library items provide a **Dictionary** button. Review provides it after revealing the personal meaning. An accessible modal bottom sheet keeps **My meaning** separate from reference content. UK/US pronunciation, Chinese and English definitions, and up to three bilingual examples appear when available; synonyms are collapsed. Audio never autoplays and failure does not affect the item.
+
+`GET /api/dictionary?word=...` validates the English query, calls the fixed UAPI endpoint `https://uapis.cn/api/v1/dictionary/lookup`, and returns a bounded normalized result. The server has an eight-second upstream timeout and controlled 400/404/502 responses. Successful reference responses may be cached for an hour. Only HTTPS pronunciation URLs on UAPI's dictionary audio path are allowed. The browser requests pronunciation media directly from UAPI.
+
+No database change is required. The earlier unapplied dictionary-metadata migration has been removed. Existing database columns, including metadata if previously added separately, are not dropped or modified. Dictionary requests perform no Supabase writes and no provider response is stored in the vocabulary table or demo storage.
+
+Checks: `node --test tests/unit/dictionary-provider.mjs` (Node 24), `npm run build`, `npm run typecheck`, `npm run lint`, `npm run test:e2e`. Dictionary browser tests use controlled provider and cloud fixtures; they do not establish hosted account readiness.

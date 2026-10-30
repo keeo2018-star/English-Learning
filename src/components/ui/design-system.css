@@ -73,19 +73,6 @@
   letter-spacing: 0.015em;
   max-width: 100%;
 }
-.wb-progress {
-  height: 7px;
-  border-radius: var(--wb-radius-pill);
-  background: transparent;
-  outline: 1px solid currentColor;
-  overflow: hidden;
-}
-.wb-progress > span {
-  height: 100%;
-  display: block;
-  background: currentColor;
-  border-radius: inherit;
-}
 .wb-arrow {
   display: inline-flex;
   align-items: center;
@@ -192,9 +179,6 @@
   .wb-navigation,
   .wb-arrow {
     border: 1px solid CanvasText;
-  }
-  .wb-progress > span {
-    background: Highlight;
   }
 }
 

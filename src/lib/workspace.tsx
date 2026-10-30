@@ -8,12 +8,15 @@ import { AppShell } from "@/components/ui/app-shell";
 import {
   Card,
   Pill,
-  Progress,
   collectionColor,
   ArrowIcon,
 } from "@/components/ui/primitives";
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AddWordFlow } from "@/components/dictionary/add-word-flow";
+import { DictionaryButton } from "@/components/dictionary/dictionary-sheet";
+type NewLearningItem = { word: string; meaning: string; example: string };
+type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -126,16 +129,17 @@ export default function Workspace({
     localStorage.setItem(storageKey, JSON.stringify(next));
     setWords(next);
   };
-  async function add(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const saving = useRef(false);
+  async function saveEntry(input: NewLearningItem): Promise<SaveResult> {
+    if (saving.current) return "failed";
+    saving.current = true;
     setBusy(true);
     setMessage("");
-    const form = e.currentTarget;
-    const f = new FormData(form);
     const entry = {
-      word: String(f.get("word")).trim(),
-      meaning: String(f.get("meaning")).trim(),
-      example: String(f.get("example")).trim(),
+      ...input,
+      word: input.word.trim(),
+      meaning: input.meaning.trim(),
+      example: input.example.trim(),
       due_at: new Date().toISOString(),
       interval_days: 0,
     };
@@ -150,16 +154,29 @@ export default function Workspace({
           .select("*")
           .single();
         if (error) throw error;
-        if (accountId.current !== user.id) return;
+        if (accountId.current !== user.id) return "failed";
         setWords((previous) => [data, ...previous]);
       } else persistLocal([{ ...entry, id: crypto.randomUUID() }, ...words]);
-      form.reset();
       setMessage("Word saved. Ready for your next review.");
+      return "saved";
     } catch (error) {
       setMessage(errorMessage(error, "Could not save word."));
+      return "failed";
     } finally {
       setBusy(false);
+      saving.current = false;
     }
+  }
+  async function add(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    const result = await saveEntry({
+      word: String(values.get("word")),
+      meaning: String(values.get("meaning")),
+      example: String(values.get("example")),
+    });
+    if (result === "saved") form.reset();
   }
   async function remove(id: string) {
     const owner = accountId.current;
@@ -339,21 +356,28 @@ export default function Workspace({
         <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>
         <h1>
           {page === "add"
-            ? "A new word, a new possibility."
+            ? "Find your next word."
             : page === "review"
               ? "Let’s make it stick."
               : "Your growing vocabulary."}
         </h1>
         <p>
           {page === "add"
-            ? "Save something worth remembering."
+            ? "Your words. Your meaning. Make it yours."
             : page === "review"
               ? "Take a moment to revisit the words you’re learning."
               : "Every word is another way to express yourself."}
         </p>
       </div>
       {message && <Feedback>{message}</Feedback>}
-      {!ready ? (
+      {page === "add" ? (
+        <AddWordFlow
+          busy={busy}
+          canSave={ready && (!supabase || !!user)}
+          checkingAccount={!ready}
+          onManualSubmit={add}
+        />
+      ) : !ready ? (
         <LoadingState />
       ) : supabase && !user ? (
         <StatePanel
@@ -363,7 +387,7 @@ export default function Workspace({
           actionLabel="Sign in"
           color="lavender"
         />
-      ) : loadError && page !== "add" ? (
+      ) : loadError ? (
         <StatePanel
           title="Your library couldn’t be loaded."
           description="Your saved words haven’t been removed. Check your connection and try again."
@@ -375,42 +399,6 @@ export default function Workspace({
         />
       ) : (
         <>
-          {page === "add" && (
-            <form className="panel word-form" onSubmit={add}>
-              <label>
-                Word or phrase
-                <input
-                  name="word"
-                  placeholder="e.g. serendipity"
-                  required
-                  maxLength={120}
-                />
-              </label>
-              <label>
-                Meaning
-                <textarea
-                  name="meaning"
-                  placeholder="What does it mean to you?"
-                  required
-                  maxLength={2000}
-                />
-              </label>
-              <label>
-                Example sentence <span className="muted">(optional)</span>
-                <textarea
-                  name="example"
-                  placeholder="Put your new word into context."
-                  maxLength={3000}
-                />
-              </label>
-              <div className="form-bottom">
-                <span>One word today. More confidence tomorrow.</span>
-                <button disabled={busy}>
-                  {busy ? "Saving…" : "Add to my library + "}
-                </button>
-              </div>
-            </form>
-          )}
           {page === "library" && (
             <>
               {view && (
@@ -427,17 +415,6 @@ export default function Workspace({
                         : "Your wordbook."}
                   </h2>
                   <p>{visibleWords.length} words in this view</p>
-                  <Progress
-                    value={
-                      visibleWords.length
-                        ? (visibleWords.filter((word) => word.interval_days > 0)
-                            .length /
-                            visibleWords.length) *
-                          100
-                        : 0
-                    }
-                    label="Words on a longer review schedule"
-                  />
                   <Link href="/library" className="wb-inline-link">
                     All saved words <ArrowIcon />
                   </Link>
@@ -526,6 +503,7 @@ export default function Workspace({
                             : `Learning · ${w.interval_days}-day interval`}
                         </Pill>
                         <h2>{w.word}</h2>
+                        <Pill>My meaning</Pill>
                         <p>{w.meaning}</p>
                         {w.example && <blockquote>{w.example}</blockquote>}
                         <Pill>
@@ -534,6 +512,7 @@ export default function Workspace({
                       </div>
                     )}
                     <div className="word-actions">
+                      <DictionaryButton word={w.word} meaning={w.meaning} />
                       <button
                         className="text-button"
                         disabled={busy || editing === w.id}
@@ -591,6 +570,7 @@ export default function Workspace({
                   {revealed === card.id ? (
                     <>
                       <p>{card.meaning}</p>
+                      <DictionaryButton word={card.word} meaning={card.meaning} />
                       {card.example && <blockquote>{card.example}</blockquote>}
                       <div className="actions">
                         <button

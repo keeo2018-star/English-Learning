@@ -16,7 +16,7 @@ test.describe("Home redesign", () => {
     !cloudUrl,
     "Requires cloud-configured build for the mocked fixture",
   );
-  test("uses real counts, accessible progress, and existing library search", async ({
+  test("uses real counts without progress bars and preserves library search", async ({
     page,
   }) => {
     await mockCloud(page, (r) => r.fulfill({ json: words }));
@@ -24,11 +24,8 @@ test.describe("Home redesign", () => {
     await expect(
       page.getByRole("heading", { name: "Make room for new words." }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("progressbar", {
-        name: "Words on a longer review schedule",
-      }),
-    ).toHaveAttribute("aria-valuenow", "50");
+    await expect(page.getByText("50% in practice")).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
     await expect(
       page.getByText("1 word is ready for another look."),
     ).toBeVisible();
@@ -44,6 +41,7 @@ test.describe("Home redesign", () => {
     await expect(
       page.getByRole("heading", { name: "serendipity", exact: true }),
     ).toHaveCount(0);
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
   test("collection cards open matching read-only views", async ({ page }) => {
     await mockCloud(page, (r) => r.fulfill({ json: words }));
@@ -67,6 +65,7 @@ test.describe("Home redesign", () => {
     await expect(
       page.getByRole("heading", { name: "serendipity", exact: true }),
     ).toHaveCount(0);
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
   for (const width of [320, 390, 768, 1440])
     test(
@@ -75,10 +74,8 @@ test.describe("Home redesign", () => {
         await page.setViewportSize({ width, height: 900 });
         await mockCloud(page, (r) => r.fulfill({ json: words }));
         await page.goto("/");
-        await expect(page.getByRole("progressbar")).toHaveAttribute(
-          "aria-valuenow",
-          "50",
-        );
+        await expect(page.getByText("50% in practice")).toBeVisible();
+        await expect(page.getByRole("progressbar")).toHaveCount(0);
         await expect
           .poll(() =>
             page.evaluate(
@@ -104,7 +101,8 @@ test.describe("Home redesign", () => {
           page.getByRole("searchbox", { name: "Search your saved words" }),
         ).toBeInViewport();
         await page.goto("/");
-        await expect(page.getByRole("progressbar")).toBeVisible();
+        await expect(page.getByText("50% in practice")).toBeVisible();
+        await expect(page.getByRole("progressbar")).toHaveCount(0);
         if (width === 390 || width === 1440)
           await page.screenshot({
             path: `/tmp/wordbook-home-${width}.png`,

@@ -5,7 +5,6 @@ import { Navigation } from "@/components/ui/navigation";
 import {
   Card,
   Pill,
-  Progress,
   ArrowLink,
   ArrowIcon,
   collectionColor,
@@ -258,10 +257,6 @@ export default function Home() {
                     <br />
                     Small steps count.
                   </p>
-                  <Progress
-                    value={progress}
-                    label="Words on a longer review schedule"
-                  />
                   <div className={styles.progressMeta}>
                     <span>{Math.round(progress)}% in practice</span>
                     <Link href="/review">

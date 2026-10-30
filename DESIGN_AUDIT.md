@@ -5,8 +5,8 @@ The app uses plain global CSS plus a scoped CSS Module for Home. The existing `-
 | Existing route or view | Before | Current implementation |
 | --- | --- | --- |
 | `/` | Redesigned Home | Preserved; loading/error UI now reuses shared states |
-| Dictionary | Home saved-word search | Preserved search destination and behavior |
-| `/add` | Old workspace/form | Shared app shell, editorial heading, rounded form and pill controls |
+| Dictionary | Home saved-word search | Home saved-word search is preserved; `/add` now provides on-demand dictionary reference on saved Library items |
+| `/add` | Old workspace/form | Manual word and personal-meaning form in the shared visual system |
 | `/library` | Old plain word list | Dominant search, neutral pending-recall cards, identity-colored learning cards, metadata pills |
 | `/library?view=new` and `?view=learning` | Filtered old list | Collection header, progress and the same shared word cards |
 | Word details | Inline Library and Review content | Large word typography, meaning/example hierarchy; existing edit/delete behavior |
@@ -19,7 +19,7 @@ The app uses plain global CSS plus a scoped CSS Module for Home. The existing `-
 | Route loading | Framework default | Shared loading card |
 | Delete confirmation | Browser-native confirmation | Styled native HTML dialog with trapped focus, Escape/cancel, explicit confirmation and focus restoration |
 
-There are no separate dictionary lookup/result, collection CRUD/detail, word-detail, or profile-settings routes in this codebase. Profile continues to point to the existing account/auth screen. No new product routes or data fields were invented. CEFR, pronunciation, part of speech and a permanent mastery status are not recorded, so those values are not fabricated. Learning metadata uses the existing review interval; strikethrough marks the genuinely completed review queue.
+Dictionary reference opens in a bottom sheet from saved Library items and revealed Review cards. There are no separate collection CRUD/detail, word-detail, or profile-settings routes in this codebase. Profile continues to point to the existing account/auth screen. No new product routes or data fields were invented. CEFR and a permanent mastery status are not recorded, so those values are not fabricated. Dictionary results are fetched on demand and never stored in Supabase. Learning metadata uses the existing review interval; strikethrough marks the genuinely completed review queue.
 
 ## Shared UI
 

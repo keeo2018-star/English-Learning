@@ -1,0 +1,15 @@
+.sheet { border: 0; border-radius: var(--wb-radius-card, 32px) var(--wb-radius-card, 32px) 0 0; background: var(--wb-offwhite); color: var(--wb-black, #111); padding: var(--wb-space-5); width: 100%; max-width: 720px; max-height: 90dvh; margin: auto auto 0; overflow-y: auto; overscroll-behavior: contain; }
+.sheet::backdrop { background: rgb(0 0 0 / 55%); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--wb-space-3); }
+.sheet h2 { font-size: clamp(2.7rem, 10vw, 5rem); line-height: 1; letter-spacing: -.055em; overflow-wrap: anywhere; margin: 28px 0; }
+.personal { padding: 20px; border-radius: 24px; background: var(--wb-acid, #eaff57); margin-bottom: 28px; }
+.personal p { margin-bottom: 0; overflow-wrap: anywhere; }
+.reference { display: grid; gap: var(--wb-space-5); }
+.reference h3 { font-size: 1.5rem; margin: 0 0 16px; }
+.reference p { line-height: 1.6; overflow-wrap: anywhere; }
+.reference section { border-top: 1px solid currentColor; padding-top: 24px; }
+.reference blockquote { margin: 20px 0; padding-left: 16px; border-left: 3px solid currentColor; }
+.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wb-space-3); }
+.phonetic { display: inline-flex; align-items: center; gap: var(--wb-space-2); }
+.credit { font-size: .85rem; }
+@media(min-width: 700px) { .sheet { margin: auto; border-radius: 32px; padding: 36px; } }
