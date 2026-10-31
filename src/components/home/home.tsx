@@ -64,7 +64,7 @@ export default function Home() {
     },
   ];
   return (
-    <div className={styles.home}>
+    <div className={`${styles.home} wb-ui-text`}>
       <a className={styles.skip} href="#main-content">
         Skip to content
       </a>

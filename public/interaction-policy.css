@@ -1,0 +1,28 @@
+/* Interface regions opt out of selection; the document itself remains normal. */
+:where(.wb-ui-text, h1, h2, h3, h4, h5, h6, nav, header, footer,
+  button, label, form, summary, a, .wb-pill, .page-title, .wb-workspace-meta,
+  .wb-state, .wb-loading, .wb-auth-panel, .wb-collection-header,
+  .library-tools, .form-bottom, .eyebrow, .notice, .wb-feedback,
+  [role="status"], [role="alert"], [role="toolbar"], [role="tab"],
+  .random-pronunciation small) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Real learning material, including content within UI regions, stays copyable. */
+.wb-learning-content,
+.wb-learning-content :where(p, span, em, strong, a),
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Apply before focus, so iOS never needs its small-text focus zoom. */
+@media (max-width: 699px), (pointer: coarse) {
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [contenteditable="true"]) {
+    font-size: max(16px, 1em);
+    line-height: 1.5;
+    scroll-margin-block: 24px;
+  }
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), select) {
+    min-height: 48px;
+  }
+}

@@ -67,18 +67,18 @@ function DictionarySheet({ word, meaning, onClose }: {
     }, [word, attempt]);
     return <dialog ref={dialog} className={styles.sheet} aria-labelledby={id} onCancel={e => { e.preventDefault(); onClose(); }}>
  <div className={styles.header}><Pill>DICTIONARY / REFERENCE</Pill><button ref={close} type="button" className="secondary" onClick={onClose}>Close</button></div>
- <h2 id={id}>{word}</h2>
- <aside className={styles.personal}><Pill>My meaning</Pill><p>{meaning}</p></aside>
+ <h2 id={id} className="wb-learning-content">{word}</h2>
+ <aside className={styles.personal}><Pill>My meaning</Pill><p className="wb-learning-content">{meaning}</p></aside>
  {!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
  {result && <div className={styles.reference}>
  <Pronunciation word={word} phonetics={result.phonetics}/>
- {result.chinese.length > 0 && <section><h3>Chinese</h3>{result.chinese.map((s, i) => <p key={i} lang="zh">{s}</p>)}</section>}
- {result.english.length > 0 && <section><h3>English</h3>{result.english.map((s, i) => <div key={i}>{s.partOfSpeech && <Pill>{s.partOfSpeech}</Pill>}<p>{s.definition}</p></div>)}</section>}
- {result.examples.length > 0 && <section><h3>Examples</h3>{result.examples.map((s, i) => <blockquote key={i}>{s.source && <p>{s.source}</p>}{s.translation && <p lang="zh">{s.translation}</p>}</blockquote>)}</section>}
- {result.synonyms.length > 0 && <details><summary>Synonyms</summary><p>{result.synonyms.join(" · ")}</p></details>}
- {!result.chinese.length && !result.english.length && !result.examples.length && <p>No definitions or examples available for this entry.</p>}
- <p className={styles.credit}>Reference via UAPI. Your saved meaning stays yours.</p>
+ {result.chinese.length > 0 && <section><h3>Chinese</h3>{result.chinese.map((s, i) => <p key={i} lang="zh" className="wb-learning-content">{s}</p>)}</section>}
+ {result.english.length > 0 && <section><h3>English</h3>{result.english.map((s, i) => <div key={i}>{s.partOfSpeech && <Pill className="wb-learning-content">{s.partOfSpeech}</Pill>}<p className="wb-learning-content">{s.definition}</p></div>)}</section>}
+ {result.examples.length > 0 && <section><h3>Examples</h3>{result.examples.map((s, i) => <blockquote key={i} className="wb-learning-content">{s.source && <p>{s.source}</p>}{s.translation && <p lang="zh">{s.translation}</p>}</blockquote>)}</section>}
+ {result.synonyms.length > 0 && <details><summary>Synonyms</summary><p className="wb-learning-content">{result.synonyms.join(" · ")}</p></details>}
+ {!result.chinese.length && !result.english.length && !result.examples.length && <p className="wb-ui-text">No definitions or examples available for this entry.</p>}
+ <p className={`${styles.credit} wb-ui-text`}>Reference via UAPI. Your saved meaning stays yours.</p>
  </div>}
  </dialog>;
 }

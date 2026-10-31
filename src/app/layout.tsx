@@ -4,6 +4,7 @@ import { PwaRegistration } from "@/components/ui/pwa-registration";
 import { KnockoutControls } from "@/components/ui/knockout-controls";
 import "./globals.css";
 import "@/components/ui/design-system.css";
+import "../../public/interaction-policy.css";
 
 const roboto = localFont({
   src: [

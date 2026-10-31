@@ -39,8 +39,8 @@ export function ConfirmDialog({
     >
       <Pill>YOUR LIBRARY</Pill>
       <h2 id={id + "-title"}>Delete this word?</h2>
-      <p id={id + "-description"}>
-        “{word}” will be removed from your library. This can’t be undone.
+      <p id={id + "-description"} className="wb-ui-text">
+        “<span className="wb-learning-content">{word}</span>” will be removed from your library. This can’t be undone.
       </p>
       <div className="actions">
         <button

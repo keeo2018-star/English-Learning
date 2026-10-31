@@ -30,6 +30,10 @@ The production HTTPS app can be installed without an app store. On iPhone, open 
 
 `src/app/manifest.ts` defines the install identity, scope, colors and Android icons. The root layout provides Apple web-app metadata, a touch icon, portrait startup images for common iPhone sizes, and an accessible viewport with safe-area support. Other sizes use the operating system's available launch treatment. `public/sw.js` caches only install icons and the public offline notice. It never caches authenticated HTML, Supabase/API responses, or callback URLs. Offline cloud editing is not provided: reconnect and reload to continue. Worker updates are checked without automatically reloading unsaved forms; Vercel always serves the current app HTML. If changing cached install assets later, bump the worker cache version.
 
+## UI text selection and mobile fields
+
+`public/interaction-policy.css` is the single policy imported by the app and linked by the cached offline screen. Interface regions and semantic controls opt out of selection; neither `html` nor `body` disables selection. Use `wb-ui-text` for new helper/interface regions and `wb-learning-content` on actual vocabulary, meanings, definitions, examples or notes. Learning material and editable text remain selectable, including within forms or dialogs; no touch-callout suppression is applied. On narrow screens or coarse-pointer devices, interactive text fields use at least 16px before focus, with balanced field heights. Desktop typography is preserved. The viewport allows normal accessibility zoom. Safari-family checks use `npx playwright test --config playwright.iphone.config.ts` after installing Playwright WebKit and its supported system dependencies. These checks exercise an iPhone profile, native pointer selection, computed field sizes and focus/viewport behavior; physical iOS keyboard and long-press menus still depend on the device.
+
 ## Supabase
 
 1. Create a Supabase project and enable email/password authentication.

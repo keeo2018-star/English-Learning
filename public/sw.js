@@ -1,6 +1,6 @@
 /* Only public install assets are cached. No account pages, APIs or sessions. */
-const CACHE = 'english-learning-install-v1';
-const ASSETS = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
+const CACHE = 'english-learning-install-v2';
+const ASSETS = ['/interaction-policy.css', '/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

@@ -16,7 +16,7 @@ export function PronunciationControl({ text, accent = 'UK', recording, phonetic,
         <path d="M11 5 6 9H3v6h3l5 4V5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg> : <>{accent} <span aria-hidden="true">{loading ? '…' : '▶'}</span></>}
     </button>
-    {phonetic && <span>{phonetic}</span>}
+    {phonetic && <span className="wb-learning-content">{phonetic}</span>}
     <audio ref={audio} hidden preload="none" src={recording || undefined} />
     {showErrors && status === 'error' && <small aria-live="polite">{compact ? 'Tap the speaker to try pronunciation again.' : 'Audio unavailable.'}</small>}
   </span>;

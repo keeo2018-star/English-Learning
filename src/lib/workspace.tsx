@@ -518,10 +518,10 @@ export default function Workspace({
                       </form>
                     ) : (
                       <div className="wb-word-content">
-                        <h2>{w.word}</h2>
+                        <h2 className="wb-learning-content">{w.word}</h2>
                         <WordPronunciation key={w.word} word={w.word} />
-                        <p>{w.meaning}</p>
-                        {w.example && <blockquote>{w.example}</blockquote>}
+                        <p className="wb-learning-content">{w.meaning}</p>
+                        {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
                       </div>
                     )}
                     <div className="word-actions">
@@ -598,15 +598,15 @@ export default function Workspace({
                   color={collectionColor(card.id)}
                   className="panel review-card"
                 >
-                  <h2>{card.word}</h2>
+                  <h2 className="wb-learning-content">{card.word}</h2>
                   {randomMode
                     ? <RandomPronunciation text={card.word} automatic={autoPronunciation} />
                     : <WordPronunciation key={card.word} word={card.word} />}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal">{card.meaning}</p>
+                      <p className="wb-meaning-reveal wb-learning-content">{card.meaning}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
-                      {card.example && <blockquote>{card.example}</blockquote>}
+                      {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
                       {randomMode ? (
                         <div className="actions">
                           <button type="button" onClick={nextRandomWord}>

@@ -53,7 +53,7 @@ test('service worker caches only public assets and sessions survive reopening an
     const requests = (await Promise.all(names.map(async name => (await caches.open(name)).keys()))).flat();
     return requests.map(request => new URL(request.url).pathname).sort();
   });
-  expect(cached).toEqual(['/icons/apple-touch-icon.png', '/icons/icon-192.png', '/icons/icon-512.png', '/offline.html']);
+  expect(cached).toEqual(['/icons/apple-touch-icon.png', '/icons/icon-192.png', '/icons/icon-512.png', '/interaction-policy.css', '/offline.html']);
   const headers = await page.evaluate(async () => {
     const response = await fetch('/sw.js');
     return { cache: response.headers.get('cache-control'), scope: response.headers.get('service-worker-allowed') };
