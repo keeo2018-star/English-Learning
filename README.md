@@ -13,6 +13,10 @@ npm run dev -- --hostname 0.0.0.0
 
 Routes: `/` welcome, `/auth` sign in / sign up / request password reset, `/auth/reset` set a new password, `/add` collect words, `/review` practice due cards, `/library` search, edit, and delete words. Local demo data stays in this browser and is not automatically uploaded when cloud storage is enabled.
 
+## Random review
+
+On `/review`, choose **Random review** to practice every saved word in shuffled order, including words that are not due yet. Reveal the meaning, then choose **Next word**. Each word appears once per round; **Shuffle again** starts a new round. This practice mode does not change review dates or intervals. **Due words** keeps the existing scheduled review workflow.
+
 ## Supabase
 
 1. Create a Supabase project and enable email/password authentication.

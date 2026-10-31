@@ -47,6 +47,8 @@ export default function Workspace({
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
     [revealed, setRevealed] = useState<string | null>(null),
+    [randomIds, setRandomIds] = useState<string[] | null>(null),
+    [randomPosition, setRandomPosition] = useState(0),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
@@ -112,6 +114,8 @@ export default function Workspace({
         accountId.current = session?.user.id || null;
         setWords([]);
         setRevealed(null);
+        setRandomIds(null);
+        setRandomPosition(0);
         setEditing(null);
         setDeleting(null);
         setReady(false);
@@ -289,7 +293,25 @@ export default function Workspace({
     }
   }
   const due = words.filter((w) => new Date(w.due_at).getTime() <= now);
-  const card = due[0];
+  const randomMode = randomIds !== null;
+  const card = randomMode
+    ? words.find(word => word.id === randomIds[randomPosition])
+    : due[0];
+  function startRandomReview() {
+    const ids = words.map(word => word.id);
+    for (let index = ids.length - 1; index > 0; index--) {
+      const other = Math.floor(Math.random() * (index + 1));
+      [ids[index], ids[other]] = [ids[other], ids[index]];
+    }
+    setRandomIds(ids);
+    setRandomPosition(0);
+    setRevealed(null);
+    setMessage("");
+  }
+  function nextRandomWord() {
+    setRevealed(null);
+    setRandomPosition(position => position + 1);
+  }
   const [view, setView] = useState("");
   useEffect(() => {
     const timer = setTimeout(
@@ -542,12 +564,27 @@ export default function Workspace({
                 )}
             </>
           )}
+          {page === "review" && words.length > 0 && (
+            <div className="review-modes" role="group" aria-label="Review mode">
+              <button type="button" className={!randomMode ? "" : "secondary"}
+                aria-pressed={!randomMode} disabled={busy}
+                onClick={() => { setRandomIds(null); setRevealed(null); setMessage(""); }}>
+                Due words
+              </button>
+              <button type="button" className={randomMode ? "" : "secondary"}
+                aria-pressed={randomMode} disabled={busy}
+                onClick={() => { if (!randomMode) startRandomReview(); }}>
+                Random review
+              </button>
+            </div>
+          )}
           {page === "review" &&
             (card ? (
               <>
-                <p className="eyebrow">
-                  {due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO
-                  REVIEW
+                <p className="eyebrow" role="status">
+                  {randomMode
+                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomIds.length}`
+                    : `${due.length} ${due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW`}
                 </p>
                 <Card
                   color={collectionColor(card.id)}
@@ -561,7 +598,13 @@ export default function Workspace({
                       <p>{card.meaning}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
                       {card.example && <blockquote>{card.example}</blockquote>}
-                      <div className="actions">
+                      {randomMode ? (
+                        <div className="actions">
+                          <button type="button" onClick={nextRandomWord}>
+                            {randomPosition + 1 === randomIds.length ? "Finish review" : "Next word"}
+                          </button>
+                        </div>
+                      ) : <div className="actions">
                         <button
                           className="secondary"
                           disabled={busy}
@@ -575,7 +618,7 @@ export default function Workspace({
                         >
                           Got it · {Math.max(1, card.interval_days * 2)} day(s)
                         </button>
-                      </div>
+                      </div>}
                     </>
                   ) : (
                     <button className="review-reveal" onClick={() => setRevealed(card.id)}>
@@ -586,7 +629,14 @@ export default function Workspace({
               </>
             ) : (
               <div className="review-card">
-                <StatePanel
+                {randomMode ? <StatePanel
+                  title="Random review complete."
+                  description={`You revisited ${randomIds.length} ${randomIds.length === 1 ? "word" : "words"}. Your review schedule is unchanged.`}
+                  actionLabel="Shuffle again"
+                  onAction={startRandomReview}
+                  color="green"
+                  completed
+                /> : <StatePanel
                   title={
                     words.length
                       ? "You’re all caught up."
@@ -601,7 +651,7 @@ export default function Workspace({
                   actionLabel="Discover another word"
                   color={words.length ? "green" : "paper"}
                   completed={words.length > 0}
-                />
+                />}
               </div>
             ))}
         </>
