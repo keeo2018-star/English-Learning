@@ -12,7 +12,6 @@ export function AddWordFlow({ busy, canSave, checkingAccount, onManualSubmit }: 
     return <form className="panel word-form" onSubmit={onManualSubmit}>
  <label>Word or phrase<input name="word" placeholder="e.g. meticulous" required maxLength={120}/></label>
  <label>Meaning<textarea name="meaning" placeholder="What does it mean to you?" required maxLength={2000}/></label>
- <label>Example sentence <span className="muted">(optional)</span><textarea name="example" placeholder="Put your new word into context." maxLength={3000}/></label>
  <div className="form-bottom"><span>Your words. Your meaning. Dictionary reference is available after saving.</span><button disabled={busy}>{busy ? "Saving…" : "Add to my library + "}</button></div>
  </form>;
 }

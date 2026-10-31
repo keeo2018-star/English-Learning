@@ -534,7 +534,7 @@ summary:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 24px;
 }
 .review-card > .eyebrow {
   font-size: 10px;
@@ -547,22 +547,25 @@ summary:focus-visible {
   font-size: clamp(42px, 7vw, 88px);
   line-height: 1;
   max-width: 100%;
-  margin: 42px 0 28px;
+  margin: 8px 0 0;
 }
 .review-card > p {
   font-size: clamp(18px, 3vw, 25px);
   max-width: 720px;
-  margin: 0 0 18px;
+  margin: 0;
 }
 .review-card blockquote {
   max-width: 700px;
   font-size: 18px;
-  margin: 6px 0 28px;
+  margin: 0;
 }
 .review-card .actions {
   justify-content: center;
   width: 100%;
-  margin: 16px 0 0;
+  margin: 8px 0 0;
+}
+.review-card > .review-reveal {
+  margin-top: 16px;
 }
 .review-card .actions button {
   width: 100%;
@@ -687,7 +690,7 @@ summary:focus-visible {
     min-width: 190px;
   }
   .review-card.wb-card {
-    min-height: 470px;
+    min-height: 420px;
   }
   .wb-auth-content {
     margin-top: 56px;
@@ -806,5 +809,80 @@ summary:focus-visible {
   .wb-masthead-actions .wb-control,
   .wb-masthead-actions .text-button {
     padding: 10px 12px;
+  }
+}
+
+@media (max-width: 699px) {
+  .wb-app-frame {
+    padding-inline: 20px;
+  }
+  .word-row.wb-card {
+    width: 100%;
+    padding: 24px clamp(18px, 5.5vw, 24px);
+    border-radius: 24px;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+  .wb-word-content {
+    gap: 16px;
+  }
+  .wb-word-content h2 {
+    font-size: clamp(28px, 8vw, 34px);
+    line-height: 1.2;
+    letter-spacing: -.035em;
+    word-break: normal;
+    text-wrap: pretty;
+  }
+  .wb-word-content > p {
+    font-size: 16px;
+    line-height: 1.75;
+    margin-top: 8px;
+    word-break: normal;
+  }
+  .wb-word-content > blockquote {
+    font-size: 14px;
+    padding-left: 12px;
+  }
+  .word-actions {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    border-top: 1px solid rgb(0 0 0 / 12%);
+    padding-top: 16px;
+  }
+  .word-actions > button {
+    min-width: 0;
+    min-height: 48px;
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+  .review-card.wb-card {
+    width: 100%;
+    padding: 32px clamp(18px, 5.5vw, 24px);
+    border-radius: 24px;
+    gap: 20px;
+    min-height: 0;
+  }
+  .review-card h2 {
+    font-size: clamp(32px, 9vw, 48px);
+    line-height: 1.2;
+    margin: 4px 0 0;
+    text-wrap: pretty;
+  }
+  .review-card > p {
+    font-size: 18px;
+    line-height: 1.75;
+    padding-top: 4px;
+  }
+  .review-card > .review-reveal,
+  .review-card .actions button {
+    min-height: 48px;
+    max-width: 100%;
+  }
+  .review-card > p,
+  .review-card blockquote,
+  .review-card .actions {
+    margin: 0;
   }
 }

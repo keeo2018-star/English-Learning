@@ -12,9 +12,7 @@ test("collect, persist, search, review, and delete a word in local demo", async 
   await page
     .getByLabel("Meaning", { exact: true })
     .fill("A happy discovery by chance");
-  await page
-    .getByLabel("Example sentence")
-    .fill("Finding this book was serendipity.");
+  await expect(page.getByLabel("Example sentence")).toHaveCount(0);
   await page.getByRole("button", { name: "Add to my library" }).click();
   await expect(page.getByRole("status")).toContainText("Word saved");
   await page.getByRole("link", { name: "03 Library" }).click();

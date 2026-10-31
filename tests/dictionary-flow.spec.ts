@@ -18,12 +18,13 @@ test.describe('personal meanings and dictionary reference', () => {
         } return r.fulfill({ json: stored ? [stored] : [] }); });
         await page.route('**/api/dictionary?*', r => { lookups++; return r.fulfill({ json: result }); });
         await page.goto('/add');
+        await expect(page.getByLabel('Example sentence')).toHaveCount(0);
         await page.getByLabel('Word or phrase').fill('meticulous');
         await page.getByLabel('Meaning', { exact: true }).fill('做事特别仔细，一丝不苟');
         await page.getByRole('button', { name: 'Add to my library' }).click();
         await expect(page.getByText('Word saved. Ready for your next review.')).toBeVisible();
         expect(lookups).toBe(0);
-        expect(writes[0]).toMatchObject({ word: 'meticulous', meaning: '做事特别仔细，一丝不苟', interval_days: 0 });
+        expect(writes[0]).toMatchObject({ word: 'meticulous', meaning: '做事特别仔细，一丝不苟', interval_days: 0, example: '' });
         expect(writes[0]).not.toHaveProperty('dictionary_metadata');
         await page.goto('/library');
         await page.reload();

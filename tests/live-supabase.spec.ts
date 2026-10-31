@@ -105,9 +105,6 @@ test.describe("real Supabase", () => {
       await page
         .getByLabel("Meaning", { exact: true })
         .fill("A temporary learning item");
-      await page
-        .getByLabel("Example sentence")
-        .fill("Testing real persistence.");
       await page.getByRole("button", { name: "Add to my library" }).click();
       await expect(page.getByRole("status")).toContainText("Word saved");
       await page.goto("/library");
@@ -252,7 +249,6 @@ test.describe("real Supabase", () => {
       await a
         .getByLabel("Meaning", { exact: true })
         .fill("Live integration test meaning");
-      await a.getByLabel("Example sentence").fill("A temporary test item.");
       await a.getByRole("button", { name: "Add to my library" }).click();
       await expect(a.getByRole("status")).toContainText("Word saved");
       const own = await fetch(

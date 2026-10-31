@@ -17,3 +17,28 @@
 
 .phonetic { min-width: 0; flex-wrap: wrap; font-size: 15px; }
 .phonetic button { padding: 8px 12px; min-height: 40px; font-size: 12px; gap: 8px; }
+
+@media (max-width: 699px) {
+  .pronunciation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+  }
+  .phonetic {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .phonetic button {
+    min-height: 48px;
+    padding: 10px 8px;
+  }
+  .phonetic small {
+    grid-column: 2;
+  }
+}

@@ -174,7 +174,7 @@ export default function Workspace({
     const result = await saveEntry({
       word: String(values.get("word")),
       meaning: String(values.get("meaning")),
-      example: String(values.get("example")),
+      example: "",
     });
     if (result === "saved") form.reset();
   }
@@ -578,7 +578,7 @@ export default function Workspace({
                       </div>
                     </>
                   ) : (
-                    <button onClick={() => setRevealed(card.id)}>
+                    <button className="review-reveal" onClick={() => setRevealed(card.id)}>
                       Reveal meaning
                     </button>
                   )}
