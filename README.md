@@ -17,6 +17,8 @@ Routes: `/` welcome, `/auth` sign in / sign up / request password reset, `/auth/
 
 On `/review`, choose **Random review** to practice every saved word in shuffled order, including words that are not due yet. Reveal the meaning, then choose **Next word**. Each word appears once per round; **Shuffle again** starts a new round. This practice mode does not change review dates or intervals. **Due words** keeps the existing scheduled review workflow.
 
+Random Review includes **Auto pronunciation**, enabled by default for the current Review session. Each new card speaks only its English title once using the browser SpeechSynthesis API, preferring en-GB and then another English voice. Revealing an answer does not repeat speech. Turn the setting off to practice silently; the speaker button still replays the title. Card changes, leaving Random Review, or disabling autoplay cancel previous speech and pending voice loading. No speech API keys or database changes are required. Some mobile browsers block automatic speech until a direct speaker-button tap; available voices and audible playback depend on the browser/device.
+
 ## Supabase
 
 1. Create a Supabase project and enable email/password authentication.

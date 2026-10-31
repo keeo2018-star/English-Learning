@@ -15,6 +15,7 @@ import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { RandomPronunciation } from "@/components/dictionary/random-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
@@ -49,6 +50,7 @@ export default function Workspace({
     [revealed, setRevealed] = useState<string | null>(null),
     [randomIds, setRandomIds] = useState<string[] | null>(null),
     [randomPosition, setRandomPosition] = useState(0),
+    [autoPronunciation, setAutoPronunciation] = useState(true),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
@@ -578,6 +580,13 @@ export default function Workspace({
               </button>
             </div>
           )}
+          {page === "review" && words.length > 0 && (
+            <label className="review-auto-pronunciation">
+              <input type="checkbox" checked={autoPronunciation}
+                onChange={event => setAutoPronunciation(event.target.checked)} />
+              Auto pronunciation
+            </label>
+          )}
           {page === "review" &&
             (card ? (
               <>
@@ -592,7 +601,9 @@ export default function Workspace({
                   className="panel review-card"
                 >
                   <h2>{card.word}</h2>
-                  <WordPronunciation key={card.word} word={card.word} />
+                  {randomMode
+                    ? <RandomPronunciation text={card.word} automatic={autoPronunciation} />
+                    : <WordPronunciation key={card.word} word={card.word} />}
                   {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal">{card.meaning}</p>

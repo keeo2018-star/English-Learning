@@ -969,3 +969,37 @@ summary:focus-visible {
     rotate: -8deg;
   }
 }
+
+.review-auto-pronunciation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  min-height: 44px;
+  margin: -12px 0 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.review-auto-pronunciation input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--wb-black);
+  cursor: pointer;
+}
+.random-pronunciation {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.review-speaker {
+  width: 48px;
+  min-height: 48px;
+  padding: 12px;
+}
+.random-pronunciation small {
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.5;
+}
