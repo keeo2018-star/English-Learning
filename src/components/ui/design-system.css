@@ -110,8 +110,8 @@
   width: calc(100% - 20px);
   max-width: 550px;
   border-radius: var(--wb-radius-pill);
-  background: var(--wb-black);
-  color: var(--wb-white);
+  background: var(--wb-offwhite);
+  color: var(--wb-black);
   font-family: var(--wb-font);
 }
 .wb-navigation .wb-nav-item {
@@ -138,7 +138,7 @@
   color: inherit;
 }
 .wb-navigation .wb-nav-item[aria-current="page"] {
-  background: #363636;
+  background: #000;
   color: var(--wb-white);
 }
 .wb-navigation .wb-nav-dictionary {
@@ -198,13 +198,88 @@
 .wb-navigation .wb-nav-item {
   align-items: center;
 }
-.wb-navigation .wb-nav-item[aria-current="page"] {
-  outline: 1px solid currentColor;
-  outline-offset: -4px;
-}
+
 
 /* Keep keyboard focus visible on both blue cards and the black navigation. */
-.wb-color-blue :focus-visible,
-.wb-navigation a:focus-visible {
+.wb-color-blue :focus-visible {
   outline-color: var(--wb-white);
+}
+
+/* Progressive fallback: multiply makes white label paint reveal its backdrop. */
+.wb-workspace-tabs [aria-current="page"],
+.wb-navigation [aria-current="page"],
+button[aria-pressed="true"],
+[role="tab"][aria-selected="true"],
+[role="radio"][aria-checked="true"] {
+  background: #000;
+  color: #fff;
+  mix-blend-mode: multiply;
+  outline: none;
+}
+
+/* Only the surface is masked; semantic text and hit areas stay in the DOM. */
+.wb-workspace-tabs a.wb-knockout,
+.wb-navigation .wb-nav-item.wb-knockout,
+.wb-knockout[aria-pressed],
+.wb-knockout[aria-selected],
+.wb-knockout[aria-checked] {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  color: transparent;
+  border-color: transparent;
+  mix-blend-mode: normal;
+  box-shadow: none;
+  text-decoration: none;
+}
+.wb-knockout::before {
+  content: "";
+  position: absolute;
+  inset: var(--wb-knockout-inset, 0px);
+  border-radius: inherit;
+  background: #000;
+  pointer-events: none;
+  mask-image: var(--wb-knockout-mask);
+  -webkit-mask-image: var(--wb-knockout-mask);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+.wb-knockout *,
+.wb-workspace-tabs .wb-knockout > span,
+.wb-navigation .wb-nav-item.wb-knockout > span {
+  color: transparent;
+  background: transparent;
+  border-color: transparent;
+}
+.wb-knockout:hover,
+.wb-navigation .wb-nav-item.wb-knockout:hover {
+  outline: none;
+}
+.wb-knockout:focus-visible,
+.wb-workspace-tabs .wb-knockout:focus-visible,
+.wb-navigation .wb-nav-item.wb-knockout:focus-visible {
+  outline: 2px solid var(--wb-black);
+  outline-offset: 3px;
+}
+@media (forced-colors: active) {
+  .wb-workspace-tabs a.wb-knockout,
+  .wb-navigation .wb-nav-item.wb-knockout,
+  .wb-knockout[aria-pressed],
+  .wb-knockout[aria-selected],
+  .wb-knockout[aria-checked] {
+    forced-color-adjust: none;
+    color: HighlightText;
+    background: Highlight;
+    border-color: HighlightText;
+    mix-blend-mode: normal;
+  }
+  .wb-knockout::before { display: none; }
+  .wb-knockout *,
+  .wb-workspace-tabs .wb-knockout > span,
+  .wb-navigation .wb-nav-item.wb-knockout > span { color: inherit; }
+  .wb-knockout:focus-visible,
+  .wb-workspace-tabs .wb-knockout:focus-visible,
+  .wb-navigation .wb-nav-item.wb-knockout:focus-visible { outline-color: CanvasText; }
 }

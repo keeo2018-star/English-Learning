@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { KnockoutControls } from "@/components/ui/knockout-controls";
 import "./globals.css";
 import "@/components/ui/design-system.css";
 
@@ -20,7 +21,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={roboto.variable}>
-      <body>{children}</body>
+      <body>{children}<KnockoutControls /></body>
     </html>
   );
 }
