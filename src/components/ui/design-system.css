@@ -131,28 +131,9 @@
 }
 .wb-navigation .wb-nav-item > span:first-child {
   font-size: 20px;
-  color: inherit;
 }
 .wb-navigation .wb-nav-item > span:last-child {
   font-size: inherit;
-  color: inherit;
-}
-.wb-navigation .wb-nav-item[aria-current="page"] {
-  background: #000;
-  color: var(--wb-white);
-}
-.wb-navigation .wb-nav-dictionary {
-  background: var(--wb-acid);
-  color: var(--wb-black);
-}
-.wb-navigation .wb-nav-item:hover {
-  outline: 1px solid currentColor;
-  outline-offset: -3px;
-}
-.wb-navigation a:focus-visible,
-.wb-arrow:focus-visible {
-  outline: 3px solid var(--wb-blue);
-  outline-offset: 4px;
 }
 @media (min-width: 700px) {
   .wb-navigation {
@@ -205,24 +186,22 @@
   outline-color: var(--wb-white);
 }
 
-/* Progressive fallback: multiply makes white label paint reveal its backdrop. */
-.wb-workspace-tabs [aria-current="page"],
-.wb-navigation [aria-current="page"],
+/* Shared selected state. Use the selection components, or equivalent ARIA. */
+.wb-selectable[data-selected="true"],
+a[aria-current="page"],
+a[aria-current="true"],
 button[aria-pressed="true"],
 [role="tab"][aria-selected="true"],
-[role="radio"][aria-checked="true"] {
+[role="option"][aria-selected="true"],
+[role="radio"][aria-checked="true"],
+[role="switch"][aria-checked="true"] {
   background: #000;
   color: #fff;
   mix-blend-mode: multiply;
   outline: none;
+  box-shadow: none;
 }
-
-/* Only the surface is masked; semantic text and hit areas stay in the DOM. */
-.wb-workspace-tabs a.wb-knockout,
-.wb-navigation .wb-nav-item.wb-knockout,
-.wb-knockout[aria-pressed],
-.wb-knockout[aria-selected],
-.wb-knockout[aria-checked] {
+.wb-knockout.wb-knockout {
   position: relative;
   isolation: isolate;
   background: transparent;
@@ -246,29 +225,41 @@ button[aria-pressed="true"],
   mask-repeat: no-repeat;
   -webkit-mask-repeat: no-repeat;
 }
-.wb-knockout *,
-.wb-workspace-tabs .wb-knockout > span,
-.wb-navigation .wb-nav-item.wb-knockout > span {
+.wb-knockout.wb-knockout :where(*) {
   color: transparent;
   background: transparent;
   border-color: transparent;
 }
-.wb-knockout:hover,
-.wb-navigation .wb-nav-item.wb-knockout:hover {
-  outline: none;
-}
-.wb-knockout:focus-visible,
-.wb-workspace-tabs .wb-knockout:focus-visible,
-.wb-navigation .wb-nav-item.wb-knockout:focus-visible {
+.wb-knockout.wb-knockout:hover { outline: none; }
+.wb-selectable:focus-visible,
+.wb-knockout.wb-knockout:focus-visible,
+.wb-toggle:has(input:focus-visible) {
   outline: 2px solid var(--wb-black);
   outline-offset: 3px;
 }
+.wb-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid currentColor;
+  border-radius: var(--wb-radius-pill);
+  cursor: pointer;
+}
+.wb-toggle input:focus-visible { outline: none; }
+.wb-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
 @media (forced-colors: active) {
-  .wb-workspace-tabs a.wb-knockout,
-  .wb-navigation .wb-nav-item.wb-knockout,
-  .wb-knockout[aria-pressed],
-  .wb-knockout[aria-selected],
-  .wb-knockout[aria-checked] {
+  .wb-knockout.wb-knockout {
     forced-color-adjust: none;
     color: HighlightText;
     background: Highlight;
@@ -276,10 +267,7 @@ button[aria-pressed="true"],
     mix-blend-mode: normal;
   }
   .wb-knockout::before { display: none; }
-  .wb-knockout *,
-  .wb-workspace-tabs .wb-knockout > span,
-  .wb-navigation .wb-nav-item.wb-knockout > span { color: inherit; }
-  .wb-knockout:focus-visible,
-  .wb-workspace-tabs .wb-knockout:focus-visible,
-  .wb-navigation .wb-nav-item.wb-knockout:focus-visible { outline-color: CanvasText; }
+  .wb-knockout.wb-knockout :where(*) { color: inherit; }
+  .wb-knockout.wb-knockout:focus-visible,
+  .wb-toggle:has(input:focus-visible) { outline-color: CanvasText; }
 }

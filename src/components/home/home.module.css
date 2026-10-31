@@ -17,12 +17,6 @@
   color: inherit;
   line-height: 1.5;
 }
-.home :global(a:focus-visible),
-.home :global(button:focus-visible),
-.home :global(input:focus-visible) {
-  outline: 3px solid var(--wb-blue);
-  outline-offset: 4px;
-}
 .frame {
   max-width: 1440px;
   margin: 0 auto;

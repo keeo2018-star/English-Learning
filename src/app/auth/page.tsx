@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AppShell } from "@/components/ui/app-shell";
+import { SelectableButton } from "@/components/ui/selection";
 import { Card, Pill } from "@/components/ui/primitives";
 import { LoadingState, Feedback } from "@/components/ui/states";
 function AuthForm() {
@@ -137,8 +138,9 @@ function AuthForm() {
                   ? "Already have an account? Sign in"
                   : "Create an account"}
               </button>
-              <button
+              <SelectableButton
                 className="text-button"
+                selected={mode === "reset"}
                 disabled={busy}
                 onClick={() => {
                   setMode("reset");
@@ -146,7 +148,7 @@ function AuthForm() {
                 }}
               >
                 Forgot password?
-              </button>
+              </SelectableButton>
             </div>
           </>
         )}

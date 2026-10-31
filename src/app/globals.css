@@ -47,8 +47,6 @@ button:hover,
 .button:hover,
 .wb-control:hover {
   text-decoration: none;
-  outline: 1px solid currentColor;
-  outline-offset: 3px;
 }
 button:disabled {
   opacity: 0.5;
@@ -141,8 +139,8 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 3px solid var(--wb-blue);
-  outline-offset: 4px;
+  outline: 2px solid var(--wb-black);
+  outline-offset: 3px;
 }
 .wb-app {
   min-height: 100vh;
@@ -288,10 +286,6 @@ summary:focus-visible {
 }
 .wb-workspace-tabs a > span {
   font-size: 10px;
-}
-.wb-workspace-tabs a[aria-current="page"] {
-  background: var(--wb-black);
-  color: var(--wb-white);
 }
 .wb-workspace-tabs small {
   display: inline-flex;
@@ -971,22 +965,8 @@ summary:focus-visible {
 }
 
 .review-auto-pronunciation {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: fit-content;
-  min-height: 44px;
   margin: -12px 0 20px;
-  cursor: pointer;
   font-size: 14px;
-}
-.review-auto-pronunciation input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  accent-color: var(--wb-black);
-  cursor: pointer;
 }
 .random-pronunciation {
   display: grid;
@@ -1002,4 +982,20 @@ summary:focus-visible {
   max-width: 260px;
   font-size: 12px;
   line-height: 1.5;
+}
+
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .wb-navigation.wb-navigation {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: calc(50% + (env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) / 2);
+    width: calc(100% - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  }
+}
+@media (display-mode: standalone) and (min-width: 700px) {
+  .wb-navigation.wb-navigation { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
 }

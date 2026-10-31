@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { SelectableLink } from "./selection";
 const entries = [
   { label: "Home", href: "/", icon: "⌂" },
   { label: "Library", href: "/library", icon: "▤" },
@@ -15,17 +15,17 @@ export function Navigation({
   return (
     <nav className="wb-navigation" aria-label="Main navigation">
       {entries.map((item) => (
-        <Link
+        <SelectableLink
           key={item.label}
           href={item.href}
-          aria-current={item.label === active ? "page" : undefined}
+          selected={item.label === active}
           className="wb-nav-item"
         >
           <span aria-hidden="true">
             {item.icon}
           </span>
           <span>{item.label}</span>
-        </Link>
+        </SelectableLink>
       ))}
     </nav>
   );

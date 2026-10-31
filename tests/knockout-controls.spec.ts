@@ -76,3 +76,31 @@ test('high contrast mode retains readable selected labels and one focus outline'
   await active.focus();
   await expect(active).toHaveCSS('outline-width', '2px');
 });
+
+for (const width of [390, 1440]) test(`one selected system across Home, Add, Library, Review and authentication (${width}px)`, async ({ page }) => {
+  test.skip(!cloudUrl, 'Requires mocked account data');
+  await page.setViewportSize({ width, height: 844 });
+  await mockCloud(page, route => route.fulfill({ json: [sampleWord] }));
+  await page.route('**/api/dictionary?*', route => route.fulfill({ status: 404, json: {} }));
+  for (const path of ['/', '/add', '/library', '/review', '/auth']) {
+    await page.goto(path);
+    const active = page.locator('.wb-selectable[data-selected="true"]');
+    await expect.poll(() => active.count()).toBeGreaterThan(0);
+    for (const control of await active.all()) {
+      await expect(control).toHaveClass(/wb-knockout/);
+      await expect(control).toHaveCSS('color', 'rgba(0, 0, 0, 0)');
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Forgot password?', exact: true })).toHaveClass(/wb-knockout/);
+  await page.goto('/review');
+  const checkbox = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
+  const toggle = page.locator('.wb-toggle');
+  await expect(toggle).toHaveClass(/wb-knockout/);
+  await page.keyboard.press('Tab'); await checkbox.focus();
+  await expect(toggle).toHaveCSS('outline-width', '2px');
+  await expect(checkbox).toHaveCSS('outline-style', 'none');
+  await checkbox.uncheck();
+  await expect(toggle).not.toHaveClass(/wb-knockout/);
+});

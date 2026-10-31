@@ -12,6 +12,7 @@ import {
   ArrowIcon,
 } from "@/components/ui/primitives";
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
+import { SelectableLink, SelectableButton, SelectableToggle } from "@/components/ui/selection";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
@@ -358,14 +359,14 @@ export default function Workspace({
         </Pill>
         <nav className="wb-workspace-tabs" aria-label="Learning navigation">
           {(["add", "review", "library"] as const).map((p, i) => (
-            <Link
+            <SelectableLink
               key={p}
               href={"/" + p}
-              aria-current={page === p ? "page" : undefined}
+              selected={page === p}
             >
               <span>0{i + 1}</span> {p[0].toUpperCase() + p.slice(1)}
               {p === "review" && <small>{due.length}</small>}
-            </Link>
+            </SelectableLink>
           ))}
         </nav>
       </div>
@@ -568,24 +569,21 @@ export default function Workspace({
           )}
           {page === "review" && words.length > 0 && (
             <div className="review-modes" role="group" aria-label="Review mode">
-              <button type="button" className={!randomMode ? "" : "secondary"}
-                aria-pressed={!randomMode} disabled={busy}
+              <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
                 onClick={() => { setRandomIds(null); setRevealed(null); setMessage(""); }}>
                 Due words
-              </button>
-              <button type="button" className={randomMode ? "" : "secondary"}
-                aria-pressed={randomMode} disabled={busy}
+              </SelectableButton>
+              <SelectableButton className="secondary" selected={randomMode} disabled={busy}
                 onClick={() => { if (!randomMode) startRandomReview(); }}>
                 Random review
-              </button>
+              </SelectableButton>
             </div>
           )}
           {page === "review" && words.length > 0 && (
-            <label className="review-auto-pronunciation">
-              <input type="checkbox" checked={autoPronunciation}
-                onChange={event => setAutoPronunciation(event.target.checked)} />
+            <SelectableToggle className="review-auto-pronunciation" checked={autoPronunciation}
+              onChange={event => setAutoPronunciation(event.target.checked)}>
               Auto pronunciation
-            </label>
+            </SelectableToggle>
           )}
           {page === "review" &&
             (card ? (

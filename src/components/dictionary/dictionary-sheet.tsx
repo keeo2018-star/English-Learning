@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { DictionaryResult } from "@/lib/dictionary";
 import { Pill } from "@/components/ui/primitives";
 import { Feedback, LoadingState } from "@/components/ui/states";
+import { PronunciationControl } from "./pronunciation-control";
+import { getPronunciations } from "@/lib/pronunciation";
 import styles from "./dictionary.module.css";
 export function DictionaryButton({ word, meaning }: {
     word: string;
@@ -11,67 +13,21 @@ export function DictionaryButton({ word, meaning }: {
     const [open, setOpen] = useState(false);
     return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} onClick={() => setOpen(true)}>Dictionary ↗</button>{open && <DictionarySheet word={word} meaning={meaning} onClose={() => setOpen(false)}/>}</>;
 }
-function AccentPronunciation({ item, showErrors }: { item: DictionaryResult["phonetics"][number]; showErrors: boolean }) {
-    const player = useRef<HTMLAudioElement>(null);
-    const [failed, setFailed] = useState(false);
-    const [playing, setPlaying] = useState(false);
-    useEffect(() => {
-        const audio = player.current;
-        if (!audio) return;
-        const observer = new IntersectionObserver(entries => {
-            if (entries.some(entry => entry.isIntersecting)) {
-                audio.preload = "auto";
-                audio.load();
-                observer.disconnect();
-            }
-        }, { rootMargin: "200px" });
-        if (audio.parentElement) observer.observe(audio.parentElement);
-        return () => { observer.disconnect(); audio.pause(); };
-    }, []);
-    async function play() {
-        const audio = player.current;
-        if (!audio) return;
-        setFailed(false);
-        setPlaying(true);
-        try {
-            if (audio.error) audio.load();
-            audio.currentTime = 0;
-            await audio.play();
-        } catch {
-            if (audio.isConnected) { setFailed(true); setPlaying(false); }
-        }
-    }
-    return <span className={styles.phonetic}>
-        <button type="button" className="secondary"
-            aria-label={"Play pronunciation (" + item.accent + ")"}
-            disabled={!item.audio || playing} onClick={() => void play()}>
-            {item.accent} <span aria-hidden="true">{playing ? "…" : "▶"}</span>
-        </button>
-        {item.text && <span>{item.text}</span>}
-        {item.audio && <audio ref={player} hidden preload="none" src={item.audio}
-            onEnded={() => setPlaying(false)}
-            onError={() => { setFailed(true); setPlaying(false); }} />}
-        {failed && showErrors && <small role="status">Audio unavailable.</small>}
-    </span>;
-}
-function Pronunciation({ phonetics, showErrors = true }: { phonetics: DictionaryResult["phonetics"]; showErrors?: boolean }) {
+function Pronunciation({ word, phonetics, showErrors = true }: { word: string; phonetics: DictionaryResult["phonetics"]; showErrors?: boolean }) {
     return <div className={styles.pronunciation}>
-        {phonetics.map(item => <AccentPronunciation key={item.accent + item.audio} item={item} showErrors={showErrors} />)}
+        {(phonetics.length ? phonetics : [{ accent: "UK", text: "" }]).map(item => <PronunciationControl key={item.accent + item.audio} text={word}
+            accent={item.accent === "US" ? "US" : "UK"} recording={item.audio || null}
+            phonetic={item.text} showErrors={showErrors} />)}
     </div>;
 }
 export function WordPronunciation({ word }: { word: string }) {
-    const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"]>([]);
+    const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"] | null>(null);
     useEffect(() => {
-        const controller = new AbortController();
-        fetch("/api/dictionary?" + new URLSearchParams({ word, pronunciation: "1" }), { signal: controller.signal })
-            .then(async response => {
-                if (!response.ok) return;
-                const data = await response.json();
-                if (!controller.signal.aborted && Array.isArray(data.phonetics)) setPhonetics(data.phonetics);
-            }).catch(() => { /* Reference availability never blocks a saved word. */ });
-        return () => controller.abort();
+        let active = true;
+        void getPronunciations(word).then(data => { if (active) setPhonetics(data); });
+        return () => { active = false; };
     }, [word]);
-    return <Pronunciation phonetics={phonetics} showErrors={false} />;
+    return phonetics && <Pronunciation word={word} phonetics={phonetics} showErrors={false} />;
 }
 function DictionarySheet({ word, meaning, onClose }: {
     word: string;
@@ -116,7 +72,7 @@ function DictionarySheet({ word, meaning, onClose }: {
  {!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
  {result && <div className={styles.reference}>
- <Pronunciation phonetics={result.phonetics}/>
+ <Pronunciation word={word} phonetics={result.phonetics}/>
  {result.chinese.length > 0 && <section><h3>Chinese</h3>{result.chinese.map((s, i) => <p key={i} lang="zh">{s}</p>)}</section>}
  {result.english.length > 0 && <section><h3>English</h3>{result.english.map((s, i) => <div key={i}>{s.partOfSpeech && <Pill>{s.partOfSpeech}</Pill>}<p>{s.definition}</p></div>)}</section>}
  {result.examples.length > 0 && <section><h3>Examples</h3>{result.examples.map((s, i) => <blockquote key={i}>{s.source && <p>{s.source}</p>}{s.translation && <p lang="zh">{s.translation}</p>}</blockquote>)}</section>}

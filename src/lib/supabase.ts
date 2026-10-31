@@ -12,6 +12,8 @@ export const supabase =
   url && key
     ? createClient(url, key, {
         auth: {
+          persistSession: true,
+          autoRefreshToken: true,
           flowType: legacyImplicitLink ? "implicit" : "pkce",
           // The callback explicitly exchanges credentials once. Keep automatic handling
           // elsewhere for older confirmation emails that targeted /library directly.

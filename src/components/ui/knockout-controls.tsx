@@ -2,13 +2,7 @@
 
 import { useEffect } from "react";
 
-const selectedControls = [
-  '.wb-workspace-tabs [aria-current="page"]',
-  '.wb-navigation [aria-current="page"]',
-  'button[aria-pressed="true"]',
-  '[role="tab"][aria-selected="true"]',
-  '[role="radio"][aria-checked="true"]',
-].join(',');
+import { selectedControlSelector } from "./selection";
 
 // Rasterize the browser's laid-out label into an alpha mask. The original DOM
 // remains accessible and determines sizing; only the black surface is masked.
@@ -81,7 +75,7 @@ export function KnockoutControls() {
     const resize = new ResizeObserver(schedule);
     function update() {
       if (disposed) return;
-      const selected = new Set(document.querySelectorAll<HTMLElement>(selectedControls));
+      const selected = new Set(document.querySelectorAll<HTMLElement>(selectedControlSelector));
       for (const element of observed) {
         if (selected.has(element)) continue;
         element.classList.remove('wb-knockout');
@@ -98,7 +92,7 @@ export function KnockoutControls() {
     const mutations = new MutationObserver(schedule);
     mutations.observe(document.body, {
       subtree: true, childList: true, characterData: true, attributes: true,
-      attributeFilter: ['aria-current', 'aria-pressed', 'aria-selected', 'aria-checked'],
+      attributeFilter: ['aria-current', 'aria-pressed', 'aria-selected', 'aria-checked', 'data-selected'],
     });
     window.addEventListener('resize', schedule);
     document.fonts.addEventListener('loadingdone', schedule);

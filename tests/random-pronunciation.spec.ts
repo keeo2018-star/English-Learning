@@ -122,7 +122,8 @@ test.describe('Random Review speech synthesis', () => {
     });
     await setup(page);
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^Replay English pronunciation:/ })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /^Replay English pronunciation:/ })).toBeEnabled();
+    await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
     await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Next word', exact: true })).toBeVisible();
   });
