@@ -9,7 +9,7 @@
   --wb-pink: #ff80bb;
   --wb-lavender: #c9b9fb;
   --wb-blue: #244fe5;
-  --wb-font: Arial, Helvetica, sans-serif;
+  --wb-font: var(--font-afacad-flux), Arial, Helvetica, sans-serif;
   --wb-regular: 400;
   --wb-medium: 500;
   --wb-bold: 700;
