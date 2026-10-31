@@ -590,7 +590,6 @@ export default function Workspace({
                   color={collectionColor(card.id)}
                   className="panel review-card"
                 >
-                  <span className="eyebrow">CAN YOU REMEMBER THE MEANING?</span>
                   <h2>{card.word}</h2>
                   <WordPronunciation key={card.word} word={card.word} />
                   {revealed === card.id ? (
