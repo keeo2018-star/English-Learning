@@ -906,3 +906,66 @@ summary:focus-visible {
     padding: 12px 10px;
   }
 }
+
+/* Short, interaction-led motion; layout and reduced-motion users stay still. */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .wb-control,
+  .wb-arrow,
+  .wb-navigation .wb-nav-item {
+    transition: translate 160ms ease, scale 160ms ease, box-shadow 160ms ease;
+  }
+  button:not(:disabled):active,
+  .wb-control:active,
+  .wb-arrow:active,
+  .wb-navigation .wb-nav-item:active {
+    translate: 0 1px;
+    scale: .97;
+  }
+  .review-card.wb-card {
+    animation: wb-card-arrive 240ms ease-out both;
+  }
+  .wb-meaning-reveal {
+    animation: wb-meaning-reveal 220ms ease-out both;
+  }
+  .wb-feedback,
+  .wb-state-completed {
+    animation: wb-card-arrive 220ms ease-out both;
+  }
+  @keyframes wb-card-arrive {
+    from { opacity: .65; translate: 0 6px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+  @keyframes wb-meaning-reveal {
+    from { opacity: 0; translate: 0 4px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  .wb-control:hover {
+    translate: 0 -2px;
+  }
+  button:not(:disabled):active,
+  .wb-control:active {
+    translate: 0 1px;
+  }
+  .wb-card:has(.wb-arrow) {
+    transition: translate 180ms ease, box-shadow 180ms ease;
+  }
+  .wb-card:has(.wb-arrow):hover,
+  .wb-card:has(.wb-arrow):focus-within {
+    translate: 0 -3px;
+    box-shadow: 0 6px 0 rgb(0 0 0 / 8%);
+  }
+  .wb-arrow:hover {
+    translate: 2px -2px;
+  }
+  .wb-navigation .wb-nav-item > span:first-child {
+    transition: rotate 160ms ease;
+  }
+  .wb-navigation .wb-nav-item:hover > span:first-child {
+    rotate: -8deg;
+  }
+}

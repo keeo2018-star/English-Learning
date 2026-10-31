@@ -587,6 +587,7 @@ export default function Workspace({
                     : `${due.length} ${due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW`}
                 </p>
                 <Card
+                  key={card.id}
                   color={collectionColor(card.id)}
                   className="panel review-card"
                 >
@@ -594,7 +595,7 @@ export default function Workspace({
                   <WordPronunciation key={card.word} word={card.word} />
                   {revealed === card.id ? (
                     <>
-                      <p>{card.meaning}</p>
+                      <p className="wb-meaning-reveal">{card.meaning}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
                       {card.example && <blockquote>{card.example}</blockquote>}
                       {randomMode ? (
