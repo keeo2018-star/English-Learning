@@ -19,7 +19,6 @@ import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
 import { preloadPronunciation, stopPronunciation } from "./pronunciation";
-import { HighlightWord } from "@/components/dictionary/highlight-word";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
@@ -566,9 +565,9 @@ export default function Workspace({
                       <div className="wb-word-content">
                         <h2 className="wb-learning-content">{w.word}</h2>
                         <WordPronunciation key={w.word} word={w.word} />
-                        <p className="wb-learning-content"><HighlightWord text={w.meaning} target={w.word} /></p>
+                        <p className="wb-learning-content">{w.meaning}</p>
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        {w.example && <blockquote className="wb-learning-content"><HighlightWord text={w.example} target={w.word} /></blockquote>}
+                        {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
                       </div>
                     )}
                     <div className="word-actions">
@@ -637,10 +636,10 @@ export default function Workspace({
                   {(!randomMode || direction === "forward" || revealed === card.id) && <ReviewPronunciation text={card.word} automatic={autoPronunciation} />}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal wb-learning-content"><HighlightWord text={direction === "forward" ? card.meaning : card.word} target={card.word} /></p>
+                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning : card.word}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
-                      {direction === "context" && <p className="wb-learning-content"><HighlightWord text={card.meaning} target={card.word} /></p>}
-                      {card.example && <blockquote className="wb-learning-content"><HighlightWord text={card.example} target={card.word} /></blockquote>}
+                      {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
+                      {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

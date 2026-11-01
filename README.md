@@ -131,6 +131,6 @@ Checks: `node --test tests/unit/dictionary-provider.mjs` (Node 24), `npm run bui
 
 ## Learning-word highlights
 
-`HighlightWord` and `highlightParts` render selectable lime marks in dictionary definitions, examples and synonyms, and in saved/revealed learning context. Matching is case-insensitive and requires complete words/phrases, with Unicode-aware boundaries. Original text, case and whitespace are preserved. Inflections are not guessed. All dictionary content is rendered as React text, never injected HTML.
+`HighlightWord` and `highlightParts` render selectable lime marks only in Dictionary reference definitions, examples and synonyms. Library and Review cards and personal meanings stay unhighlighted. Matching is case-insensitive and requires complete words/phrases, with Unicode-aware boundaries. Original text, case and whitespace are preserved. Inflections are not guessed. All dictionary content is rendered as React text, never injected HTML.
 
 `tests/review-audio.spec.ts` covers Due autoplay, next-card preload, one shared player, cache reuse on reload, blocked-playback recovery and stale-response cancellation. `playwright.iphone.config.ts` includes these checks with an iPhone WebKit profile. Physical iOS installation and native autoplay policy still need device testing.

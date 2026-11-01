@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
 import type { DictionaryResult } from "@/lib/dictionary";
-import { Pill } from "@/components/ui/primitives";
+import { Pill, ArrowIcon } from "@/components/ui/primitives";
 import { Feedback, LoadingState } from "@/components/ui/states";
 import { HighlightWord } from "./highlight-word";
 import { PronunciationControl } from "./pronunciation-control";
@@ -12,13 +12,13 @@ export function DictionaryButton({ word, meaning }: {
     meaning: string;
 }) {
     const [open, setOpen] = useState(false);
-    return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} onClick={() => setOpen(true)}>Dictionary ↗</button>{open && <DictionarySheet word={word} meaning={meaning} onClose={() => setOpen(false)}/>}</>;
+    return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} onClick={() => setOpen(true)}>Dictionary <ArrowIcon /></button>{open && <DictionarySheet word={word} meaning={meaning} onClose={() => setOpen(false)}/>}</>;
 }
-function Pronunciation({ word, phonetics, showErrors = true }: { word: string; phonetics: DictionaryResult["phonetics"]; showErrors?: boolean }) {
+function Pronunciation({ word, phonetics, showErrors = true, activeStyle = false }: { word: string; phonetics: DictionaryResult["phonetics"]; showErrors?: boolean; activeStyle?: boolean }) {
     return <div className={styles.pronunciation}>
         {(phonetics.length ? phonetics : [{ accent: "UK", text: "" }]).map(item => <PronunciationControl key={item.accent + item.audio} text={word}
             accent={item.accent === "US" ? "US" : "UK"} recording={item.audio || null}
-            phonetic={item.text} showErrors={showErrors} />)}
+            phonetic={item.text} showErrors={showErrors} activeStyle={activeStyle} />)}
     </div>;
 }
 export function WordPronunciation({ word }: { word: string }) {
@@ -36,6 +36,7 @@ function DictionarySheet({ word, meaning, onClose }: {
     onClose: () => void;
 }) {
     const dialog = useRef<HTMLDialogElement>(null), close = useRef<HTMLButtonElement>(null), id = useId();
+    const [synonymsOpen, setSynonymsOpen] = useState(false);
     const [result, setResult] = useState<DictionaryResult | null>(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
     useEffect(() => {
         const element = dialog.current, previous = document.activeElement;
@@ -69,17 +70,17 @@ function DictionarySheet({ word, meaning, onClose }: {
         return () => controller.abort();
     }, [word, attempt]);
     return <dialog ref={dialog} className={styles.sheet} aria-labelledby={id} onCancel={e => { e.preventDefault(); onClose(); }}>
- <div className={styles.header}><Pill>DICTIONARY / REFERENCE</Pill><button ref={close} type="button" className="secondary" onClick={onClose}>Close</button></div>
+ <div className={styles.header}><span className={`${styles.kicker} wb-ui-text`}>DICTIONARY / REFERENCE</span><button ref={close} type="button" className="wb-control wb-control-outline" onClick={onClose}>Close</button></div>
  <h2 id={id} className="wb-learning-content">{word}</h2>
- <aside className={styles.personal}><Pill>My meaning</Pill><p className="wb-learning-content"><HighlightWord text={meaning} target={word} /></p></aside>
+ <aside className={styles.personal}><h3 className="wb-ui-text">My meaning</h3><p className="wb-learning-content">{meaning}</p></aside>
  {!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
- {error && <div><Feedback>{error}</Feedback><button type="button" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
+ {error && <div><Feedback>{error}</Feedback><button type="button" className="wb-control" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
  {result && <div className={styles.reference}>
- <Pronunciation word={word} phonetics={result.phonetics}/>
+ <Pronunciation word={word} phonetics={result.phonetics} activeStyle/>
  {result.chinese.length > 0 && <section><h3>Chinese</h3>{result.chinese.map((s, i) => <p key={i} lang="zh" className="wb-learning-content"><HighlightWord text={s} target={word} /></p>)}</section>}
  {result.english.length > 0 && <section><h3>English</h3>{result.english.map((s, i) => <div key={i}>{s.partOfSpeech && <Pill className="wb-learning-content">{s.partOfSpeech}</Pill>}<p className="wb-learning-content"><HighlightWord text={s.definition} target={word} /></p></div>)}</section>}
  {result.examples.length > 0 && <section><h3>Examples</h3>{result.examples.map((s, i) => <blockquote key={i} className="wb-learning-content">{s.source && <p><HighlightWord text={s.source} target={word} /></p>}{s.translation && <p lang="zh"><HighlightWord text={s.translation} target={word} /></p>}</blockquote>)}</section>}
- {result.synonyms.length > 0 && <details><summary>Synonyms</summary><p className="wb-learning-content"><HighlightWord text={result.synonyms.join(" · ")} target={word} /></p></details>}
+ {result.synonyms.length > 0 && <details onToggle={event => setSynonymsOpen(event.currentTarget.open)}><summary className="wb-control wb-control-outline" data-selected={synonymsOpen || undefined}>Synonyms</summary><p className="wb-learning-content"><HighlightWord text={result.synonyms.join(" · ")} target={word} /></p></details>}
  {!result.chinese.length && !result.english.length && !result.examples.length && <p className="wb-ui-text">No definitions or examples available for this entry.</p>}
  <p className={`${styles.credit} wb-ui-text`}>Reference via UAPI. Your saved meaning stays yours.</p>
  </div>}
