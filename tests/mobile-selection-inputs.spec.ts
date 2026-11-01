@@ -87,8 +87,8 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.goto('/review');
     await selectable(page.locator('.review-card h2'), 'text');
-    await selectable(page.getByRole('button', { name: 'Reveal meaning', exact: true }), 'none');
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
+    await selectable(page.getByRole('button', { name: 'Reveal answer', exact: true }), 'none');
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     await selectable(page.locator('.wb-meaning-reveal'), 'text');
     await page.goto('/auth');
     await selectable(page.locator('.wb-auth-panel h1'), 'none');

@@ -16,6 +16,7 @@ import { SelectableLink, SelectableButton, SelectableToggle } from "@/components
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
 import { preloadPronunciation } from "./pronunciation";
 import { RandomPronunciation } from "@/components/dictionary/random-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
@@ -50,9 +51,10 @@ export default function Workspace({
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
     [revealed, setRevealed] = useState<string | null>(null),
-    [randomIds, setRandomIds] = useState<string[] | null>(null),
+    [randomQueue, setRandomQueue] = useState<ReviewCard[] | null>(null),
     [randomPosition, setRandomPosition] = useState(0),
     [autoPronunciation, setAutoPronunciation] = useState(true),
+    [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
@@ -60,6 +62,8 @@ export default function Workspace({
   const loadVersion = useRef(0);
   const accountId = useRef<string | null>(null);
   const librarySearch = useRef<HTMLInputElement>(null);
+  const revealButton = useRef<HTMLButtonElement>(null);
+  const focusNextCard = useRef(false);
   const load = useCallback(async (u: User | null) => {
     const version = ++loadVersion.current;
     setMessage("");
@@ -119,7 +123,8 @@ export default function Workspace({
         accountId.current = session?.user.id || null;
         setWords([]);
         setRevealed(null);
-        setRandomIds(null);
+        setRandomQueue(null);
+        requestedRandom.current = false;
         setRandomPosition(0);
         setEditing(null);
         setDeleting(null);
@@ -151,6 +156,7 @@ export default function Workspace({
       example: input.example.trim(),
       due_at: new Date().toISOString(),
       interval_days: 0,
+      created_at: new Date().toISOString(),
     };
     try {
       if (!entry.word || !entry.meaning)
@@ -249,24 +255,21 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  async function grade(word: Word, known: boolean) {
+  const ratingInFlight = useRef(false);
+  async function grade(word: Word, rating: RecallRating) {
+    if (ratingInFlight.current) return;
+    ratingInFlight.current = true;
+    setPendingRating(rating);
     const owner = accountId.current;
     setNow(Date.now());
     setBusy(true);
     setMessage("");
-    const days = known ? Math.max(1, word.interval_days * 2) : 0;
-    const updated = {
-      ...word,
-      interval_days: days,
-      due_at: new Date(
-        Date.now() + (known ? days * 86400000 : 600000),
-      ).toISOString(),
-    };
+    const updated = rateItem(word, rating);
     try {
       if (supabase) {
         const { error } = await supabase
           .from("words")
-          .update({ interval_days: days, due_at: updated.due_at })
+          .update({ interval_days: updated.interval_days, due_at: updated.due_at, review_state: updated.review_state })
           .eq("id", word.id)
           .select("id")
           .single();
@@ -276,10 +279,17 @@ export default function Workspace({
           previous.map((w) => (w.id === word.id ? updated : w)),
         );
       } else persistLocal(words.map((w) => (w.id === word.id ? updated : w)));
+      focusNextCard.current = true;
       setRevealed(null);
+      if (randomQueue) {
+        if (rating === "unsure") setRandomQueue(queue => queue ? reinsertUnsure(queue, randomPosition) : queue);
+        setRandomPosition(position => position + 1);
+      }
     } catch (error) {
-      setMessage(errorMessage(error, "Could not save review."));
+      setMessage(errorMessage(error, "Could not save review. Please try again."));
     } finally {
+      ratingInFlight.current = false;
+      setPendingRating(null);
       setBusy(false);
     }
   }
@@ -298,28 +308,27 @@ export default function Workspace({
     }
   }
   const due = words.filter((w) => new Date(w.due_at).getTime() <= now);
-  const randomMode = randomIds !== null;
-  const card = randomMode
-    ? words.find(word => word.id === randomIds[randomPosition])
-    : due[0];
-  function startRandomReview() {
-    const ids = words.map(word => word.id);
-    for (let index = ids.length - 1; index > 0; index--) {
-      const other = Math.floor(Math.random() * (index + 1));
-      [ids[index], ids[other]] = [ids[other], ids[index]];
+  const randomMode = randomQueue !== null;
+  const reviewCard = randomQueue?.[randomPosition];
+  const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
+  const direction = reviewCard?.direction ?? "forward";
+  const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
+  useEffect(() => {
+    if (focusNextCard.current) {
+      revealButton.current?.focus({ preventScroll: true });
+      focusNextCard.current = false;
     }
-    for (const id of ids.slice(0, 2)) {
-      const word = words.find(item => item.id === id);
+  }, [card?.id, randomPosition]);
+  function startRandomReview() {
+    const queue = createReviewQueue(words);
+    for (const entry of queue.slice(0, 2)) {
+      const word = words.find(item => item.id === entry.id);
       if (word) void preloadPronunciation(word.word);
     }
-    setRandomIds(ids);
+    setRandomQueue(queue);
     setRandomPosition(0);
     setRevealed(null);
     setMessage("");
-  }
-  function nextRandomWord() {
-    setRevealed(null);
-    setRandomPosition(position => position + 1);
   }
   useEffect(() => {
     if (page === "review" && ready && words.length && !requestedRandom.current &&
@@ -328,7 +337,7 @@ export default function Workspace({
       startRandomReview();
     }
   });
-  const nextRandomText = randomMode ? words.find(word => word.id === randomIds[randomPosition + 1])?.word : undefined;
+  const nextRandomText = randomMode ? words.find(word => word.id === randomQueue[randomPosition + 1]?.id)?.word : undefined;
   useEffect(() => {
     if (page !== "review" || !randomMode) return;
     if (card) void preloadPronunciation(card.word);
@@ -540,6 +549,7 @@ export default function Workspace({
                         <h2 className="wb-learning-content">{w.word}</h2>
                         <WordPronunciation key={w.word} word={w.word} />
                         <p className="wb-learning-content">{w.meaning}</p>
+                        {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
                         {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
                       </div>
                     )}
@@ -589,7 +599,7 @@ export default function Workspace({
           {page === "review" && words.length > 0 && (
             <div className="review-modes" role="group" aria-label="Review mode">
               <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-                onClick={() => { setRandomIds(null); setRevealed(null); setMessage(""); }}>
+                onClick={() => { setRandomQueue(null); setRevealed(null); setMessage(""); }}>
                 Due words
               </SelectableButton>
               <SelectableButton className="secondary" selected={randomMode} disabled={busy}
@@ -609,48 +619,34 @@ export default function Workspace({
               <>
                 <p className="eyebrow" role="status">
                   {randomMode
-                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomIds.length}`
+                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomQueue.length}`
                     : `${due.length} ${due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW`}
                 </p>
                 <Card
-                  key={card.id}
+                  key={`${card.id}/${randomMode ? randomPosition : "due"}`}
                   color={collectionColor(card.id)}
                   className="panel review-card"
                 >
-                  <h2 className="wb-learning-content">{card.word}</h2>
-                  {randomMode
+                  <h2 className="wb-learning-content">{prompt}</h2>
+                  {(!randomMode || direction === "forward" || revealed === card.id) && (randomMode
                     ? <RandomPronunciation text={card.word} automatic={autoPronunciation} />
-                    : <WordPronunciation key={card.word} word={card.word} />}
+                    : <WordPronunciation key={card.word} word={card.word} />)}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal wb-learning-content">{card.meaning}</p>
+                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning : card.word}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
+                      {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
-                      {randomMode ? (
-                        <div className="actions">
-                          <button type="button" onClick={nextRandomWord}>
-                            {randomPosition + 1 === randomIds.length ? "Finish review" : "Next word"}
-                          </button>
-                        </div>
-                      ) : <div className="actions">
-                        <button
-                          className="secondary"
-                          disabled={busy}
-                          onClick={() => void grade(card, false)}
-                        >
-                          Practice again · 10 min
-                        </button>
-                        <button
-                          disabled={busy}
-                          onClick={() => void grade(card, true)}
-                        >
-                          Got it · {Math.max(1, card.interval_days * 2)} day(s)
-                        </button>
-                      </div>}
+                      <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
+                        <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
+                          onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>
+                        <SelectableButton selected={pendingRating === "sure"} disabled={busy}
+                          onClick={() => void grade(card, "sure")}>Sure</SelectableButton>
+                      </div>
                     </>
                   ) : (
-                    <button className="review-reveal" onClick={() => setRevealed(card.id)}>
-                      Reveal meaning
+                    <button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
+                      Reveal answer
                     </button>
                   )}
                 </Card>
@@ -659,7 +655,7 @@ export default function Workspace({
               <div className="review-card">
                 {randomMode ? <StatePanel
                   title="Random review complete."
-                  description={`You revisited ${randomIds.length} ${randomIds.length === 1 ? "word" : "words"}. Your review schedule is unchanged.`}
+                  description="A little practice goes a long way. Come back for more."
                   actionLabel="Shuffle again"
                   onAction={startRandomReview}
                   color="green"

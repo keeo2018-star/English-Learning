@@ -6,6 +6,7 @@ test.describe("Noted home", () => {
     await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
     let reads = 0;
     if (cloudUrl) await mockCloud(page, route => { reads++; return route.fulfill({ json: [sampleWord] }); });
+    await page.addInitScript(() => { Math.random = () => .5; });
     await page.goto('/');
     await expect(page).toHaveTitle('Noted');
     await expect(page.getByRole('link', { name: 'Noted home' })).toBeVisible();

@@ -60,7 +60,7 @@ test('word cards stay readable on phones and tablets', async ({ page }) => {
     if (width === 390) await page.screenshot({ path: '/tmp/word-cards-iphone.png', fullPage: true });
     if (width === 390) await card.screenshot({ path: '/tmp/word-card-mobile.png' });
     await page.goto('/review');
-    const reveal = page.getByRole('button', { name: 'Reveal meaning' });
+    const reveal = page.getByRole('button', { name: 'Reveal answer' });
     const phonetic = page.getByText('/ɪkˈstrɔː.dɪ.nər.i/', { exact: true });
     await expect(phonetic).toBeVisible();
     const spacing = await reveal.evaluate(button => {

@@ -135,17 +135,19 @@ test.describe("real Supabase", () => {
           .locator(".review-card")
           .getByRole("heading", { name: marker, exact: true }),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Reveal meaning" }).click();
+      await page.getByRole("button", { name: "Reveal answer" }).click();
       await expect(
         page.locator(".review-card").getByText("A temporary learning item"),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Got it" }).click();
+      await page.getByRole("button", { name: "Sure", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Sure", exact: true })).toHaveCount(0);
       const path = "/rest/v1/words?word=eq." + marker;
       const reviewed = await fetch(new URL(path, url), { headers: headers() });
       expect(reviewed.status).toBe(200);
       const rows = await reviewed.json();
       expect(rows).toHaveLength(1);
       expect(rows[0].interval_days).toBe(1);
+      expect(rows[0].review_state).toMatchObject({ last_rating: "sure", review_count: 1, consecutive_sure: 1 });
       expect(Date.parse(rows[0].due_at)).toBeGreaterThan(Date.now());
       await page.goto("/library");
       await page.getByLabel("Search library").fill(marker);
@@ -167,6 +169,7 @@ test.describe("real Supabase", () => {
       ).toBeVisible();
       await mobile.reload();
       await mobile.getByLabel("Search library").fill(marker);
+      await expect(mobile.locator(".word-row").filter({ hasText: marker }).locator(".wb-familiarity")).toHaveText("Sure");
       await expect(
         mobile.getByText("Updated learning item", { exact: true }),
       ).toBeVisible();
@@ -184,6 +187,7 @@ test.describe("real Supabase", () => {
       ).toHaveCount(0);
       await mobile.reload();
       await mobile.getByLabel("Search library").fill(marker);
+      await expect(mobile.locator(".word-row").filter({ hasText: marker }).locator(".wb-familiarity")).toHaveText("Sure");
       await expect(
         mobile.getByRole("heading", { name: marker, exact: true }),
       ).toHaveCount(0);
@@ -308,16 +312,18 @@ test.describe("real Supabase", () => {
           .locator(".review-card")
           .getByRole("heading", { name: marker, exact: true }),
       ).toBeVisible();
-      await a.getByRole("button", { name: "Reveal meaning" }).click();
+      await a.getByRole("button", { name: "Reveal answer" }).click();
       await expect(
         a.locator(".review-card").getByText("Live integration test meaning"),
       ).toBeVisible();
-      await a.getByRole("button", { name: "Got it" }).click();
+      await a.getByRole("button", { name: "Sure", exact: true }).click();
+      await expect(a.getByRole("button", { name: "Sure", exact: true })).toHaveCount(0);
       const reviewed = await fetch(new URL(rowPath, url), {
         headers: headers(tokenA!),
       });
       const updated = await reviewed.json();
       expect(updated[0].interval_days).toBe(1);
+      expect(updated[0].review_state).toMatchObject({ last_rating: "sure", review_count: 1 });
       expect(Date.parse(updated[0].due_at)).toBeGreaterThan(Date.now());
       await a.goto("/library");
       await a.getByLabel("Search library").fill(marker);

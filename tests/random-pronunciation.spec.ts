@@ -33,6 +33,7 @@ async function speechMock(page: Page, voices: string[] = ['en-US', 'en-GB'], del
 const speaks = (page: Page) => page.evaluate(() =>
   (window as unknown as { speechLog: SpeechLog[] }).speechLog.filter(event => event.kind === 'speak'));
 async function setup(page: Page) {
+  await page.addInitScript(() => { Math.random = () => .5; });
   await mockCloud(page, route => route.fulfill({ json: [
     { ...sampleWord, id: 'speech-1', word: 'Take it easy. 保持轻松', meaning: '不要紧张', example: 'Never read this note.' },
     { ...sampleWord, id: 'speech-2', word: 'Good morning!', meaning: '早上好', example: 'Never read this either.' },
@@ -60,21 +61,21 @@ test.describe('Random Review speech synthesis', () => {
     expect(bounds!.width).toBeGreaterThanOrEqual(44);
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
     if (width === 390) await page.locator('.review-card').screenshot({ path: '/tmp/random-speech-mobile.png' });
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     expect(await speaks(page)).toHaveLength(1);
     await replay.focus();
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await speaks(page)).length).toBe(2);
-    await page.getByRole('button', { name: 'Next word', exact: true }).click();
+    await page.getByRole('button', { name: 'Sure', exact: true }).click();
     await expect.poll(async () => (await speaks(page)).length).toBe(3);
     log = await speaks(page);
     expect(log[2].text).not.toBe(log[0].text);
     expect(log.every(event => !event.overlap)).toBe(true);
     await setting.uncheck();
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
-    await page.getByRole('button', { name: 'Finish review', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    await page.getByRole('button', { name: 'Sure', exact: true }).click();
     await page.getByRole('button', { name: 'Shuffle again', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Reveal meaning', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reveal answer', exact: true })).toBeVisible();
     expect(await speaks(page)).toHaveLength(3);
     await replay.click();
     await expect.poll(async () => (await speaks(page)).length).toBe(4);
@@ -92,7 +93,7 @@ test.describe('Random Review speech synthesis', () => {
     await expect.poll(async () => (await speaks(page)).length).toBe(1);
     expect((await speaks(page))[0].voice).toBe('en-US');
     await page.evaluate(() => (window as unknown as { loadSpeechVoices: () => void }).loadSpeechVoices());
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     expect(await speaks(page)).toHaveLength(1);
   });
 
@@ -102,7 +103,7 @@ test.describe('Random Review speech synthesis', () => {
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await speaks(page)).length).toBe(1);
     expect((await speaks(page))[0].lang).toBe('en-GB');
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     expect(await speaks(page)).toHaveLength(1);
   });
 
@@ -124,7 +125,7 @@ test.describe('Random Review speech synthesis', () => {
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
     await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Next word', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Sure', exact: true })).toBeVisible();
   });
 });

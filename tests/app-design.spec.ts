@@ -72,7 +72,7 @@ test.describe("shared app design", () => {
           ).toBeVisible();
         if (route === "/review")
           await expect(
-            page.getByRole("button", { name: "Reveal meaning", exact: true }),
+            page.getByRole("button", { name: "Reveal answer", exact: true }),
           ).toBeVisible();
         if (route === "/auth")
           await expect(page.getByLabel("Email", { exact: true })).toBeVisible();

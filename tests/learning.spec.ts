@@ -33,11 +33,11 @@ test("collect, persist, search, review, and delete a word in local demo", async 
   await expect(
     page.locator(".review-card").getByText("A happy discovery by chance"),
   ).not.toBeVisible();
-  await page.getByRole("button", { name: "Reveal meaning" }).click();
+  await page.getByRole("button", { name: "Reveal answer" }).click();
   await expect(
     page.locator(".review-card").getByText("A happy discovery by chance"),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Got it" }).click();
+  await page.getByRole("button", { name: "Sure", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "You’re all caught up." }),
   ).toBeVisible();

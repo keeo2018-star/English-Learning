@@ -40,9 +40,9 @@ test.describe('personal meanings and dictionary reference', () => {
         expect(writes).toHaveLength(1);
         await page.goto('/review');
         await expect(page.getByRole('button', { name: 'Dictionary for meticulous' })).toHaveCount(0);
-        await page.getByRole('button', { name: 'Reveal meaning' }).click();
+        await page.getByRole('button', { name: 'Reveal answer' }).click();
         await expect(page.getByText('做事特别仔细，一丝不苟', { exact: true })).toBeVisible();
-        await page.getByRole('button', { name: 'Got it' }).click();
+        await page.getByRole('button', { name: 'Sure', exact: true }).click();
         expect(stored).toMatchObject({ meaning: '做事特别仔细，一丝不苟', interval_days: 1 });
     });
     for (const width of [390, 1440])

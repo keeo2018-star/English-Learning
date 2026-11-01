@@ -1000,3 +1000,14 @@ summary:focus-visible {
 @media (display-mode: standalone) and (min-width: 700px) {
   .wb-navigation.wb-navigation { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
 }
+
+.review-ratings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  margin: 24px auto 0;
+}
+.review-ratings button { min-height: 52px; padding: 14px 18px; }
+.wb-familiarity { display: inline-block; color: #54544f; font-size: 12px; line-height: 1.5; margin: 0 0 8px; }

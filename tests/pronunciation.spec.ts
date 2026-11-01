@@ -46,7 +46,7 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
   await ukAudio.dispatchEvent('error');
   await expect(page.getByText('Audio unavailable.', { exact: true })).toHaveCount(0);
   await expect(page.locator('button[data-accent="UK"]')).toBeEnabled();
-  await page.getByRole('button', { name: 'Reveal meaning' }).click();
+  await page.getByRole('button', { name: 'Reveal answer' }).click();
   await page.getByRole('button', { name: 'Dictionary for hello' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2);
 });

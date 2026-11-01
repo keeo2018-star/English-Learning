@@ -4,6 +4,7 @@ import { mockCloud, cloudUrl, sampleWord } from './helpers/cloud';
 type Entry = { kind: string; src?: string; text?: string; voice?: string; lang?: string; rate?: number; pitch?: number; volume?: number; overlap?: boolean };
 async function setup(page: Page, recorded: boolean) {
   await page.addInitScript(() => {
+    Math.random = () => .5;
     const events: Entry[] = [];
     let active: string | null = null;
     let calls = 0;
@@ -74,7 +75,7 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
     await expect.poll(async () => (await plays(page)).length).toBe(3);
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(4);
-    await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     expect(await plays(page)).toHaveLength(4);
     await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(5);
@@ -96,7 +97,7 @@ test('Random Review preloads the next recording and reuses lookup results withou
   test.skip(!cloudUrl, 'Requires mocked account data');
   await setup(page, true);
   await page.addInitScript(() => {
-    Math.random = () => .999;
+    Math.random = () => .5;
     const loads: string[] = [];
     HTMLMediaElement.prototype.load = function () { loads.push(this.src); };
     Object.assign(window, { preloadLog: loads });
@@ -115,9 +116,9 @@ test('Random Review preloads the next recording and reuses lookup results withou
   await expect.poll(async () => (await plays(page)).length).toBe(1);
   await expect.poll(() => page.evaluate(() => (window as unknown as { preloadLog: string[] }).preloadLog.some(src => src.includes('word=world')))).toBe(true);
   expect(lookups.filter(word => word === 'world')).toHaveLength(1);
-  await page.getByRole('button', { name: 'Reveal meaning' }).click();
+  await page.getByRole('button', { name: 'Reveal answer' }).click();
   expect(await plays(page)).toHaveLength(1);
-  await page.getByRole('button', { name: 'Next word' }).click();
+  await page.getByRole('button', { name: 'Sure', exact: true }).click();
   await expect.poll(async () => (await plays(page)).length).toBe(2);
   expect((await plays(page))[1].src).toContain('accent=us&word=world');
   expect(lookups.filter(word => word === 'world')).toHaveLength(1);

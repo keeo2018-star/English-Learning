@@ -71,7 +71,7 @@ test('service worker caches only public assets and sessions survive reopening an
   await reopened.goto('/add');
   await expect(reopened.getByLabel('Word or phrase')).toBeVisible();
   await reopened.goto('/review');
-  await expect(reopened.getByRole('button', { name: 'Reveal meaning', exact: true })).toBeVisible();
+  await expect(reopened.getByRole('button', { name: 'Reveal answer', exact: true })).toBeVisible();
   await context.setOffline(true);
   await reopened.goto('/library');
   await expect(reopened.getByRole('heading', { name: 'You’re offline.' })).toBeVisible();

@@ -49,7 +49,7 @@ test.describe("production UX regressions (mocked service)", () => {
         page.getByRole("button", { name: "Sign out", exact: true }),
       ).toBeAttached();
       if (path === "/review")
-        await page.getByRole("button", { name: "Reveal meaning" }).click();
+        await page.getByRole("button", { name: "Reveal answer" }).click();
       await expect
         .poll(() =>
           page.evaluate(
@@ -159,13 +159,13 @@ test.describe("production UX regressions (mocked service)", () => {
       return r.fulfill({ json: [sampleWord] });
     });
     await page.goto("/review");
-    await page.getByRole("button", { name: "Reveal meaning" }).click();
+    await page.getByRole("button", { name: "Reveal answer" }).click();
     const pending = page.waitForRequest(
       (r) =>
         r.url().startsWith(cloudOrigin + "/rest/v1/words") &&
         r.method() === "PATCH",
     );
-    await page.getByRole("button", { name: "Got it" }).click();
+    await page.getByRole("button", { name: "Sure", exact: true }).click();
     await pending;
     await page.evaluate(
       (key) => {

@@ -7,6 +7,7 @@ create table if not exists public.words (
  example text not null default '' check (char_length(example) <= 3000),
  due_at timestamptz not null default now(),
  interval_days integer not null default 0 check (interval_days >= 0),
+ review_state jsonb,
  created_at timestamptz not null default now()
 );
 alter table public.words enable row level security;
