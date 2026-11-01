@@ -58,6 +58,9 @@ async function verifier(page: Page, flowId?: string) {
   );
 }
 test.describe("auth callback (mocked service)", () => {
+  // Keep the simulated HTTPS origin entirely under the fixture router.
+  // Service-worker installation and navigation are covered by pwa.spec.ts.
+  test.use({ serviceWorkers: "block" });
   test.skip(!url, "Requires a Supabase-configured build");
   test("exchanges PKCE code once and persists the session", async ({
     page,

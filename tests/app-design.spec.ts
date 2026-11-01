@@ -151,7 +151,7 @@ test.describe("shared app design", () => {
       .getByRole("button", { name: "Create an account", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Start your wordbook." }),
+      page.getByRole("heading", { name: "Start your notebook." }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Forgot password?", exact: true })

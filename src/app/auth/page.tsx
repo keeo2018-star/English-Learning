@@ -74,7 +74,7 @@ function AuthForm() {
         <Pill>YOUR WORDS, WHEREVER YOU GO</Pill>
         <h1>
           {mode === "signup"
-            ? "Start your wordbook."
+            ? "Start your notebook."
             : mode === "reset"
               ? "Reset your password."
               : "Welcome back."}

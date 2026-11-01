@@ -57,7 +57,7 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await page.mouse.up();
     expect(await page.evaluate(() => window.getSelection()?.toString().trim() || '')).toBe('');
     await selectable(page.getByRole('navigation', { name: 'Main navigation' }), 'none');
-    expect(await page.getByRole('search').locator('label').evaluate(element => getComputedStyle(element).userSelect)).toBe('none');
+    await selectable(page.getByRole('link', { name: 'Add', exact: true }), 'none');
     await page.goto('/library');
     expect(await page.evaluate(() => getComputedStyle(document.body).userSelect)).not.toBe('none');
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).userSelect)).not.toBe('none');
@@ -99,7 +99,7 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await setup(page);
     for (const width of [320, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
-      await page.goto('/'); await fields(page);
+      await page.goto('/library'); await fields(page);
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/add'); await fields(page);
@@ -134,8 +134,8 @@ test('desktop field sizes remain unchanged', async ({ page, isMobile }) => {
   test.skip(!cloudUrl || isMobile, 'Desktop typography check');
   await page.setViewportSize({ width: 1440, height: 900 });
   await setup(page);
-  await page.goto('/');
-  await expect(page.getByRole('searchbox')).toHaveCSS('font-size', '15px');
+  await page.goto('/library');
+  await expect(page.getByLabel('Search library')).toHaveCSS('font-size', '16px');
   await page.goto('/add');
   await expect(page.getByLabel('Word or phrase')).toHaveCSS('font-size', '13px');
 });

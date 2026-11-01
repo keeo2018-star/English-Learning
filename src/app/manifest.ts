@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: '/', name: 'English Learning', short_name: 'English',
-    description: 'Collect English words and practice with your personal wordbook.',
+    id: '/', name: 'Noted', short_name: 'Noted',
+    description: 'Your personal English learning notebook.',
     start_url: '/', scope: '/', display: 'standalone',
     background_color: '#f5f4ef', theme_color: '#f5f4ef', lang: 'en',
     prefer_related_applications: false,

@@ -16,6 +16,7 @@ import { SelectableLink, SelectableButton, SelectableToggle } from "@/components
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { preloadPronunciation } from "./pronunciation";
 import { RandomPronunciation } from "@/components/dictionary/random-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
@@ -55,6 +56,7 @@ export default function Workspace({
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
+  const requestedRandom = useRef(false);
   const loadVersion = useRef(0);
   const accountId = useRef<string | null>(null);
   const librarySearch = useRef<HTMLInputElement>(null);
@@ -306,6 +308,10 @@ export default function Workspace({
       const other = Math.floor(Math.random() * (index + 1));
       [ids[index], ids[other]] = [ids[other], ids[index]];
     }
+    for (const id of ids.slice(0, 2)) {
+      const word = words.find(item => item.id === id);
+      if (word) void preloadPronunciation(word.word);
+    }
     setRandomIds(ids);
     setRandomPosition(0);
     setRevealed(null);
@@ -315,6 +321,19 @@ export default function Workspace({
     setRevealed(null);
     setRandomPosition(position => position + 1);
   }
+  useEffect(() => {
+    if (page === "review" && ready && words.length && !requestedRandom.current &&
+        new URLSearchParams(window.location.search).get("mode") === "random") {
+      requestedRandom.current = true;
+      startRandomReview();
+    }
+  });
+  const nextRandomText = randomMode ? words.find(word => word.id === randomIds[randomPosition + 1])?.word : undefined;
+  useEffect(() => {
+    if (page !== "review" || !randomMode) return;
+    if (card) void preloadPronunciation(card.word);
+    if (nextRandomText) void preloadPronunciation(nextRandomText);
+  }, [page, randomMode, card, nextRandomText]);
   const [view, setView] = useState("");
   useEffect(() => {
     const timer = setTimeout(

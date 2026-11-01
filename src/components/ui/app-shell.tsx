@@ -22,8 +22,8 @@ export function AppShell({
       </a>
       <div className="wb-app-frame">
         <header className="wb-masthead">
-          <Link href="/" className="wb-wordmark" aria-label="Wordbook home">
-            wordbook.
+          <Link href="/" className="wb-wordmark" aria-label="Noted home">
+            Noted
           </Link>
           <span className="wb-edition">
             YOUR WORDS.
@@ -54,7 +54,7 @@ export function AppShell({
           {children}
         </main>
         <footer className="wb-app-footer">
-          <span>WORDBOOK /</span>
+          <span>NOTED /</span>
           <span>A LITTLE EVERY DAY. A LOT OVER TIME.</span>
         </footer>
       </div>

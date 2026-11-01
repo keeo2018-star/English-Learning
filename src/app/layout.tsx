@@ -15,11 +15,11 @@ const roboto = localFont({
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "English Learning",
-  applicationName: "English Learning",
+  title: "Noted",
+  applicationName: "Noted",
   other: { "apple-mobile-web-app-capable": "yes" },
   appleWebApp: {
-    capable: true, title: "English", statusBarStyle: "default",
+    capable: true, title: "Noted", statusBarStyle: "default",
     startupImage: [
       { url: "/icons/apple-splash-375x812-3.png", media: "(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
       { url: "/icons/apple-splash-390x844-3.png", media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },

@@ -5,6 +5,40 @@ export type Accent = 'UK' | 'US';
 export type PronunciationStatus = 'idle' | 'loading' | 'playing' | 'error';
 type Phonetics = DictionaryResult['phonetics'];
 const cache = new Map<string, { expires: number; value: Promise<Phonetics> }>();
+const preparedAudio = new Map<string, HTMLAudioElement>();
+const normalizedKey = (text: string) => englishText(text).toLowerCase();
+function cleanPhonetics(items: Phonetics): Phonetics {
+  return items.filter(item => item && typeof item.accent === 'string').map(item => ({
+    accent: item.accent, text: typeof item.text === 'string' ? item.text : '', audio: audioSource(item.audio),
+  }));
+}
+const resolved = new Map<string, Phonetics>();
+export function rememberPronunciations(text: string, items: Phonetics) {
+  const key = normalizedKey(text), value = cleanPhonetics(items);
+  if (cache.size >= 100) { const oldest = cache.keys().next().value!; cache.delete(oldest); resolved.delete(oldest); }
+  resolved.set(key, value);
+  cache.set(key, { value: Promise.resolve(value), expires: Date.now() + 3600000 });
+}
+function preferredRecording(items: Phonetics, accent: Accent) {
+  return items.find(item => item.accent.toUpperCase() === accent && item.audio)?.audio || items.find(item => item.audio)?.audio;
+}
+export async function preloadPronunciation(text: string, accent: Accent = 'UK') {
+  if (typeof window === 'undefined') return;
+  const source = preferredRecording(await getPronunciations(text), accent);
+  if (!source || preparedAudio.has(source)) return;
+  const audio = new Audio();
+  audio.preload = 'auto';
+  audio.src = source;
+  // Warm the browser's media cache without playing or holding up the card.
+  audio.load();
+  preparedAudio.set(source, audio);
+  if (preparedAudio.size > 4) {
+    const oldest = preparedAudio.keys().next().value!;
+    const previous = preparedAudio.get(oldest)!;
+    if (current?.audio !== previous) { previous.removeAttribute('src'); previous.load(); }
+    preparedAudio.delete(oldest);
+  }
+}
 const voiceChoices = new Map<string, string>();
 let voices: SpeechSynthesisVoice[] = [];
 let voiceEngine: SpeechSynthesis | undefined;
@@ -22,21 +56,29 @@ function audioSource(value: string | undefined | null) {
   } catch { return undefined; }
 }
 export function getPronunciations(text: string): Promise<Phonetics> {
-  const key = englishText(text).toLowerCase();
+  const key = normalizedKey(text);
   const existing = cache.get(key);
   if (existing && existing.expires > Date.now()) return existing.value;
+  resolved.delete(key);
   const value = (async () => {
     try {
       const response = await fetch('/api/dictionary?' + new URLSearchParams({ word: key, pronunciation: '1' }), { signal: AbortSignal.timeout(8000) });
-      if (!response.ok) { cache.delete(key); return []; }
+      if (!response.ok) return [];
       const data = await response.json();
-      if (!Array.isArray(data.phonetics)) { cache.delete(key); return []; }
-      return data.phonetics.filter((item: Phonetics[number]) => item && typeof item.accent === 'string').map((item: Phonetics[number]) => ({
-        accent: item.accent, text: typeof item.text === 'string' ? item.text : '', audio: audioSource(item.audio),
-      }));
-    } catch { cache.delete(key); return []; }
-  })();
-  if (cache.size >= 100) cache.delete(cache.keys().next().value!);
+      if (!Array.isArray(data.phonetics)) return [];
+      const items = cleanPhonetics(data.phonetics);
+      resolved.set(key, items);
+      return items;
+    } catch { return []; }
+  })().then(items => {
+    // Transient lookup failures can recover; do not pin them for an hour.
+    if (!items.length) {
+      const entry = cache.get(key);
+      if (entry?.value === value) entry.expires = Date.now() + 30000;
+    }
+    return items;
+  });
+  if (cache.size >= 100) { const oldest = cache.keys().next().value!; cache.delete(oldest); resolved.delete(oldest); }
   cache.set(key, { value, expires: Date.now() + 3600000 });
   return value;
 }
@@ -127,9 +169,18 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   current = request;
   report('loading');
   let source = audioSource(recording);
-  if (recording === undefined) source = (await getPronunciations(title)).find(item => item.accent.toUpperCase() === accent)?.audio;
+  if (!source) {
+    const key = normalizedKey(title);
+    const stored = cache.get(key);
+    const items = stored && stored.expires > Date.now() ? resolved.get(key) : undefined;
+    source = preferredRecording(items ?? await getPronunciations(title), accent);
+  }
   if (!active(request)) return;
   if (!source) { await speak(request, title, accent); return; }
+  // Random Review takes ownership of the already-buffered media element.
+  // Explicit dictionary controls keep their own element but share the same URL.
+  if (recording === undefined) audio = preparedAudio.get(source) || audio;
+  request.audio = audio;
   let fallbackStarted = false;
   const remove = () => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); };
   const ended = () => { if (!fallbackStarted) finish(request, 'idle'); };
@@ -142,7 +193,7 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   audio.addEventListener('ended', ended);
   audio.addEventListener('error', failed);
   request.cleanups.push(remove);
-  audio.src = source;
+  if (audio.src !== source) { audio.preload = 'auto'; audio.src = source; }
   audio.currentTime = 0;
   audio.playbackRate = PRONUNCIATION_SETTINGS.rate;
   audio.preservesPitch = true;
@@ -150,5 +201,9 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   try {
     await audio.play();
     if (active(request) && !fallbackStarted) report('playing');
-  } catch { failed(); }
+  } catch (error) {
+    // Autoplay policy is not a missing recording. Keep the recording for a tap.
+    if (error instanceof DOMException && error.name === 'NotAllowedError') finish(request, 'error');
+    else failed();
+  }
 }

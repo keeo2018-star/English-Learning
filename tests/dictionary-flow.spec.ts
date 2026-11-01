@@ -65,7 +65,7 @@ test.describe('personal meanings and dictionary reference', () => {
         await expect(page.getByText('No dictionary entry found. Your saved meaning is unchanged.')).toBeVisible();
         await page.getByRole('button', { name: 'Try again' }).click();
         await expect(page.getByText('No definitions or examples available for this entry.')).toBeVisible();
-        await page.getByRole('dialog').getByRole('button', { name: 'Play pronunciation (UK)' }).click();
+        await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
         await expect(page.getByRole('dialog').getByText('Audio unavailable.')).toBeVisible();
     });
     test('accent buttons use available audio and support replay', async ({ page }) => {
@@ -83,8 +83,8 @@ test.describe('personal meanings and dictionary reference', () => {
         await page.goto('/library');
         await page.getByRole('button', { name: 'Dictionary for serendipity' }).click();
         const sheet = page.getByRole('dialog');
-        const play = sheet.getByRole('button', { name: 'Play pronunciation (US)' });
-        await expect(sheet.getByRole('button', { name: 'Play pronunciation (UK)' })).toBeEnabled();
+        const play = sheet.locator('button[data-accent="US"]');
+        await expect(sheet.locator('button[data-accent="UK"]')).toBeEnabled();
         await expect(play).toBeVisible();
         await expect(sheet.locator('audio[src*="accent=us"]')).not.toHaveAttribute('data-plays');
         await play.click();

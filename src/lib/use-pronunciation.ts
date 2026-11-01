@@ -22,8 +22,8 @@ export function usePronunciation({ text, accent = 'UK', recording, automatic = f
   }, [stop]);
   useEffect(() => {
     if (!automatic) { stop(); return; }
-    const timer = setTimeout(play, 0);
-    return () => { clearTimeout(timer); stop(); };
+    play();
+    return stop;
   }, [automatic, play, stop]);
   useEffect(() => {
     const element = audio.current;

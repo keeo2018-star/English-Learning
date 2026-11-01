@@ -55,7 +55,7 @@ test.describe('Random Review speech synthesis', () => {
     let log = await speaks(page);
     expect(log[0].voice).toBe('en-GB');
     expect(['Take it easy.', 'Good morning!']).toContain(log[0].text);
-    const replay = page.getByRole('button', { name: /^Replay English pronunciation:/ });
+    const replay = page.getByRole('button', { name: 'Play pronunciation', exact: true });
     const bounds = await replay.boundingBox();
     expect(bounds!.width).toBeGreaterThanOrEqual(44);
     expect(bounds!.height).toBeGreaterThanOrEqual(44);
@@ -122,7 +122,7 @@ test.describe('Random Review speech synthesis', () => {
     });
     await setup(page);
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
-    await expect(page.getByRole('button', { name: /^Replay English pronunciation:/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
     await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
     await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Next word', exact: true })).toBeVisible();

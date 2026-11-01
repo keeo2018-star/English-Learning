@@ -4,7 +4,7 @@ import type { DictionaryResult } from "@/lib/dictionary";
 import { Pill } from "@/components/ui/primitives";
 import { Feedback, LoadingState } from "@/components/ui/states";
 import { PronunciationControl } from "./pronunciation-control";
-import { getPronunciations } from "@/lib/pronunciation";
+import { getPronunciations, rememberPronunciations } from "@/lib/pronunciation";
 import styles from "./dictionary.module.css";
 export function DictionaryButton({ word, meaning }: {
     word: string;
@@ -55,8 +55,10 @@ function DictionarySheet({ word, meaning, onClose }: {
                     throw new Error(typeof data.message === "string" ? data.message : "The dictionary is unavailable right now.");
                 if (typeof data.word !== "string" || !Array.isArray(data.phonetics) || !Array.isArray(data.chinese) || !Array.isArray(data.english) || !Array.isArray(data.examples) || !Array.isArray(data.synonyms))
                     throw new Error("The dictionary returned an unreadable response.");
-                if (!controller.signal.aborted)
+                if (!controller.signal.aborted) {
+                    rememberPronunciations(word, data.phonetics);
                     setResult(data);
+                }
             }
             catch (e) {
                 if (!controller.signal.aborted)

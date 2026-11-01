@@ -37,7 +37,7 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
     await expect(page.getByText('həˈləʊ', { exact: true })).toBeVisible();
     await expect(page.getByText('həˈloʊ', { exact: true })).toBeVisible();
     for (const accent of ['UK', 'US']) {
-      await page.getByRole('button', { name: `Play pronunciation (${accent})`, exact: true }).click();
+      await page.locator(`button[data-accent="${accent}"]`).click();
       await expect(page.locator(`audio[src*="accent=${accent.toLowerCase()}"]`)).toHaveAttribute('data-played', 'true');
     }
   }
@@ -45,7 +45,7 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
   await expect(ukAudio).toHaveAttribute('preload', 'auto');
   await ukAudio.dispatchEvent('error');
   await expect(page.getByText('Audio unavailable.', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Play pronunciation (UK)', exact: true })).toBeEnabled();
+  await expect(page.locator('button[data-accent="UK"]')).toBeEnabled();
   await page.getByRole('button', { name: 'Reveal meaning' }).click();
   await page.getByRole('button', { name: 'Dictionary for hello' }).click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2);

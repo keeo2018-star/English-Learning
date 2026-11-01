@@ -6,7 +6,7 @@ test('PWA manifest, icons, Apple metadata and viewport are valid on mobile', asy
   await page.goto('/');
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
   const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json());
-  expect(manifest).toMatchObject({ id: '/', name: 'English Learning', short_name: 'English', start_url: '/', scope: '/', display: 'standalone', theme_color: '#f5f4ef', background_color: '#f5f4ef' });
+  expect(manifest).toMatchObject({ id: '/', name: 'Noted', short_name: 'Noted', start_url: '/', scope: '/', display: 'standalone', theme_color: '#f5f4ef', background_color: '#f5f4ef' });
   expect(manifest.icons.some((icon: { purpose: string; sizes: string }) => icon.purpose === 'maskable' && icon.sizes === '512x512')).toBe(true);
   for (const icon of manifest.icons) {
     const size = await page.evaluate(async (src: string) => {
@@ -16,7 +16,7 @@ test('PWA manifest, icons, Apple metadata and viewport are valid on mobile', asy
     expect(size).toBe(icon.sizes);
   }
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
-  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'English');
+  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Noted');
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
   await expect(page.locator('meta[name="viewport"]')).not.toHaveAttribute('content', /user-scalable=no|maximum-scale=1/);
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/apple-touch-icon.png');
@@ -49,7 +49,7 @@ test('service worker caches only public assets and sessions survive reopening an
   expect(new URL(scope).pathname).toBe('/');
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   const cached = await page.evaluate(async () => {
-    const names = (await caches.keys()).filter(name => name.startsWith('english-learning-install-'));
+    const names = (await caches.keys()).filter(name => name.startsWith('noted-install-'));
     const requests = (await Promise.all(names.map(async name => (await caches.open(name)).keys()))).flat();
     return requests.map(request => new URL(request.url).pathname).sort();
   });

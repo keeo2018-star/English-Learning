@@ -61,22 +61,22 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
     await page.setViewportSize({ width, height: 844 });
     const word = await setup(page, recorded);
     await page.goto('/library');
-    await page.getByRole('button', { name: 'Play pronunciation (UK)', exact: true }).click();
+    await page.locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(1);
     await page.getByRole('button', { name: `Dictionary for ${word}`, exact: true }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Play pronunciation (UK)', exact: true }).click();
+    await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: /Review/ }).click();
     await page.waitForURL('**/review');
     await expect(page.locator('.review-card')).toBeVisible();
-    await page.locator('.review-card').getByRole('button', { name: 'Play pronunciation (UK)', exact: true }).click();
+    await page.locator('.review-card').locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(3);
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(4);
     await page.getByRole('button', { name: 'Reveal meaning', exact: true }).click();
     expect(await plays(page)).toHaveLength(4);
-    await page.getByRole('button', { name: /^Replay English pronunciation:/ }).click();
+    await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(5);
     const log = await plays(page);
     expect(log.every(event => !event.overlap)).toBe(true);
@@ -91,3 +91,54 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test('Random Review preloads the next recording and reuses lookup results without replay on reveal', async ({ page }) => {
+  test.skip(!cloudUrl, 'Requires mocked account data');
+  await setup(page, true);
+  await page.addInitScript(() => {
+    Math.random = () => .999;
+    const loads: string[] = [];
+    HTMLMediaElement.prototype.load = function () { loads.push(this.src); };
+    Object.assign(window, { preloadLog: loads });
+  });
+  await mockCloud(page, route => route.fulfill({ json: [
+    { ...sampleWord, word: 'hello' },
+    { ...sampleWord, id: 'next-card', word: 'world' },
+  ] }));
+  const lookups: string[] = [];
+  await page.route('**/api/dictionary?*', route => {
+    const word = new URL(route.request().url()).searchParams.get('word')!;
+    lookups.push(word);
+    return route.fulfill({ json: { word, phonetics: [{ accent: 'US', text: '', audio: `https://uapis.cn/api/v1/dictionary/audio?accent=us&word=${word}` }], chinese: [], english: [], examples: [], synonyms: [] } });
+  });
+  await page.goto('/review?mode=random');
+  await expect.poll(async () => (await plays(page)).length).toBe(1);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { preloadLog: string[] }).preloadLog.some(src => src.includes('word=world')))).toBe(true);
+  expect(lookups.filter(word => word === 'world')).toHaveLength(1);
+  await page.getByRole('button', { name: 'Reveal meaning' }).click();
+  expect(await plays(page)).toHaveLength(1);
+  await page.getByRole('button', { name: 'Next word' }).click();
+  await expect.poll(async () => (await plays(page)).length).toBe(2);
+  expect((await plays(page))[1].src).toContain('accent=us&word=world');
+  expect(lookups.filter(word => word === 'world')).toHaveLength(1);
+  expect((await plays(page)).every(event => !event.overlap)).toBe(true);
+});
+
+test('blocked autoplay keeps dictionary audio for manual replay instead of switching voices', async ({ page }) => {
+  test.skip(!cloudUrl, 'Requires mocked account data');
+  await setup(page, true);
+  await page.addInitScript(() => {
+    let blocked = true;
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      if (blocked) { blocked = false; return Promise.reject(new DOMException('Tap required', 'NotAllowedError')); }
+      return play.call(this);
+    };
+  });
+  await page.goto('/review?mode=random');
+  await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
+  expect(await plays(page)).toHaveLength(0);
+  await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
+  await expect.poll(async () => (await plays(page)).length).toBe(1);
+  expect((await plays(page))[0].kind).toBe('audio');
+});
