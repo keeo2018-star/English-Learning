@@ -11,6 +11,17 @@ test.describe("Noted home", () => {
     await expect(page.getByRole('link', { name: 'Noted home' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Add', exact: true })).toBeInViewport();
     await expect(page.getByRole('link', { name: 'Random Review', exact: true })).toBeInViewport();
+    await expect(page.getByRole('heading', { name: 'Make room for new words.' })).toBeVisible();
+    await expect(page.getByText('A little repetition goes a long way.')).toBeVisible();
+    const navigation = await page.getByRole('navigation', { name: 'Main navigation' }).boundingBox();
+    for (const name of ['Add', 'Random Review']) {
+      const action = page.getByRole('link', { name, exact: true });
+      const bounds = (await action.boundingBox())!;
+      expect(bounds.height).toBeGreaterThanOrEqual(90);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(navigation!.y);
+      expect(await action.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgb(22, 22, 22)');
+    }
+    await expect(page.getByRole('link', { name: 'Add', exact: true })).toHaveCSS('background-color', 'rgb(193, 255, 50)');
     expect(reads).toBe(0);
     await expect(page.getByRole('progressbar')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

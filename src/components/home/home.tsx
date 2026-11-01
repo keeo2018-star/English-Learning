@@ -7,17 +7,23 @@ import styles from "./home.module.css";
 export default function Home() {
   return <AppShell hideAddAction>
     <section className={`${styles.home} wb-ui-text`} aria-labelledby="home-title">
-      <p className={styles.eyebrow}>A PERSONAL LEARNING NOTEBOOK</p>
-      <h1 id="home-title">Notice it.<br />Keep it.</h1>
-      <p className={styles.intro}>Your words, at your own pace.</p>
+      <div className={styles.welcome}>
+        <p className={styles.eyebrow}><span aria-hidden="true" />YOUR DAILY WORD SPACE</p>
+        <h1 id="home-title">Make room for<br /><span className={styles.highlight}>new words.</span></h1>
+        <p className={styles.intro}>A word you notice. A thought you can finally put into words. Keep a little. Come back for more.</p>
+      </div>
       <div className={styles.actions}>
-        <Link href="/add" className={`${styles.action} ${styles.add}`}>
-          <span className={styles.number} aria-hidden="true">01</span>
-          <span className={styles.label}>Add</span><ArrowIcon />
+        <Link href="/add" aria-label="Add" aria-describedby="home-add-description" className={`${styles.action} ${styles.add}`}>
+          <span className={styles.actionCopy}>
+            <span className={styles.label}>Add</span>
+            <span id="home-add-description" className={styles.description}>A word, phrase, expression or sentence.</span>
+          </span><ArrowIcon />
         </Link>
-        <Link href="/review?mode=random" className={styles.action}>
-          <span className={styles.number} aria-hidden="true">02</span>
-          <span className={styles.label}>Random Review</span><ArrowIcon />
+        <Link href="/review?mode=random" aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
+          <span className={styles.actionCopy}>
+            <span className={styles.label}>Random Review</span>
+            <span id="home-review-description" className={styles.description}>A little repetition goes a long way.</span>
+          </span><ArrowIcon />
         </Link>
       </div>
       <Link href="/library" className={styles.library}>Open your library <ArrowIcon /></Link>
