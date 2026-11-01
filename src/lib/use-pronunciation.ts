@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { englishText, pronounce, pronunciationSupported, stopPronunciation, type Accent, type PronunciationStatus } from './pronunciation';
+import { englishText, pronounce, pronunciationSupported, resumePronunciation, stopPronunciation, type Accent, type PronunciationStatus } from './pronunciation';
 const subscribe = () => () => {};
 export function usePronunciation({ text, accent = 'UK', recording, automatic = false }: {
   text: string; accent?: Accent; recording?: string | null; automatic?: boolean;
@@ -11,20 +11,39 @@ export function usePronunciation({ text, accent = 'UK', recording, automatic = f
   const [status, setStatus] = useState<PronunciationStatus>('idle');
   const available = useSyncExternalStore(subscribe, pronunciationSupported, () => false);
   const stop = useCallback(() => stopPronunciation(owner.current), []);
-  const play = useCallback(() => {
+  const start = useCallback((automaticPlayback: boolean) => {
     if (!audio.current || !available) return;
-    void pronounce({ owner: owner.current, text, accent, recording, audio: audio.current,
+    void pronounce({ owner: owner.current, text, accent, recording, audio: audio.current, automatic: automaticPlayback,
       report: value => { if (alive.current) setStatus(value); } });
   }, [available, text, accent, recording]);
+  const play = useCallback(() => start(false), [start]);
   useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; stop(); };
   }, [stop]);
   useEffect(() => {
     if (!automatic) { stop(); return; }
-    play();
-    return stop;
-  }, [automatic, play, stop]);
+    let cancelled = false;
+    // Strict Mode replays setup/cleanup synchronously. Coalesce that replay in
+    // the same turn without adding a timer or waiting for media readiness.
+    queueMicrotask(() => { if (!cancelled) start(true); });
+    return () => { cancelled = true; stop(); };
+  }, [automatic, start, stop]);
+  useEffect(() => {
+    if (status !== 'blocked' || !automatic) return;
+    const card = audio.current?.closest('.review-card');
+    if (!card) return;
+    const resume = (event: Event) => {
+      const element = event.target instanceof Element ? event.target : null;
+      const button = element?.closest('button');
+      if (button && !button.classList.contains('review-reveal')) return;
+      if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return;
+      resumePronunciation(owner.current);
+    };
+    card.addEventListener('pointerdown', resume);
+    card.addEventListener('keydown', resume);
+    return () => { card.removeEventListener('pointerdown', resume); card.removeEventListener('keydown', resume); };
+  }, [automatic, status]);
   useEffect(() => {
     const element = audio.current;
     if (!element || !recording) return;

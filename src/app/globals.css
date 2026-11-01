@@ -1013,3 +1013,14 @@ summary:focus-visible {
 }
 .review-ratings button { min-height: 52px; padding: 14px 18px; }
 .wb-familiarity { display: inline-block; color: #54544f; font-size: 12px; line-height: 1.5; margin: 0 0 8px; }
+
+.wb-word-highlight {
+  background: var(--noted-lime);
+  color: var(--wb-black);
+  border-radius: .15em;
+  padding: .02em .08em;
+  -webkit-user-select: text;
+  user-select: text;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}

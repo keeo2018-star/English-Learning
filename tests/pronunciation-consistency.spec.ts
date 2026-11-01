@@ -71,14 +71,15 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Due words', exact: true }).click();
     await page.waitForURL('**/review');
     await expect(page.locator('.review-card')).toBeVisible();
+    await expect.poll(async () => (await plays(page)).length).toBe(3); // Due autoplay.
     await page.locator('.review-card').locator('button[data-accent="UK"]').click();
-    await expect.poll(async () => (await plays(page)).length).toBe(3);
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(4);
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
-    expect(await plays(page)).toHaveLength(4);
-    await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
+    await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(5);
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    expect(await plays(page)).toHaveLength(5);
+    await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
+    await expect.poll(async () => (await plays(page)).length).toBe(6);
     const log = await plays(page);
     expect(log.every(event => !event.overlap)).toBe(true);
     if (recorded) {
@@ -137,7 +138,8 @@ test('blocked autoplay keeps dictionary audio for manual replay instead of switc
     };
   });
   await page.goto('/review?mode=random');
-  await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByText('Tap the speaker to try pronunciation again.')).toHaveCount(0);
   expect(await plays(page)).toHaveLength(0);
   await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
   await expect.poll(async () => (await plays(page)).length).toBe(1);

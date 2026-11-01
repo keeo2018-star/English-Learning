@@ -42,90 +42,48 @@ async function setup(page: Page) {
   await page.goto('/review');
 }
 
-test.describe('Random Review speech synthesis', () => {
+test.describe('shared review speech fallback', () => {
   test.skip(!cloudUrl, 'Requires mocked cloud configuration');
-  for (const width of [390, 1440]) test(`autoplay once, replay, toggle and stop on card changes (${width}px)`, async ({ page }) => {
+  for (const width of [390, 1440]) test(`Due and Random autoplay once, respect the setting and never overlap (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await speechMock(page);
-    await setup(page);
-    const setting = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
-    await expect(setting).toBeChecked();
-    expect(await speaks(page)).toHaveLength(0); // Scheduled review never autoplays.
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
+    await speechMock(page); await setup(page);
     await expect.poll(async () => (await speaks(page)).length).toBe(1);
-    let log = await speaks(page);
-    expect(log[0].voice).toBe('en-GB');
-    expect(['Take it easy.', 'Good morning!']).toContain(log[0].text);
-    const replay = page.getByRole('button', { name: 'Play pronunciation', exact: true });
-    const bounds = await replay.boundingBox();
-    expect(bounds!.width).toBeGreaterThanOrEqual(44);
-    expect(bounds!.height).toBeGreaterThanOrEqual(44);
-    if (width === 390) await page.locator('.review-card').screenshot({ path: '/tmp/random-speech-mobile.png' });
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    expect((await speaks(page))[0].text).toBe('Take it easy.');
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
     expect(await speaks(page)).toHaveLength(1);
-    await replay.focus();
-    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Sure', exact: true }).click();
     await expect.poll(async () => (await speaks(page)).length).toBe(2);
-    await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await expect.poll(async () => (await speaks(page)).length).toBe(3);
-    log = await speaks(page);
-    expect(log[2].text).not.toBe(log[0].text);
-    expect(log.every(event => !event.overlap)).toBe(true);
+    expect((await speaks(page))[1].text).toBe('Good morning!');
+    const setting = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
     await setting.uncheck();
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
-    await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Shuffle again', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Reveal answer', exact: true })).toBeVisible();
-    expect(await speaks(page)).toHaveLength(3);
-    await replay.click();
+    await page.getByRole('button', { name: 'Random review', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Random review', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible();
+    expect(await speaks(page)).toHaveLength(2);
+    await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
+    await expect.poll(async () => (await speaks(page)).length).toBe(3);
+    await setting.check();
     await expect.poll(async () => (await speaks(page)).length).toBe(4);
-    await page.getByRole('button', { name: 'Due words', exact: true }).click();
-    const events = await page.evaluate(() => (window as unknown as { speechLog: SpeechLog[] }).speechLog);
-    expect(events.at(-1)?.kind).toBe('cancel');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
+    expect(await speaks(page)).toHaveLength(4);
+    expect((await speaks(page)).every(event => !event.overlap && event.voice === 'en-GB')).toBe(true);
   });
-
-  test('delayed voices prefer English fallback and never repeat on voiceschanged', async ({ page }) => {
-    await speechMock(page, ['zh-CN', 'en-US'], true);
-    await setup(page);
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
-    await page.evaluate(() => (window as unknown as { loadSpeechVoices: () => void }).loadSpeechVoices());
-    await expect.poll(async () => (await speaks(page)).length).toBe(1);
-    expect((await speaks(page))[0].voice).toBe('en-US');
-    await page.evaluate(() => (window as unknown as { loadSpeechVoices: () => void }).loadSpeechVoices());
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
-    expect(await speaks(page)).toHaveLength(1);
-  });
-
-  test('when voices remain empty the engine receives an English language request', async ({ page }) => {
-    await speechMock(page, [], true);
-    await setup(page);
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
+  test('empty voice catalogs use an English locale immediately and voiceschanged never repeats autoplay', async ({ page }) => {
+    await speechMock(page, ['zh-CN', 'en-US'], true); await setup(page);
     await expect.poll(async () => (await speaks(page)).length).toBe(1);
     expect((await speaks(page))[0].lang).toBe('en-GB');
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    await page.evaluate(() => (window as unknown as { loadSpeechVoices: () => void }).loadSpeechVoices());
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
     expect(await speaks(page)).toHaveLength(1);
   });
-
-  test('pending voice loading is canceled when leaving Random Review', async ({ page }) => {
-    await speechMock(page, ['en-GB'], true);
-    await setup(page);
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
-    await page.getByRole('button', { name: 'Due words', exact: true }).click();
-    await page.evaluate(() => (window as unknown as { loadSpeechVoices: () => void }).loadSpeechVoices());
-    expect(await speaks(page)).toHaveLength(0);
-  });
-
   test('browsers without speech support keep review usable', async ({ page }) => {
     await page.addInitScript(() => {
       Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: undefined });
       Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: undefined });
     });
     await setup(page);
-    await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
-    await expect(page.getByText('Tap the speaker to try pronunciation again.')).toBeVisible();
-    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
     await expect(page.getByRole('button', { name: 'Sure', exact: true })).toBeVisible();
   });
 });

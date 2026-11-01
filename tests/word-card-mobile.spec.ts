@@ -61,8 +61,7 @@ test('word cards stay readable on phones and tablets', async ({ page }) => {
     if (width === 390) await card.screenshot({ path: '/tmp/word-card-mobile.png' });
     await page.goto('/review');
     const reveal = page.getByRole('button', { name: 'Reveal answer' });
-    const phonetic = page.getByText('/ɪkˈstrɔː.dɪ.nər.i/', { exact: true });
-    await expect(phonetic).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeVisible();
     const spacing = await reveal.evaluate(button => {
       const pronunciation = button.previousElementSibling!;
       return button.getBoundingClientRect().top - pronunciation.getBoundingClientRect().bottom;
@@ -71,7 +70,7 @@ test('word cards stay readable on phones and tablets', async ({ page }) => {
     if (width === 1440) await page.locator('.review-card').screenshot({ path: '/tmp/review-desktop-spacing.png' });
     await reveal.click();
     const review = page.locator('.review-card');
-    await expect(review.getByText('/ɪkˈstrɔː.dɪ.nər.i/', { exact: true })).toBeVisible();
+    await expect(review.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeVisible();
     expect(await review.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     if (width === 390) await review.screenshot({ path: '/tmp/word-review-mobile.png' });
   }

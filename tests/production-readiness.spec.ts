@@ -187,8 +187,8 @@ test.describe("production UX regressions (mocked service)", () => {
     release();
     await completed;
     await expect(
-      page.getByRole("link", { name: "02 Review 0", exact: true }),
-    ).toBeVisible();
+      page.getByRole("heading", { name: sampleWord.word, exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "Your words belong to you." }),
     ).toBeVisible();

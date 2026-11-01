@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -19,7 +19,8 @@ import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
 import { preloadPronunciation, stopPronunciation } from "./pronunciation";
-import { RandomPronunciation } from "@/components/dictionary/random-pronunciation";
+import { HighlightWord } from "@/components/dictionary/highlight-word";
+import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
@@ -311,7 +312,7 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  const due = words.filter((w) => new Date(w.due_at).getTime() <= now);
+  const due = useMemo(() => words.filter((w) => new Date(w.due_at).getTime() <= now), [words, now]);
   const reviewCard = randomQueue?.[randomPosition];
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
   const direction = randomMode ? reviewCard?.direction ?? "forward" : "forward";
@@ -340,12 +341,18 @@ export default function Workspace({
       startRandomReview();
     }
   });
-  const nextRandomText = randomMode ? words.find(word => word.id === randomQueue?.[randomPosition + 1]?.id)?.word : undefined;
   useEffect(() => {
-    if (page !== "review" || !randomMode) return;
+    if (page !== "review") return;
     if (card) void preloadPronunciation(card.word);
-    if (nextRandomText) void preloadPronunciation(nextRandomText);
-  }, [page, randomMode, card, nextRandomText]);
+    if (randomMode) {
+      for (const entry of randomQueue?.slice(randomPosition + 1, randomPosition + 3) ?? []) {
+        const candidate = words.find(word => word.id === entry.id);
+        if (candidate) void preloadPronunciation(candidate.word);
+      }
+    } else {
+      for (const candidate of due.slice(1, 3)) void preloadPronunciation(candidate.word);
+    }
+  }, [page, randomMode, card, randomQueue, randomPosition, words, due]);
   const [view, setView] = useState("");
   useEffect(() => {
     const timer = setTimeout(
@@ -559,9 +566,9 @@ export default function Workspace({
                       <div className="wb-word-content">
                         <h2 className="wb-learning-content">{w.word}</h2>
                         <WordPronunciation key={w.word} word={w.word} />
-                        <p className="wb-learning-content">{w.meaning}</p>
+                        <p className="wb-learning-content"><HighlightWord text={w.meaning} target={w.word} /></p>
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
+                        {w.example && <blockquote className="wb-learning-content"><HighlightWord text={w.example} target={w.word} /></blockquote>}
                       </div>
                     )}
                     <div className="word-actions">
@@ -627,15 +634,13 @@ export default function Workspace({
                   className="panel review-card"
                 >
                   <h2 className="wb-learning-content">{prompt}</h2>
-                  {(!randomMode || direction === "forward" || revealed === card.id) && (randomMode
-                    ? <RandomPronunciation text={card.word} automatic={autoPronunciation} />
-                    : <WordPronunciation key={card.word} word={card.word} />)}
+                  {(!randomMode || direction === "forward" || revealed === card.id) && <ReviewPronunciation text={card.word} automatic={autoPronunciation} />}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning : card.word}</p>
+                      <p className="wb-meaning-reveal wb-learning-content"><HighlightWord text={direction === "forward" ? card.meaning : card.word} target={card.word} /></p>
                       <DictionaryButton word={card.word} meaning={card.meaning} />
-                      {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
-                      {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
+                      {direction === "context" && <p className="wb-learning-content"><HighlightWord text={card.meaning} target={card.word} /></p>}
+                      {card.example && <blockquote className="wb-learning-content"><HighlightWord text={card.example} target={card.word} /></blockquote>}
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

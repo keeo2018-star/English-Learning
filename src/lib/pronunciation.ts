@@ -2,7 +2,7 @@ import type { DictionaryResult } from './dictionary';
 
 export const PRONUNCIATION_SETTINGS = Object.freeze({ locale: 'en-GB', rate: 1, pitch: 1, volume: 1 });
 export type Accent = 'UK' | 'US';
-export type PronunciationStatus = 'idle' | 'loading' | 'playing' | 'error';
+export type PronunciationStatus = 'idle' | 'loading' | 'playing' | 'blocked' | 'error';
 type Phonetics = DictionaryResult['phonetics'];
 const cache = new Map<string, { expires: number; value: Promise<Phonetics> }>();
 const preparedAudio = new Map<string, HTMLAudioElement>();
@@ -13,11 +13,36 @@ function cleanPhonetics(items: Phonetics): Phonetics {
   }));
 }
 const resolved = new Map<string, Phonetics>();
+const STORAGE_KEY = 'noted-pronunciations-v1';
+function persistPronunciations() {
+  try {
+    const entries = [...resolved].flatMap(([key, items]) => {
+      const entry = cache.get(key);
+      return entry && entry.expires > Date.now() && items.some(item => item.audio)
+        ? [{ key, expires: entry.expires, items }] : [];
+    }).slice(-100);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch { /* Restricted browser storage must not prevent pronunciation. */ }
+}
+function storedPronunciations(key: string): Phonetics | undefined {
+  try {
+    const entries = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
+    if (!Array.isArray(entries)) return;
+    const entry = entries.slice(-100).find(item => item?.key === key && typeof item.expires === 'number' && item.expires > Date.now() && Array.isArray(item.items));
+    if (!entry) return;
+    const items = cleanPhonetics(entry.items);
+    if (!items.some(item => item.audio)) return;
+    resolved.set(key, items);
+    cache.set(key, { value: Promise.resolve(items), expires: entry.expires });
+    return items;
+  } catch { return; }
+}
 export function rememberPronunciations(text: string, items: Phonetics) {
   const key = normalizedKey(text), value = cleanPhonetics(items);
   if (cache.size >= 100) { const oldest = cache.keys().next().value!; cache.delete(oldest); resolved.delete(oldest); }
   resolved.set(key, value);
   cache.set(key, { value: Promise.resolve(value), expires: Date.now() + 3600000 });
+  persistPronunciations();
 }
 function preferredRecording(items: Phonetics, accent: Accent) {
   return items.find(item => item.accent.toUpperCase() === accent && item.audio)?.audio || items.find(item => item.audio)?.audio;
@@ -59,6 +84,7 @@ export function getPronunciations(text: string): Promise<Phonetics> {
   const key = normalizedKey(text);
   const existing = cache.get(key);
   if (existing && existing.expires > Date.now()) return existing.value;
+  if (storedPronunciations(key)) return cache.get(key)!.value;
   resolved.delete(key);
   const value = (async () => {
     try {
@@ -67,10 +93,10 @@ export function getPronunciations(text: string): Promise<Phonetics> {
       const data = await response.json();
       if (!Array.isArray(data.phonetics)) return [];
       const items = cleanPhonetics(data.phonetics);
-      resolved.set(key, items);
       return items;
     } catch { return []; }
   })().then(items => {
+    if (cache.get(key)?.value === value) { resolved.set(key, items); persistPronunciations(); }
     // Transient lookup failures can recover; do not pin them for an hour.
     if (!items.length) {
       const entry = cache.get(key);
@@ -113,8 +139,13 @@ export function selectEnglishVoice(catalog: SpeechSynthesisVoice[], locale: stri
   return selected;
 }
 
-type Request = { owner: symbol; audio: HTMLAudioElement; cleanups: (() => void)[]; report: (status: PronunciationStatus) => void; speech?: SpeechSynthesisUtterance };
+type Request = { owner: symbol; audio: HTMLAudioElement; cleanups: (() => void)[]; report: (status: PronunciationStatus) => void; speech?: SpeechSynthesisUtterance; retry?: () => void };
 let current: Request | undefined;
+let reviewAudio: HTMLAudioElement | undefined;
+let reviewAutoplayBlocked = false;
+export function resumePronunciation(owner: symbol) {
+  if (current?.owner === owner) current.retry?.();
+}
 function active(request: Request) { return current === request; }
 export function stopPronunciation(owner?: symbol) {
   if (owner && current?.owner !== owner) return;
@@ -137,12 +168,8 @@ async function speak(request: Request, text: string, accent: Accent) {
   if (!active(request)) return;
   if (!speechSupported()) { finish(request, 'error'); return; }
   const synth = window.speechSynthesis;
-  if (!voiceCatalog().some(voice => /^en(?:-|$)/i.test(voice.lang.replaceAll('_', '-')))) await new Promise<void>(resolve => {
-    const done = () => { clearTimeout(timer); synth.removeEventListener('voiceschanged', done); resolve(); };
-    const timer = setTimeout(done, 500);
-    synth.addEventListener('voiceschanged', done);
-    request.cleanups.push(done);
-  });
+  // If voices are still loading, let the engine honor the English locale
+  // immediately rather than imposing an extra fallback-only waiting period.
   if (!active(request)) return;
   const locale = accent === 'US' ? 'en-US' : PRONUNCIATION_SETTINGS.locale;
   const voice = selectEnglishVoice(voiceCatalog(), locale);
@@ -154,13 +181,19 @@ async function speak(request: Request, text: string, accent: Accent) {
   utterance.pitch = PRONUNCIATION_SETTINGS.pitch;
   utterance.volume = PRONUNCIATION_SETTINGS.volume;
   utterance.onend = () => finish(request, 'idle');
-  utterance.onerror = event => finish(request, event.error === 'canceled' || event.error === 'interrupted' ? 'idle' : 'error');
+  utterance.onerror = event => {
+    if (!active(request)) return;
+    if (event.error === 'not-allowed') {
+      request.retry = () => { request.retry = undefined; void speak(request, text, accent); };
+      request.report('blocked');
+    } else finish(request, event.error === 'canceled' || event.error === 'interrupted' ? 'idle' : 'error');
+  };
   try { request.report('playing'); synth.speak(utterance); }
   catch { finish(request, 'error'); }
 }
-export async function pronounce({ owner, text, accent = 'UK', recording, audio, report }: {
+export async function pronounce({ owner, text, accent = 'UK', recording, audio, report, automatic = false }: {
   owner: symbol; text: string; accent?: Accent; recording?: string | null;
-  audio: HTMLAudioElement; report: (status: PronunciationStatus) => void;
+  audio: HTMLAudioElement; report: (status: PronunciationStatus) => void; automatic?: boolean;
 }) {
   stopPronunciation();
   const title = englishText(text);
@@ -177,9 +210,10 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   }
   if (!active(request)) return;
   if (!source) { await speak(request, title, accent); return; }
-  // Random Review takes ownership of the already-buffered media element.
-  // Explicit dictionary controls keep their own element but share the same URL.
-  if (recording === undefined) audio = preparedAudio.get(source) || audio;
+  // Reuse one review player across cards: iOS grants playback to media elements,
+  // not to every newly-created preloader. Upcoming recordings warm the HTTP cache.
+  const sharedReview = recording === undefined;
+  if (sharedReview) audio = reviewAudio ??= audio;
   request.audio = audio;
   let fallbackStarted = false;
   const remove = () => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); };
@@ -198,12 +232,30 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   audio.playbackRate = PRONUNCIATION_SETTINGS.rate;
   audio.preservesPitch = true;
   audio.volume = PRONUNCIATION_SETTINGS.volume;
-  try {
-    await audio.play();
-    if (active(request) && !fallbackStarted) report('playing');
-  } catch (error) {
-    // Autoplay policy is not a missing recording. Keep the recording for a tap.
-    if (error instanceof DOMException && error.name === 'NotAllowedError') finish(request, 'error');
-    else failed();
-  }
+  const playRecording = () => {
+    if (!active(request)) return;
+    request.retry = undefined;
+    report('loading');
+    // Call play synchronously so a trusted gesture is still active on iOS.
+    let playback: Promise<void>;
+    try { playback = audio.play(); }
+    catch (error) { rejected(error); return; }
+    void playback.then(() => {
+      if (!active(request) || fallbackStarted) return;
+      if (sharedReview) reviewAutoplayBlocked = false;
+      report('playing');
+    }, rejected);
+  };
+  const rejected = (error: unknown) => {
+    if (!active(request)) return;
+    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      if (sharedReview) reviewAutoplayBlocked = true;
+      request.retry = playRecording;
+      report('blocked');
+    } else failed();
+  };
+  if (automatic && sharedReview && reviewAutoplayBlocked) {
+    request.retry = playRecording;
+    report('blocked');
+  } else playRecording();
 }

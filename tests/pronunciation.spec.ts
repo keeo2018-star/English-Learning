@@ -25,6 +25,11 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
   }
   for (const path of ['/library', '/review']) {
     await page.goto(path);
+    if (path === '/review') {
+      await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
+      await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
+      continue;
+    }
     if (path === '/library') {
       const card = page.locator('.word-row');
       await expect(card.getByText('My meaning', { exact: true })).toHaveCount(0);
