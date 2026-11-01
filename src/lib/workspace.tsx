@@ -363,7 +363,7 @@ export default function Workspace({
     <AppShell
       hideAddAction={page === "add"}
       active={
-        page === "review" ? "Review" : page === "library" ? "Library" : null
+        page === "review" ? "Review" : page === "add" ? "Add" : null
       }
       account={
         user ? (

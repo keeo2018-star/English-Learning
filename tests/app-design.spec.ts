@@ -43,10 +43,9 @@ test.describe("shared app design", () => {
         await page.goto(route);
         const nav = page.getByRole("navigation", { name: "Main navigation" });
         await expect(nav).toBeVisible();
-        if (route.startsWith("/library"))
-          await expect(
-            nav.getByRole("link", { name: "Library", exact: true }),
-          ).toHaveAttribute("aria-current", "page");
+        await expect(nav.getByRole("link", { name: "Library", exact: true })).toHaveCount(0);
+        if (route === "/add")
+          await expect(nav.getByRole("link", { name: "Add", exact: true })).toHaveAttribute("aria-current", "page");
         if (route === "/review")
           await expect(
             nav.getByRole("link", { name: "Review", exact: true }),

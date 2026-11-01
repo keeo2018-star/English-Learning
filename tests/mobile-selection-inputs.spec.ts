@@ -57,7 +57,7 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await page.mouse.up();
     expect(await page.evaluate(() => window.getSelection()?.toString().trim() || '')).toBe('');
     await selectable(page.getByRole('navigation', { name: 'Main navigation' }), 'none');
-    await selectable(page.getByRole('link', { name: 'Add', exact: true }), 'none');
+    await selectable(page.getByRole('main').getByRole('link', { name: 'Add', exact: true }), 'none');
     await page.goto('/library');
     expect(await page.evaluate(() => getComputedStyle(document.body).userSelect)).not.toBe('none');
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).userSelect)).not.toBe('none');

@@ -10,7 +10,7 @@ export default function Home() {
       <div className={styles.welcome}>
         <p className={styles.eyebrow}><span aria-hidden="true" />YOUR DAILY WORD SPACE</p>
         <h1 id="home-title">Make room for<br /><span className={styles.highlight}>new words.</span></h1>
-        <p className={styles.intro}>A word you notice. A thought you can finally put into words. Keep a little. Come back for more.</p>
+        <p className={styles.intro}>Keep a little. Come back for more.</p>
       </div>
       <div className={styles.actions}>
         <Link href="/add" aria-label="Add" aria-describedby="home-add-description" className={`${styles.action} ${styles.add}`}>
@@ -25,8 +25,10 @@ export default function Home() {
             <span id="home-review-description" className={styles.description}>A little repetition goes a long way.</span>
           </span><ArrowIcon />
         </Link>
+        <Link href="/library" aria-label="Library" className={`${styles.action} ${styles.library}`}>
+          <span className={styles.label}>Library</span><ArrowIcon />
+        </Link>
       </div>
-      <Link href="/library" className={styles.library}>Open your library <ArrowIcon /></Link>
     </section>
   </AppShell>;
 }
