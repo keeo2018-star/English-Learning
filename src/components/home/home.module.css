@@ -43,16 +43,16 @@
   transition: box-shadow 150ms ease;
 }
 .action:hover { text-decoration: none; box-shadow: inset 0 0 0 1px var(--wb-black); }
-.add { background: var(--noted-lime); }
-.review { background: var(--wb-coral); }
+.add { background: var(--wb-lavender); }
+.review { background: var(--noted-lime); }
 .actionCopy { display: grid; gap: 10px; min-width: 0; }
 .label { font-size: clamp(26px, 4vw, 36px); font-weight: var(--wb-medium); line-height: 1.1; letter-spacing: -.04em; }
 .description { max-width: 280px; font-size: 12px; line-height: 1.45; }
 .action svg { width: 24px; height: 24px; flex-shrink: 0; }
 .action.library {
   grid-column: 1 / -1;
-  background: var(--wb-offwhite);
-  border: 1px solid #c9c9c0;
+  background: var(--wb-coral);
+  border: 1px solid transparent;
   min-height: 84px;
   padding: 20px 24px;
   align-items: center;

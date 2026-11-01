@@ -22,10 +22,10 @@ test.describe("Noted home", () => {
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(navigation!.y);
       expect(await action.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgb(22, 22, 22)');
     }
-    await expect(page.getByRole('main').getByRole('link', { name: 'Add', exact: true })).toHaveCSS('background-color', 'rgb(193, 255, 50)');
-    await expect(page.getByRole('link', { name: 'Random Review', exact: true })).toHaveCSS('background-color', 'rgb(255, 138, 91)');
+    await expect(page.getByRole('main').getByRole('link', { name: 'Add', exact: true })).toHaveCSS('background-color', 'rgb(201, 185, 251)');
+    await expect(page.getByRole('link', { name: 'Random Review', exact: true })).toHaveCSS('background-color', 'rgb(193, 255, 50)');
     const library = page.getByRole('main').getByRole('link', { name: 'Library', exact: true });
-    await expect(library).toHaveCSS('background-color', 'rgb(245, 244, 239)');
+    await expect(library).toHaveCSS('background-color', 'rgb(255, 138, 91)');
     await expect(library).toHaveCSS('border-top-width', '1px');
     await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Library', exact: true })).toHaveCount(0);
     expect(reads).toBe(0);
