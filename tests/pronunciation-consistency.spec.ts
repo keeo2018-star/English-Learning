@@ -68,7 +68,7 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
     await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: /Review/ }).click();
+    await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Due words', exact: true }).click();
     await page.waitForURL('**/review');
     await expect(page.locator('.review-card')).toBeVisible();
     await page.locator('.review-card').locator('button[data-accent="UK"]').click();

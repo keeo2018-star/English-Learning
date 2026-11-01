@@ -9,7 +9,7 @@ for (const width of [390, 1440]) test(`selected controls have true transparent g
   await page.goto('/review');
   const due = page.getByRole('button', { name: 'Due words', exact: true });
   await expect(due).toHaveClass(/wb-knockout/);
-  for (const selector of ['.review-modes [aria-pressed="true"]', '.wb-workspace-tabs [aria-current="page"]', '.wb-navigation [aria-current="page"]']) {
+  for (const selector of ['.review-modes [aria-pressed="true"]', '.wb-navigation [aria-current="page"]']) {
     const control = page.locator(selector);
     await expect(control).toHaveClass(/wb-knockout/);
     const result = await control.evaluate(async element => {
@@ -49,7 +49,6 @@ for (const width of [390, 1440]) test(`selected controls have true transparent g
   await page.getByRole('button', { name: 'Random review', exact: true }).click();
   await expect(due).not.toHaveClass(/wb-knockout/);
   await expect(page.getByRole('button', { name: 'Random review', exact: true })).toHaveClass(/wb-knockout/);
-  await page.locator('.wb-workspace-tabs').evaluate(element => { (element as HTMLElement).style.background = '#ff80bb'; });
   await page.locator('.review-modes').evaluate(element => { (element as HTMLElement).style.background = '#91ed69'; });
   await page.screenshot({ path: `/tmp/knockout-${width}.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
 import { DEMO_STORAGE_KEY, type LearningItem as Word } from "./learning";
@@ -17,7 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
-import { preloadPronunciation } from "./pronunciation";
+import { preloadPronunciation, stopPronunciation } from "./pronunciation";
 import { RandomPronunciation } from "@/components/dictionary/random-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
@@ -43,6 +44,9 @@ export default function Workspace({
 }: {
   page: "add" | "review" | "library";
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const randomMode = page === "review" && searchParams.get("mode") === "random";
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
     [loadError, setLoadError] = useState(false),
@@ -281,7 +285,7 @@ export default function Workspace({
       } else persistLocal(words.map((w) => (w.id === word.id ? updated : w)));
       focusNextCard.current = true;
       setRevealed(null);
-      if (randomQueue) {
+      if (randomMode) {
         if (rating === "unsure") setRandomQueue(queue => queue ? reinsertUnsure(queue, randomPosition) : queue);
         setRandomPosition(position => position + 1);
       }
@@ -308,10 +312,9 @@ export default function Workspace({
     }
   }
   const due = words.filter((w) => new Date(w.due_at).getTime() <= now);
-  const randomMode = randomQueue !== null;
   const reviewCard = randomQueue?.[randomPosition];
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
-  const direction = reviewCard?.direction ?? "forward";
+  const direction = randomMode ? reviewCard?.direction ?? "forward" : "forward";
   const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
   useEffect(() => {
     if (focusNextCard.current) {
@@ -331,13 +334,13 @@ export default function Workspace({
     setMessage("");
   }
   useEffect(() => {
-    if (page === "review" && ready && words.length && !requestedRandom.current &&
-        new URLSearchParams(window.location.search).get("mode") === "random") {
+    if (!randomMode) { requestedRandom.current = false; return; }
+    if (ready && words.length && !requestedRandom.current) {
       requestedRandom.current = true;
       startRandomReview();
     }
   });
-  const nextRandomText = randomMode ? words.find(word => word.id === randomQueue[randomPosition + 1]?.id)?.word : undefined;
+  const nextRandomText = randomMode ? words.find(word => word.id === randomQueue?.[randomPosition + 1]?.id)?.word : undefined;
   useEffect(() => {
     if (page !== "review" || !randomMode) return;
     if (card) void preloadPronunciation(card.word);
@@ -363,7 +366,7 @@ export default function Workspace({
     <AppShell
       hideAddAction={page === "add"}
       active={
-        page === "review" ? "Review" : page === "add" ? "Add" : null
+        page === "review" || page === "library" ? "Review" : page === "add" ? "Add" : null
       }
       account={
         user ? (
@@ -385,18 +388,7 @@ export default function Workspace({
         <Pill>
           {supabase ? user?.email || "Account required" : "LOCAL DEMO"}
         </Pill>
-        <nav className="wb-workspace-tabs" aria-label="Learning navigation">
-          {(["add", "review", "library"] as const).map((p, i) => (
-            <SelectableLink
-              key={p}
-              href={"/" + p}
-              selected={page === p}
-            >
-              <span>0{i + 1}</span> {p[0].toUpperCase() + p.slice(1)}
-              {p === "review" && <small>{due.length}</small>}
-            </SelectableLink>
-          ))}
-        </nav>
+
       </div>
       {!supabase && (
         <div className="notice">
@@ -422,6 +414,25 @@ export default function Workspace({
               : "Every word is another way to express yourself."}
         </p>
       </div>
+      {page !== "add" && (
+        <nav className="review-modes" aria-label="Learning navigation">
+          {page === "review" ? <>
+            <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
+              onClick={() => { stopPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
+              Due words
+            </SelectableButton>
+            <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}
+              onClick={() => { if (!randomMode) { setRandomQueue(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
+              Random review
+            </SelectableButton>
+          </> : <>
+            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review" onClick={() => stopPronunciation()}>Due words</SelectableLink>
+            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => stopPronunciation()}>Random review</SelectableLink>
+          </>}
+          <SelectableLink className="wb-control wb-control-outline" selected={page === "library"} href="/library"
+            aria-disabled={busy || undefined} onClick={event => { if (busy) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
+        </nav>
+      )}
       {message && <Feedback>{message}</Feedback>}
       {page === "add" ? (
         <AddWordFlow
@@ -597,29 +608,17 @@ export default function Workspace({
             </>
           )}
           {page === "review" && words.length > 0 && (
-            <div className="review-modes" role="group" aria-label="Review mode">
-              <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-                onClick={() => { setRandomQueue(null); setRevealed(null); setMessage(""); }}>
-                Due words
-              </SelectableButton>
-              <SelectableButton className="secondary" selected={randomMode} disabled={busy}
-                onClick={() => { if (!randomMode) startRandomReview(); }}>
-                Random review
-              </SelectableButton>
-            </div>
-          )}
-          {page === "review" && words.length > 0 && (
             <SelectableToggle className="review-auto-pronunciation" checked={autoPronunciation}
               onChange={event => setAutoPronunciation(event.target.checked)}>
               Auto pronunciation
             </SelectableToggle>
           )}
           {page === "review" &&
-            (card ? (
+            (randomMode && randomQueue === null && words.length > 0 ? <LoadingState label="Opening review…" /> : card ? (
               <>
                 <p className="eyebrow" role="status">
                   {randomMode
-                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomQueue.length}`
+                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomQueue?.length ?? 0}`
                     : `${due.length} ${due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW`}
                 </p>
                 <Card
