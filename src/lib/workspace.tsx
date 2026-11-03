@@ -18,7 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
-import { preloadPronunciation, stopPronunciation } from "./pronunciation";
+import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
 type NewLearningItem = { word: string; meaning: string; example: string };
 type SaveResult = "saved" | "failed";
@@ -424,16 +424,16 @@ export default function Workspace({
         <nav className="review-modes" aria-label="Learning navigation">
           {page === "review" ? <>
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-              onClick={() => { stopPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
+              onClick={() => { stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
               Due words
             </SelectableButton>
             <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}
-              onClick={() => { if (!randomMode) { setRandomQueue(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
+              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setRandomQueue(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
               Random review
             </SelectableButton>
           </> : <>
-            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review" onClick={() => stopPronunciation()}>Due words</SelectableLink>
-            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => stopPronunciation()}>Random review</SelectableLink>
+            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Due words</SelectableLink>
+            <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Random review</SelectableLink>
           </>}
           <SelectableLink className="wb-control wb-control-outline" selected={page === "library"} href="/library"
             aria-disabled={busy || undefined} onClick={event => { if (busy) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
@@ -615,7 +615,7 @@ export default function Workspace({
           )}
           {page === "review" && words.length > 0 && (
             <SelectableToggle className="review-auto-pronunciation" checked={autoPronunciation}
-              onChange={event => setAutoPronunciation(event.target.checked)}>
+              onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoPronunciation(event.target.checked); }}>
               Auto pronunciation
             </SelectableToggle>
           )}

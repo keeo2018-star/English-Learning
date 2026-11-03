@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { prepareReviewPronunciation } from "@/lib/pronunciation";
 import { AppShell } from "@/components/ui/app-shell";
 import { ArrowIcon } from "@/components/ui/primitives";
 import styles from "./home.module.css";
@@ -19,7 +20,7 @@ export default function Home() {
             <span id="home-add-description" className={styles.description}>A word, phrase, expression or sentence.</span>
           </span><ArrowIcon />
         </Link>
-        <Link href="/review?mode=random" aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
+        <Link href="/review?mode=random" onClick={() => prepareReviewPronunciation()} aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
           <span className={styles.actionCopy}>
             <span className={styles.label}>Random Review</span>
             <span id="home-review-description" className={styles.description}>A little repetition goes a long way.</span>

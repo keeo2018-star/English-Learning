@@ -30,6 +30,7 @@ async function setup(page: Page, recorded: boolean) {
       constructor(text: string) { this.text = text; }
     } });
     HTMLMediaElement.prototype.play = function () {
+      if (this.src.startsWith('data:audio/')) return Promise.resolve();
       events.push({ kind: 'audio', src: this.src, rate: this.playbackRate,
         volume: this.volume, overlap: !!active }); active = this.src;
       return Promise.resolve();
@@ -108,6 +109,8 @@ test('Random Review preloads the next recording and reuses lookup results withou
     { ...sampleWord, id: 'next-card', word: 'world' },
   ] }));
   const lookups: string[] = [];
+  const files: string[] = [];
+  await page.route('**/api/pronunciation?*', route => { files.push(new URL(route.request().url()).searchParams.get('source')!); return route.fulfill({ status: 503 }); });
   await page.route('**/api/dictionary?*', route => {
     const word = new URL(route.request().url()).searchParams.get('word')!;
     lookups.push(word);
@@ -115,7 +118,7 @@ test('Random Review preloads the next recording and reuses lookup results withou
   });
   await page.goto('/review?mode=random');
   await expect.poll(async () => (await plays(page)).length).toBe(1);
-  await expect.poll(() => page.evaluate(() => (window as unknown as { preloadLog: string[] }).preloadLog.some(src => src.includes('word=world')))).toBe(true);
+  await expect.poll(() => files.some(src => src.includes('word=world'))).toBe(true);
   expect(lookups.filter(word => word === 'world')).toHaveLength(1);
   await page.getByRole('button', { name: 'Reveal answer' }).click();
   expect(await plays(page)).toHaveLength(1);

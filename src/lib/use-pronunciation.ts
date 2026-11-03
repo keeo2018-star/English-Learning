@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { englishText, pronounce, pronunciationSupported, resumePronunciation, stopPronunciation, type Accent, type PronunciationStatus } from './pronunciation';
+import { englishText, pronounce, pronunciationSupported, prepareReviewPronunciation, resumePronunciation, stopPronunciation, type Accent, type PronunciationStatus } from './pronunciation';
 const subscribe = () => () => {};
 export function usePronunciation({ text, accent = 'UK', recording, automatic = false }: {
   text: string; accent?: Accent; recording?: string | null; automatic?: boolean;
@@ -16,7 +16,11 @@ export function usePronunciation({ text, accent = 'UK', recording, automatic = f
     void pronounce({ owner: owner.current, text, accent, recording, audio: audio.current, automatic: automaticPlayback,
       report: value => { if (alive.current) setStatus(value); } });
   }, [available, text, accent, recording]);
-  const play = useCallback(() => start(false), [start]);
+  const play = useCallback(() => {
+    if (resumePronunciation(owner.current)) return;
+    if (recording === undefined) prepareReviewPronunciation();
+    start(false);
+  }, [start, recording]);
   useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; stop(); };

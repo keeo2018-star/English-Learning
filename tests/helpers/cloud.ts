@@ -42,6 +42,7 @@ export async function mockCloud(
   signedIn = true,
   initialSession = session(),
 ) {
+  await page.route('**/api/pronunciation?*', route => route.fulfill({ status: 503, body: 'Recording fixture unavailable' }));
   if (signedIn)
     await page.addInitScript(
       ({ key, data }) => {

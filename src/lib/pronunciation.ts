@@ -1,11 +1,11 @@
-import type { DictionaryResult } from './dictionary';
+import { audioSource } from './audio-source';
+import { validateDictionaryWord, type DictionaryResult } from './dictionary';
 
 export const PRONUNCIATION_SETTINGS = Object.freeze({ locale: 'en-GB', rate: 1, pitch: 1, volume: 1 });
 export type Accent = 'UK' | 'US';
 export type PronunciationStatus = 'idle' | 'loading' | 'playing' | 'blocked' | 'error';
 type Phonetics = DictionaryResult['phonetics'];
 const cache = new Map<string, { expires: number; value: Promise<Phonetics> }>();
-const preparedAudio = new Map<string, HTMLAudioElement>();
 const normalizedKey = (text: string) => englishText(text).toLowerCase();
 function cleanPhonetics(items: Phonetics): Phonetics {
   return items.filter(item => item && typeof item.accent === 'string').map(item => ({
@@ -47,22 +47,55 @@ export function rememberPronunciations(text: string, items: Phonetics) {
 function preferredRecording(items: Phonetics, accent: Accent) {
   return items.find(item => item.accent.toUpperCase() === accent && item.audio)?.audio || items.find(item => item.audio)?.audio;
 }
+const recordingFiles = new Map<string, Promise<string | undefined>>();
+const retiredFiles = new Set<string>();
+function releaseRecordingFiles() {
+  for (const url of retiredFiles) {
+    if (reviewAudio?.src !== url) { URL.revokeObjectURL(url); retiredFiles.delete(url); }
+  }
+}
+function recordingFile(source: string): Promise<string | undefined> {
+  const existing = recordingFiles.get(source);
+  if (existing) return existing;
+  const pending = (async () => {
+    try {
+      const response = await fetch('/api/pronunciation?' + new URLSearchParams({ source }), { cache: 'force-cache', signal: AbortSignal.timeout(14000) });
+      if (!response.ok || !response.headers.get('content-type')?.startsWith('audio/')) return;
+      const blob = await response.blob();
+      if (!blob.size || blob.size > 2 * 1024 * 1024) return;
+      return URL.createObjectURL(blob);
+    } catch { return; }
+  })();
+  recordingFiles.set(source, pending);
+  void pending.then(url => { if (!url && recordingFiles.get(source) === pending) recordingFiles.delete(source); });
+  while (recordingFiles.size > 4) {
+    const oldest = recordingFiles.keys().next().value!;
+    const previous = recordingFiles.get(oldest)!;
+    recordingFiles.delete(oldest);
+    void previous.then(url => { if (url) { retiredFiles.add(url); releaseRecordingFiles(); } });
+  }
+  return pending;
+}
+function discardRecording(source: string) {
+  const pending = recordingFiles.get(source);
+  if (!pending) return;
+  recordingFiles.delete(source);
+  void pending.then(url => { if (url) { retiredFiles.add(url); releaseRecordingFiles(); } });
+}
 export async function preloadPronunciation(text: string, accent: Accent = 'UK') {
   if (typeof window === 'undefined') return;
-  const source = preferredRecording(await getPronunciations(text), accent);
-  if (!source || preparedAudio.has(source)) return;
-  const audio = new Audio();
-  audio.preload = 'auto';
-  audio.src = source;
-  // Warm the browser's media cache without playing or holding up the card.
-  audio.load();
-  preparedAudio.set(source, audio);
-  if (preparedAudio.size > 4) {
-    const oldest = preparedAudio.keys().next().value!;
-    const previous = preparedAudio.get(oldest)!;
-    if (current?.audio !== previous) { previous.removeAttribute('src'); previous.load(); }
-    preparedAudio.delete(oldest);
-  }
+  const key = normalizedKey(text);
+  const known = cache.get(key);
+  const metadata = known && known.expires > Date.now() ? resolved.get(key) : storedPronunciations(key);
+  // For a simple English word, download the provider's fixed recording URL in
+  // parallel with lookup. Never PLAY it until dictionary metadata confirms it.
+  const speculative = metadata === undefined && /^[a-z]+(?:['’-][a-z]+)*$/i.test(key)
+    ? 'https://uapis.cn/api/v1/dictionary/audio?' + new URLSearchParams({ accent: accent.toLowerCase(), word: key }) : undefined;
+  if (speculative) void recordingFile(speculative);
+  const phonetics = metadata ?? await getPronunciations(text);
+  if (speculative && !phonetics.some(item => item.audio === speculative)) discardRecording(speculative);
+  const source = preferredRecording(phonetics, accent);
+  if (source) await recordingFile(source);
 }
 const voiceChoices = new Map<string, string>();
 let voices: SpeechSynthesisVoice[] = [];
@@ -72,19 +105,12 @@ export const englishText = (text: string) => text.replace(/[^\p{Script=Latin}\x2
 export const speechSupported = () => typeof window !== 'undefined' &&
   typeof window.speechSynthesis?.speak === 'function' && typeof window.SpeechSynthesisUtterance === 'function';
 export const pronunciationSupported = () => typeof window !== 'undefined' && (typeof window.Audio === 'function' || speechSupported());
-function audioSource(value: string | undefined | null) {
-  if (!value) return undefined;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === 'uapis.cn' && !url.username && !url.password &&
-      url.pathname === '/api/v1/dictionary/audio' ? url.href : undefined;
-  } catch { return undefined; }
-}
 export function getPronunciations(text: string): Promise<Phonetics> {
   const key = normalizedKey(text);
   const existing = cache.get(key);
   if (existing && existing.expires > Date.now()) return existing.value;
   if (storedPronunciations(key)) return cache.get(key)!.value;
+  try { validateDictionaryWord(key); } catch { return Promise.resolve([]); }
   resolved.delete(key);
   const value = (async () => {
     try {
@@ -143,8 +169,27 @@ type Request = { owner: symbol; audio: HTMLAudioElement; cleanups: (() => void)[
 let current: Request | undefined;
 let reviewAudio: HTMLAudioElement | undefined;
 let reviewAutoplayBlocked = false;
+let reviewPlaybackUnlocked = false;
+let unlocking: Promise<void> | undefined;
+const SILENT_RECORDING = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+// Run directly in a navigation/toggle/speaker gesture, before async lookup.
+export function prepareReviewPronunciation() {
+  if (typeof window === 'undefined' || typeof Audio !== 'function' || reviewPlaybackUnlocked || unlocking) return;
+  const audio = reviewAudio ??= new Audio();
+  if (current?.audio === audio) return;
+  audio.src = SILENT_RECORDING;
+  try {
+    unlocking = audio.play().then(() => {
+      if (audio.src === SILENT_RECORDING) audio.pause();
+      reviewPlaybackUnlocked = true;
+      reviewAutoplayBlocked = false;
+    }, () => {}).finally(() => { unlocking = undefined; });
+  } catch { /* The normal manual/reveal recovery remains available. */ }
+}
 export function resumePronunciation(owner: symbol) {
-  if (current?.owner === owner) current.retry?.();
+  if (current?.owner !== owner || !current.retry) return false;
+  current.retry();
+  return true;
 }
 function active(request: Request) { return current === request; }
 export function stopPronunciation(owner?: symbol) {
@@ -215,6 +260,10 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   const sharedReview = recording === undefined;
   if (sharedReview) audio = reviewAudio ??= audio;
   request.audio = audio;
+  if (sharedReview && unlocking) await unlocking;
+  if (!active(request)) return;
+  const playableSource = sharedReview ? await recordingFile(source) || source : source;
+  if (!active(request)) return;
   let fallbackStarted = false;
   const remove = () => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); };
   const ended = () => { if (!fallbackStarted) finish(request, 'idle'); };
@@ -227,7 +276,8 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   audio.addEventListener('ended', ended);
   audio.addEventListener('error', failed);
   request.cleanups.push(remove);
-  if (audio.src !== source) { audio.preload = 'auto'; audio.src = source; }
+  if (audio.src !== playableSource) { audio.preload = 'auto'; audio.src = playableSource; }
+  releaseRecordingFiles();
   audio.currentTime = 0;
   audio.playbackRate = PRONUNCIATION_SETTINGS.rate;
   audio.preservesPitch = true;
@@ -242,14 +292,14 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
     catch (error) { rejected(error); return; }
     void playback.then(() => {
       if (!active(request) || fallbackStarted) return;
-      if (sharedReview) reviewAutoplayBlocked = false;
+      if (sharedReview) { reviewAutoplayBlocked = false; reviewPlaybackUnlocked = true; }
       report('playing');
     }, rejected);
   };
   const rejected = (error: unknown) => {
     if (!active(request)) return;
     if (error instanceof DOMException && error.name === 'NotAllowedError') {
-      if (sharedReview) reviewAutoplayBlocked = true;
+      if (sharedReview) { reviewAutoplayBlocked = true; reviewPlaybackUnlocked = false; }
       request.retry = playRecording;
       report('blocked');
     } else failed();
