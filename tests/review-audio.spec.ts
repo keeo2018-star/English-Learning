@@ -93,6 +93,48 @@ test.describe('review recording lifecycle', () => {
     await expect.poll(async () => (await plays(page)).length).toBe(2);
     expect((await plays(page))[0].player).toBe((await plays(page))[1].player);
   });
+  test('switching from Random to Due autoplays even when the word is the same', async ({ page }) => {
+    await setup(page);
+    await page.goto('/review?mode=random');
+    await expect.poll(async () => (await plays(page)).length).toBe(1);
+    const word = await page.locator('.review-card h2').textContent();
+    await page.getByRole('button', { name: 'Due words', exact: true }).click();
+    await expect(page.locator('.review-card h2')).toHaveText(word!);
+    await expect.poll(async () => (await plays(page)).length).toBe(2);
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
+    expect(await plays(page)).toHaveLength(2);
+  });
+  test('selected Due mode retries browser-blocked autoplay in the click gesture', async ({ page }) => {
+    await setup(page, true);
+    await page.goto('/review');
+    await expect.poll(() => page.evaluate(() => (window as unknown as { audioAttempts: number }).audioAttempts || 0)).toBe(1);
+    expect(await plays(page)).toHaveLength(0);
+    await page.getByRole('button', { name: 'Due words', exact: true }).click();
+    await expect.poll(async () => (await plays(page)).length).toBe(1);
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
+    expect(await plays(page)).toHaveLength(1);
+  });
+  test('clicking the selected Due mode does not cancel pending autoplay', async ({ page }) => {
+    await setup(page);
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/dictionary?*', async route => {
+      const word = new URL(route.request().url()).searchParams.get('word')!;
+      await gate;
+      await route.fulfill({ json: { phonetics: [{ accent: 'UK', text: '', audio: `https://uapis.cn/api/v1/dictionary/audio?accent=uk&word=${word}` }] } });
+    });
+    await page.goto('/review');
+    await page.getByRole('button', { name: 'Due words', exact: true }).click();
+    release();
+    await expect.poll(async () => (await plays(page)).length).toBe(1);
+    await page.getByRole('button', { name: 'Due words', exact: true }).click();
+    expect(await plays(page)).toHaveLength(1);
+    await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Review', exact: true }).click();
+    expect(await plays(page)).toHaveLength(1);
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
+    await page.getByRole('button', { name: 'Sure', exact: true }).click();
+    await expect.poll(async () => (await plays(page)).length).toBe(2);
+  });
   test('recording download overlaps lookup, but never plays before dictionary confirmation', async ({ page }) => {
     const calls = await setup(page);
     let release!: () => void;

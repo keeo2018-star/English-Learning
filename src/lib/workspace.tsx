@@ -424,7 +424,7 @@ export default function Workspace({
         <nav className="review-modes" aria-label="Learning navigation">
           {page === "review" ? <>
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-              onClick={() => { stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
+              onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
               Due words
             </SelectableButton>
             <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}

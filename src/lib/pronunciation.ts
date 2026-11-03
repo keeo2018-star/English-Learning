@@ -174,6 +174,8 @@ let unlocking: Promise<void> | undefined;
 const SILENT_RECORDING = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 // Run directly in a navigation/toggle/speaker gesture, before async lookup.
 export function prepareReviewPronunciation() {
+  // A selected mode is also a trusted recovery gesture. Keep its request alive.
+  if (current?.retry) { current.retry(); return; }
   if (typeof window === 'undefined' || typeof Audio !== 'function' || reviewPlaybackUnlocked || unlocking) return;
   const audio = reviewAudio ??= new Audio();
   if (current?.audio === audio) return;
