@@ -91,6 +91,8 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
     await selectable(page.locator('.wb-meaning-reveal'), 'text');
     await page.goto('/auth');
+    await selectable(page.locator('.profile-header h1'), 'none');
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await selectable(page.locator('.wb-auth-panel h1'), 'none');
     await selectable(page.getByLabel('Email', { exact: true }).locator('..'), 'none');
   });
@@ -115,12 +117,14 @@ test.describe('mobile interface selection and iPhone field typography', () => {
     await page.getByLabel('Word or phrase').fill('Copy this text');
     await page.getByLabel('Word or phrase').selectText();
     expect(await page.getByLabel('Word or phrase').evaluate(element => (element as HTMLInputElement).selectionEnd! - (element as HTMLInputElement).selectionStart!)).toBe(14);
-    await page.goto('/auth'); await fields(page);
-    await page.getByRole('button', { name: 'Create an account', exact: true }).click(); await fields(page);
-    await page.getByRole('button', { name: 'Forgot password?', exact: true }).click(); await fields(page);
-    await page.goto('/auth/reset'); await fields(page);
     await page.goto('/library'); await fields(page);
     await page.getByRole('button', { name: `Edit ${sampleWord.word}`, exact: true }).click(); await fields(page);
+    await page.goto('/auth/reset'); await fields(page);
+    await page.goto('/auth');
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await fields(page);
+    await page.getByRole('button', { name: 'Create an account', exact: true }).click(); await fields(page);
+    await page.getByRole('button', { name: 'Forgot password?', exact: true }).click(); await fields(page);
     await page.evaluate(() => {
       const dialog = document.createElement('dialog');
       dialog.innerHTML = '<label>Modal text<input></label><label>Modal notes<textarea></textarea></label><label>Modal select<select><option>One</option></select></label>';

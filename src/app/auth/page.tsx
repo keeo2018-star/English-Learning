@@ -1,6 +1,8 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
+import { LearningCalendar } from "@/components/learning/learning-calendar";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AppShell } from "@/components/ui/app-shell";
@@ -16,7 +18,36 @@ function AuthForm() {
         ? "We couldn’t complete the email confirmation. The link may have expired or already been used. Open a new link in the browser where you signed up, or sign in if your email is already confirmed."
         : "",
     ),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [user, setUser] = useState<User | null>(null),
+    [checkingAccount, setCheckingAccount] = useState(!!supabase);
+  useEffect(() => {
+    if (!supabase) return;
+    let mounted = true, revision = 0;
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted || revision) return;
+      setUser(data.session?.user || null);
+      if (error) setMessage(error.message);
+      setCheckingAccount(false);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      revision++;
+      if (!mounted) return;
+      setUser(session?.user || null);
+      setCheckingAccount(false);
+    });
+    return () => { mounted = false; data.subscription.unsubscribe(); };
+  }, []);
+  async function signOut() {
+    if (!supabase) return;
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null); setMode("signin");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not sign out. Please try again."); }
+    finally { setBusy(false); }
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!supabase) return;
@@ -68,6 +99,16 @@ function AuthForm() {
       setBusy(false);
     }
   }
+  if (checkingAccount) return <AppShell active="Profile" compact><LoadingState label="Checking your account…" /></AppShell>;
+  if (user) return <AppShell active="Profile" compact account={<button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button>}>
+    <div className="profile-header wb-ui-text">
+      <Pill>YOUR NOTEBOOK</Pill>
+      <h1>Profile.</h1>
+      <p className="profile-email">{user.email}</p>
+    </div>
+    {message && <Feedback>{message}</Feedback>}
+    <LearningCalendar key={user.id} account={user.id} initiallyOpen />
+  </AppShell>;
   return (
     <AppShell active="Profile" compact>
       <Card className="panel wb-auth-panel">

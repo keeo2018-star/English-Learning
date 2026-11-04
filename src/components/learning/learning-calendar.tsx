@@ -5,8 +5,9 @@ import { activityLevel, localDateKey, reviewCoverage, type ActivityMonth } from 
 import { SelectableButton } from '@/components/ui/selection';
 import type { LearningItem } from '@/lib/learning';
 export const DEMO_EVENTS_KEY = 'noted-demo-review-events-v1';
-export function LearningCalendar({ account, revision, words }: { account: string; revision: number; words: LearningItem[] }) {
-  const [open, setOpen] = useState(false);
+const EMPTY_WORDS: LearningItem[] = [];
+export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, initiallyOpen = false }: { account: string; revision?: number; words?: LearningItem[]; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
   const [month, setMonth] = useState('');
   const [today, setToday] = useState('');
   const [timezone, setTimezone] = useState('UTC');
@@ -26,6 +27,14 @@ export function LearningCalendar({ account, revision, words }: { account: string
     window.addEventListener('focus', update);
     return () => window.removeEventListener('focus', update);
   }, []);
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => { if (document.visibilityState === 'visible') setRetry(value => value + 1); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [open, account]);
   const requestKey = `${account}/${month}/${timezone}/${revision}/${retry}`;
   useEffect(() => {
     if (!open || !month) return;
@@ -74,7 +83,7 @@ export function LearningCalendar({ account, revision, words }: { account: string
   const offset = first ? (first.getDay() + 6) % 7 : 0;
   const selectedData = data?.days.find(day => day.date === selected);
   const coverage = data ? reviewCoverage(selected, data.tracking_since, timezone) : 'unknown';
-  return <details className="learning-calendar wb-ui-text" onToggle={event => setOpen(event.currentTarget.open)}>
+  return <details className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>Learning calendar</summary>
     {open && month && <div className="learning-calendar-content">
       <div className="calendar-metrics" role="group" aria-label="Calendar activity">

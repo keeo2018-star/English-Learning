@@ -74,7 +74,7 @@ test.describe("shared app design", () => {
             page.getByRole("button", { name: "Reveal answer", exact: true }),
           ).toBeVisible();
         if (route === "/auth")
-          await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+          await expect(page.getByRole("heading", { name: "Profile.", exact: true })).toBeVisible();
         if (route === "/auth/reset")
           await expect(page.getByLabel("New password")).toBeVisible();
         if ((width === 390 || width === 1440) && !route.includes("?"))

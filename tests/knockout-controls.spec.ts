@@ -91,8 +91,7 @@ for (const width of [390, 1440]) test(`one selected system across Home, Add, Lib
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
-  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Forgot password?', exact: true })).toHaveClass(/wb-knockout/);
+  await expect(page.getByRole('button', { name: 'Forgot password?', exact: true })).toHaveCount(0);
   await page.goto('/review');
   const checkbox = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
   const toggle = page.locator('.wb-toggle');

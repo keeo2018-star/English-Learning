@@ -217,6 +217,8 @@ test.describe("auth callback (mocked service)", () => {
     await page.goto(callback.toString());
     await expect(page).toHaveURL(production + "/library");
     await expect(page.getByLabel("Search library")).toBeVisible();
-    await page.unrouteAll({ behavior: "wait" });
+    // The callback can cancel speculative Next.js requests from the previous
+    // page. All flow assertions are complete; ignore only leftover proxy errors.
+    await page.unrouteAll({ behavior: "ignoreErrors" });
   });
 });

@@ -21,7 +21,7 @@ import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRat
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
 import { completeSessionCard, newReviewSession, readReviewSession, reviewSessionKey, type ReviewSession } from "./review-session";
-import { LearningCalendar, DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
+import { DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
 type NewLearningItem = { word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
@@ -60,7 +60,6 @@ export default function Workspace({
     [query, setQuery] = useState(""),
     [revealed, setRevealed] = useState<string | null>(null),
     [session, setSession] = useState<ReviewSession | null>(null),
-    [activityRevision, setActivityRevision] = useState(0),
     [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
     [autoPronunciation, setAutoPronunciation] = useState(true),
     [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
@@ -155,7 +154,7 @@ export default function Workspace({
   }, [load]);
   useEffect(() => {
     if (!ready || (supabase && !user)) return;
-    const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current) { void load(user); setActivityRevision(n => n + 1); } };
+    const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current) { void load(user); } };
     const visible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
@@ -346,7 +345,6 @@ export default function Workspace({
           persistLocal(words.map(w => w.id === word.id ? updated : w));
         }
       }
-      setActivityRevision(n => n + 1);
       focusNextCard.current = true;
       setRevealed(null);
       if (currentSession && entry) {
@@ -745,7 +743,6 @@ export default function Workspace({
                 />}
               </div>
             ))}
-          {page === "review" && <LearningCalendar account={account} revision={activityRevision} words={words} />}
         </>
       )}
       {deleting && (

@@ -139,7 +139,9 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     for (let i = 0; i < 3; i++) state.events.set(String(i), { learning_item_id: state.items[0].id, reviewed_at: '2026-11-04T08:30:00Z', familiarity_rating: 'sure' });
     await page.goto('/review');
     await expect(page.getByRole('group', { name: 'Calendar activity' })).toHaveCount(0);
-    await page.getByText('Learning calendar', { exact: true }).click();
+    await expect(page.getByText('Learning calendar', { exact: true })).toHaveCount(0);
+    await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Profile', exact: true }).click();
+    await expect(page.getByLabel('Email', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Reviewed', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'November 4: 1 reviewed', exact: true })).toBeVisible();
     expect(state.timezone).toBe('America/Los_Angeles');
@@ -160,15 +162,21 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (width !== 320) await page.screenshot({ path: `/tmp/noted-calendar-${width}.png`, fullPage: true });
   });
-  test('calendar refreshes after a successful Due review; no change on reveal', async ({ page }) => {
+  test('Profile calendar refreshes after returning from Due review; reveal is not activity', async ({ page }) => {
     const state = await setup(page);
-    await page.goto('/review'); await page.getByText('Learning calendar', { exact: true }).click();
+    await page.goto('/auth');
     await expect(page.locator('.calendar-day-summary')).toContainText('Reviewed: 0');
+    await page.goto('/review');
+    await expect(page.getByText('Learning calendar', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: 'Reveal answer' }).click();
+    await page.goto('/auth');
     await expect(page.locator('.calendar-day-summary')).toContainText('Reviewed: 0');
+    await page.goto('/review');
+    await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Not sure', exact: true }).click();
+    await expect.poll(() => state.events.size).toBe(1);
+    await page.goto('/auth');
     await expect(page.locator('.calendar-day-summary')).toContainText('Reviewed: 1');
-    expect(state.events.size).toBe(1);
   });
   test('Library metadata follows filters, search, content-type edits, deletion, addition and device refresh', async ({ page, context }) => {
     const state = await setup(page);
@@ -204,6 +212,21 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await expect(page.getByText('Words: 2 · Expressions: 2', { exact: true })).toBeVisible();
     await other.close();
   });
+  test('signed-in Profile hides login controls; sign out restores them and removes calendar', async ({ page }) => {
+    await setup(page);
+    await page.goto('/auth');
+    await expect(page.getByRole('heading', { name: 'Profile.', exact: true })).toBeVisible();
+    await expect(page.locator('.calendar-grid')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
+    await expect(page.getByText('Learning calendar', { exact: true })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.locator('.calendar-grid')).toHaveCount(0);
+  });
   test('Library totals are not truncated by the Supabase 1000-row response limit', async ({ page }) => {
     await setup(page, store(1003)); await page.goto('/library');
     await expect(page.getByRole('status', { name: 'Library count' })).toHaveText('1003 items');
@@ -217,7 +240,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
     await expect(page.getByText('Review saved. Activity tracking isn’t available yet.', { exact: true })).toBeVisible();
     await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('1 / 2');
-    await page.getByText('Learning calendar', { exact: true }).click();
+    await page.goto('/auth');
     await expect(page.getByText(/Learning activity isn’t available yet/)).toBeVisible();
     await expect(page.locator('.calendar-grid')).toHaveCount(0);
   });
