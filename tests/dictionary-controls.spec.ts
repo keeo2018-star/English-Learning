@@ -21,9 +21,14 @@ test.describe('Dictionary control consistency', () => {
     wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(1600, 40);
     await page.route('https://uapis.cn/api/v1/dictionary/audio?*', route => route.fulfill({ contentType: 'audio/wav', body: wav }));
     await page.goto('/library');
-    await page.getByRole('button', { name: `Dictionary for ${sampleWord.word}`, exact: true }).click();
+    const trigger = page.getByRole('button', { name: `Dictionary for ${sampleWord.word}`, exact: true });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const dialog = page.getByRole('dialog');
     const close = dialog.getByRole('button', { name: 'Close', exact: true });
+    await expect(close.locator('svg')).toBeVisible();
+    await expect(close).toHaveText('');
     const play = dialog.getByRole('button', { name: 'Play pronunciation', exact: true });
     for (const control of [close, play]) {
       await expect(control).toHaveCSS('font-size', '14px');
@@ -46,5 +51,13 @@ test.describe('Dictionary control consistency', () => {
     await close.click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('.word-row mark')).toHaveCount(0);
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.click();
+    await dialog.getByRole('heading', { name: sampleWord.word, exact: true }).click();
+    await expect(dialog).toBeVisible(); // Reading/selection inside must not dismiss.
+    await page.mouse.click(10, 10); // Backdrop (also covers tapping the original trigger).
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 });
