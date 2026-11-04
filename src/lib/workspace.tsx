@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
-import { DEMO_STORAGE_KEY, type LearningItem as Word } from "./learning";
+import { DEMO_STORAGE_KEY, itemType, type LearningItem as Word } from "./learning";
 import { AppShell } from "@/components/ui/app-shell";
 import {
   Card,
@@ -17,12 +17,16 @@ import { SelectableLink, SelectableButton, SelectableToggle } from "@/components
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
-import { contextPrompt, createReviewQueue, rateItem, reinsertUnsure, reviewState, type ReviewCard, type RecallRating } from "./review";
+import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
-type NewLearningItem = { word: string; meaning: string; example: string };
+import { completeSessionCard, newReviewSession, readReviewSession, reviewSessionKey, type ReviewSession } from "./review-session";
+import { LearningCalendar, DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
+type NewLearningItem = { word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
+  if (typeof error === "object" && error && "code" in error && error.code === "PGRST204" && "message" in error && String(error.message).includes("item_type"))
+    return "Content types aren’t available yet. Keep Automatic for now, or try again once learning activity is enabled.";
   if (
     typeof error === "object" &&
     error !== null &&
@@ -55,33 +59,39 @@ export default function Workspace({
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
     [revealed, setRevealed] = useState<string | null>(null),
-    [randomQueue, setRandomQueue] = useState<ReviewCard[] | null>(null),
-    [randomPosition, setRandomPosition] = useState(0),
+    [session, setSession] = useState<ReviewSession | null>(null),
+    [activityRevision, setActivityRevision] = useState(0),
+    [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
     [autoPronunciation, setAutoPronunciation] = useState(true),
     [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
   const requestedRandom = useRef(false);
+  const saving = useRef(false);
+  const ratingInFlight = useRef(false);
   const loadVersion = useRef(0);
   const accountId = useRef<string | null>(null);
   const librarySearch = useRef<HTMLInputElement>(null);
   const revealButton = useRef<HTMLButtonElement>(null);
   const focusNextCard = useRef(false);
   const load = useCallback(async (u: User | null) => {
+    if (supabase && (u?.id || null) !== accountId.current) return;
     const version = ++loadVersion.current;
     setMessage("");
     setLoadError(false);
     try {
       if (supabase && u) {
-        const { data, error } = await supabase
-          .from("words")
-          .select("*")
-          .eq("user_id", u.id)
-          .order("created_at", { ascending: false });
-        if (version !== loadVersion.current) return;
-        if (error) throw error;
-        setWords(data || []);
+        const all: Word[] = [];
+        for (let offset = 0; ; offset += 1000) {
+          const { data, error } = await supabase.from("words").select("*").eq("user_id", u.id)
+            .order("created_at", { ascending: false }).order("id").range(offset, offset + 999);
+          if (version !== loadVersion.current) return;
+          if (error) throw error;
+          all.push(...(data || []));
+          if (!data || data.length < 1000) break;
+        }
+        setWords(all);
       } else if (!supabase) {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
         if (!Array.isArray(saved))
@@ -127,9 +137,9 @@ export default function Workspace({
         accountId.current = session?.user.id || null;
         setWords([]);
         setRevealed(null);
-        setRandomQueue(null);
+        setSession(null);
         requestedRandom.current = false;
-        setRandomPosition(0);
+
         setEditing(null);
         setDeleting(null);
         setReady(false);
@@ -143,18 +153,44 @@ export default function Workspace({
       clearTimeout(initial);
     };
   }, [load]);
+  useEffect(() => {
+    if (!ready || (supabase && !user)) return;
+    const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current) { void load(user); setActivityRevision(n => n + 1); } };
+    const visible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", visible);
+    const timer = window.setInterval(refresh, 30000);
+    const client = supabase;
+    const channel = client && user ? client.channel(`library:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "words", filter: `user_id=eq.${user.id}` }, refresh).subscribe() : null;
+    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
+  }, [ready, user, load]);
+  const account = user?.id || "local-demo";
+  const persistSession = useCallback((next: ReviewSession) => {
+    try { localStorage.setItem(reviewSessionKey(next.account), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
+    setSession(next);
+  }, []);
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key === reviewSessionKey(account)) setSession(readReviewSession(event.newValue, account));
+      if (!supabase && event.key === storageKey) void load(null);
+    };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, [account, load]);
   const persistLocal = (next: Word[]) => {
     localStorage.setItem(storageKey, JSON.stringify(next));
     setWords(next);
   };
-  const saving = useRef(false);
   async function saveEntry(input: NewLearningItem): Promise<SaveResult> {
     if (saving.current) return "failed";
     saving.current = true;
     setBusy(true);
     setMessage("");
+    const { item_type, ...content } = input;
     const entry = {
-      ...input,
+      ...content,
+      ...(item_type ? { item_type } : {}),
       word: input.word.trim(),
       meaning: input.meaning.trim(),
       example: input.example.trim(),
@@ -194,6 +230,7 @@ export default function Workspace({
       word: String(values.get("word")),
       meaning: String(values.get("meaning")),
       example: "",
+      item_type: values.get("item_type") === "auto" ? null : String(values.get("item_type")) as "word" | "expression",
     });
     if (result === "saved") form.reset();
   }
@@ -226,6 +263,8 @@ export default function Workspace({
       word: String(form.get("word")).trim(),
       meaning: String(form.get("meaning")).trim(),
       example: String(form.get("example")).trim(),
+      ...(word.item_type !== undefined || String(form.get("item_type")) !== itemType(word)
+        ? { item_type: String(form.get("item_type")) as "word" | "expression" } : {}),
     };
     setBusy(true);
     setMessage("");
@@ -259,7 +298,6 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  const ratingInFlight = useRef(false);
   async function grade(word: Word, rating: RecallRating) {
     if (ratingInFlight.current) return;
     ratingInFlight.current = true;
@@ -268,26 +306,54 @@ export default function Workspace({
     setNow(Date.now());
     setBusy(true);
     setMessage("");
-    const updated = rateItem(word, rating);
+    let updated = rateItem(word, rating);
+    const currentSession = randomMode ? session : null;
+    const entry = currentSession?.queue.find(c => c.id === word.id && !currentSession.completed.includes(c.eventId));
+    const attemptKey = `noted-due-attempt-v1:${account}:${word.id}:${reviewState(word)?.review_count ?? 0}`;
+    let eventId = entry?.eventId;
+    if (!eventId) {
+      try { eventId = localStorage.getItem(attemptKey) || undefined; } catch { /* Storage may be restricted. */ }
+      eventId ||= crypto.randomUUID();
+      try { localStorage.setItem(attemptKey, eventId); } catch { /* The in-flight guard still prevents double taps. */ }
+    }
     try {
       if (supabase) {
-        const { error } = await supabase
-          .from("words")
-          .update({ interval_days: updated.interval_days, due_at: updated.due_at, review_state: updated.review_state })
-          .eq("id", word.id)
-          .select("id")
-          .single();
+        if (!user) throw new Error("Please sign in first.");
+        let { data, error } = await supabase.rpc("record_learning_review", {
+          p_event_id: eventId, p_item_id: word.id, p_rating: rating === "sure" ? "sure" : "not_sure",
+          p_expected_count: reviewState(word)?.review_count ?? 0,
+          p_due_at: updated.due_at, p_interval_days: updated.interval_days, p_review_state: updated.review_state,
+        });
+        if (error?.code === "PGRST202" || error?.code === "PGRST205") {
+          // Additive rollout: an unapplied migration must not disable existing reviews.
+          // Do not invent an event or calendar zero for this compatibility save.
+          const legacy = await supabase.from("words")
+            .update({ interval_days: updated.interval_days, due_at: updated.due_at, review_state: updated.review_state })
+            .eq("id", word.id).select("*").single();
+          data = legacy.data; error = legacy.error;
+          if (!error && accountId.current === owner) setMessage("Review saved. Activity tracking isn’t available yet.");
+        }
         if (error) throw error;
         if (accountId.current !== owner) return;
-        setWords((previous) =>
-          previous.map((w) => (w.id === word.id ? updated : w)),
-        );
-      } else persistLocal(words.map((w) => (w.id === word.id ? updated : w)));
+        updated = data as Word;
+        if (!updated?.id || updated.id !== word.id) throw new Error("Could not confirm the saved review. Please retry.");
+        setWords(previous => previous.map(w => w.id === word.id ? updated : w));
+      } else {
+        const events = JSON.parse(localStorage.getItem(DEMO_EVENTS_KEY) || "[]");
+        if (!events.some((e: { id: string }) => e.id === eventId)) {
+          events.push({ id: eventId, learning_item_id: word.id, reviewed_at: new Date().toISOString(), familiarity_rating: rating === "sure" ? "sure" : "not_sure" });
+          localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(events));
+          persistLocal(words.map(w => w.id === word.id ? updated : w));
+        }
+      }
+      setActivityRevision(n => n + 1);
       focusNextCard.current = true;
       setRevealed(null);
-      if (randomMode) {
-        if (rating === "unsure") setRandomQueue(queue => queue ? reinsertUnsure(queue, randomPosition) : queue);
-        setRandomPosition(position => position + 1);
+      if (currentSession && entry) {
+        let latest: ReviewSession | null = null;
+        try { latest = readReviewSession(localStorage.getItem(reviewSessionKey(account)), account); } catch { /* In-memory sessions remain usable. */ }
+        if (latest && latest.id !== currentSession.id) setSession(latest);
+        else persistSession(completeSessionCard(latest || currentSession, entry.eventId));
       }
     } catch (error) {
       setMessage(errorMessage(error, "Could not save review. Please try again."));
@@ -312,7 +378,11 @@ export default function Workspace({
     }
   }
   const due = useMemo(() => words.filter((w) => new Date(w.due_at).getTime() <= now), [words, now]);
-  const reviewCard = randomQueue?.[randomPosition];
+  const randomQueue = session?.queue ?? null;
+  const randomPosition = session ? session.queue.findIndex(entry => !session.completed.includes(entry.eventId) && words.some(word => word.id === entry.id)) : 0;
+  const reviewCard = randomPosition >= 0 ? randomQueue?.[randomPosition] : undefined;
+  const sessionTotal = session?.queue.filter(entry => session.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
+  const reviewedCount = session?.completed.length ?? 0;
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
   const direction = randomMode ? reviewCard?.direction ?? "forward" : "forward";
   const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
@@ -328,30 +398,31 @@ export default function Workspace({
       const word = words.find(item => item.id === entry.id);
       if (word) void preloadPronunciation(word.word);
     }
-    setRandomQueue(queue);
-    setRandomPosition(0);
+    persistSession(newReviewSession(account, queue));
     setRevealed(null);
     setMessage("");
   }
   useEffect(() => {
     if (!randomMode) { requestedRandom.current = false; return; }
-    if (ready && words.length && !requestedRandom.current) {
+    if (ready && (!supabase || user) && !loadError && words.length && !requestedRandom.current) {
       requestedRandom.current = true;
-      startRandomReview();
+      let restored: ReviewSession | null = null;
+      try { restored = readReviewSession(localStorage.getItem(reviewSessionKey(account)), account); } catch { /* Restricted storage. */ }
+      if (restored) setSession(restored); else persistSession(newReviewSession(account, createReviewQueue(words)));
     }
-  });
+  }, [randomMode, ready, user, loadError, words, account, persistSession]);
   useEffect(() => {
     if (page !== "review") return;
     if (card) void preloadPronunciation(card.word);
     if (randomMode) {
-      for (const entry of randomQueue?.slice(randomPosition + 1, randomPosition + 3) ?? []) {
+      for (const entry of randomQueue?.filter(entry => !session?.completed.includes(entry.eventId) && entry.id !== card?.id).slice(0, 2) ?? []) {
         const candidate = words.find(word => word.id === entry.id);
         if (candidate) void preloadPronunciation(candidate.word);
       }
     } else {
       for (const candidate of due.slice(1, 3)) void preloadPronunciation(candidate.word);
     }
-  }, [page, randomMode, card, randomQueue, randomPosition, words, due]);
+  }, [page, randomMode, card, randomQueue, randomPosition, words, due, session?.completed]);
   const [view, setView] = useState("");
   useEffect(() => {
     const timer = setTimeout(
@@ -361,13 +432,15 @@ export default function Workspace({
     );
     return () => clearTimeout(timer);
   }, []);
-  const visibleWords = words.filter((word) =>
+  const visibleWords = words.filter(word => typeFilter === "all" || itemType(word) === typeFilter).filter((word) =>
     view === "new"
       ? word.interval_days === 0
       : view === "learning"
         ? word.interval_days > 0
         : true,
   );
+  const matchingWords = visibleWords.filter(w => (w.word + " " + w.meaning + " " + w.example).toLowerCase().includes(query.trim().toLowerCase()));
+  const wordCount = words.filter(word => itemType(word) === "word").length;
   return (
     <AppShell
       hideAddAction={page === "add"}
@@ -428,7 +501,7 @@ export default function Workspace({
               Due words
             </SelectableButton>
             <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}
-              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setRandomQueue(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
+              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
               Random review
             </SelectableButton>
           </> : <>
@@ -490,11 +563,14 @@ export default function Workspace({
                   </Link>
                 </Card>
               )}
+              <div className="library-metadata wb-ui-text">
+                <p role="status" aria-label="Library count">{query.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
+                <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
+              </div>
+              <div className="library-filters" role="group" aria-label="Library content type">
+                {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => setTypeFilter(type)}>{label}</SelectableButton>)}
+              </div>
               <div className="library-tools">
-                <Pill>
-                  {visibleWords.length}{" "}
-                  {visibleWords.length === 1 ? "word" : "words"} collected
-                </Pill>
                 <input
                   aria-label="Search library"
                   ref={librarySearch}
@@ -503,13 +579,7 @@ export default function Workspace({
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              {visibleWords
-                .filter((w) =>
-                  (w.word + " " + w.meaning)
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-                )
-                .map((w) => (
+              {matchingWords.map((w) => (
                   <Card
                     color={
                       w.interval_days === 0 ? "paper" : collectionColor(w.id)
@@ -531,6 +601,9 @@ export default function Workspace({
                             required
                             maxLength={120}
                           />
+                        </label>
+                        <label>Content type
+                          <select name="item_type" defaultValue={itemType(w)}><option value="word">Word</option><option value="expression">Expression</option></select>
                         </label>
                         <label>
                           Meaning
@@ -593,19 +666,14 @@ export default function Workspace({
                 ))}
               {!visibleWords.length && (
                 <StatePanel
-                  title="Your next discovery starts here."
-                  description="Add your first word to begin building your library."
+                  title={words.length ? "No items in this view." : "Your next discovery starts here."}
+                  description={words.length ? "Choose another filter, or add something new." : "Add your first word to begin building your library."}
                   href="/add"
                   actionLabel="Add a word"
                   color="lavender"
                 />
               )}
-              {visibleWords.length > 0 &&
-                !visibleWords.some((w) =>
-                  (w.word + " " + w.meaning)
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-                ) && (
+              {visibleWords.length > 0 && !matchingWords.length && (
                   <StatePanel
                     title="Try a different word."
                     description="No matching words. Try another search."
@@ -622,13 +690,12 @@ export default function Workspace({
           {page === "review" &&
             (randomMode && randomQueue === null && words.length > 0 ? <LoadingState label="Opening review…" /> : card ? (
               <>
-                <p className="eyebrow" role="status">
-                  {randomMode
-                    ? `RANDOM REVIEW · ${randomPosition + 1} OF ${randomQueue?.length ?? 0}`
-                    : `${due.length} ${due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW`}
-                </p>
+                {randomMode ? <div className="review-progress wb-ui-text">
+                  <span role="status" aria-label="Session progress">{reviewedCount} / {sessionTotal}</span>
+                  <progress aria-label="Items reviewed" value={reviewedCount} max={Math.max(1, sessionTotal)} />
+                </div> : <p className="eyebrow" role="status">{due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW</p>}
                 <Card
-                  key={`${card.id}/${randomMode ? randomPosition : "due"}`}
+                  key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
                   color={collectionColor(card.id)}
                   className="panel review-card"
                 >
@@ -656,14 +723,11 @@ export default function Workspace({
               </>
             ) : (
               <div className="review-card">
-                {randomMode ? <StatePanel
-                  title="Random review complete."
-                  description="A little practice goes a long way. Come back for more."
-                  actionLabel="Shuffle again"
-                  onAction={startRandomReview}
-                  color="green"
-                  completed
-                /> : <StatePanel
+                {randomMode ? <section className="review-completion wb-ui-text">
+                  <h2>Review complete.</h2>
+                  <p>{reviewedCount} {reviewedCount === 1 ? "item" : "items"} reviewed.</p>
+                  <button type="button" onClick={() => { prepareReviewPronunciation(); startRandomReview(); }}>Start another review</button>
+                </section> : <StatePanel
                   title={
                     words.length
                       ? "You’re all caught up."
@@ -681,6 +745,7 @@ export default function Workspace({
                 />}
               </div>
             ))}
+          {page === "review" && <LearningCalendar account={account} revision={activityRevision} words={words} />}
         </>
       )}
       {deleting && (

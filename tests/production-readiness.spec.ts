@@ -162,8 +162,8 @@ test.describe("production UX regressions (mocked service)", () => {
     await page.getByRole("button", { name: "Reveal answer" }).click();
     const pending = page.waitForRequest(
       (r) =>
-        r.url().startsWith(cloudOrigin + "/rest/v1/words") &&
-        r.method() === "PATCH",
+        r.url().startsWith(cloudOrigin + "/rest/v1/rpc/record_learning_review") &&
+        r.method() === "POST",
     );
     await page.getByRole("button", { name: "Sure", exact: true }).click();
     await pending;
@@ -181,8 +181,8 @@ test.describe("production UX regressions (mocked service)", () => {
     ).toBeVisible();
     const completed = page.waitForResponse(
       (r) =>
-        r.url().startsWith(cloudOrigin + "/rest/v1/words") &&
-        r.request().method() === "PATCH",
+        r.url().startsWith(cloudOrigin + "/rest/v1/rpc/record_learning_review") &&
+        r.request().method() === "POST",
     );
     release();
     await completed;

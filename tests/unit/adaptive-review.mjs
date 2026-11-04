@@ -49,8 +49,8 @@ test('weighted selection favors overdue uncertain items while retaining strong i
   assert.ok(strongFirst > 0);
   const pool = Array.from({ length: 30 }, (_, i) => ({ ...word, id: String(i) }));
   const queue = createReviewQueue(pool, now, random);
-  assert.equal(queue.length, 12);
-  assert.equal(new Set(queue.map(card => card.id)).size, 12);
+  assert.equal(queue.length, 30);
+  assert.equal(new Set(queue.map(card => card.id)).size, 30);
 });
 test('uncertain cards return after 3–7 others, at most once, never immediately', () => {
   const queue = Array.from({ length: 12 }, (_, i) => ({ id: String(i), direction: 'forward' }));

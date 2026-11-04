@@ -11,6 +11,7 @@ export function AddWordFlow({ busy, canSave, checkingAccount, onManualSubmit }: 
         return <Card className="wb-ui-text"><p>{checkingAccount ? "Checking your account…" : "Sign in to save words to your private library."}</p>{!checkingAccount && <Link className="wb-control" href="/auth">Sign in</Link>}</Card>;
     return <form className="panel word-form" onSubmit={onManualSubmit}>
  <label>Word or phrase<input name="word" placeholder="e.g. meticulous" required maxLength={120}/></label>
+ <label>Content type<select name="item_type" defaultValue="auto"><option value="auto">Automatic</option><option value="word">Word</option><option value="expression">Expression</option></select></label>
  <label>Meaning<textarea name="meaning" placeholder="What does it mean to you?" required maxLength={2000}/></label>
  <div className="form-bottom"><span>Your words. Your meaning. Dictionary reference is available after saving.</span><button disabled={busy}>{busy ? "Saving…" : "Add to my library + "}</button></div>
  </form>;

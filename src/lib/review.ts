@@ -82,7 +82,7 @@ export function makeReviewCard(item: LearningItem, random = Math.random): Review
 export function createReviewQueue(items: LearningItem[], now = Date.now(), random = Math.random): ReviewCard[] {
   // Weighted sampling without replacement. Every item retains a nonzero chance.
   return items.map(item => ({ item, key: -Math.log(clamp(random(), Number.EPSILON, 1 - Number.EPSILON)) / reviewWeight(item, now) }))
-    .sort((a, b) => a.key - b.key).slice(0, 12).map(({ item }) => makeReviewCard(item, random));
+    .sort((a, b) => a.key - b.key).slice(0, 30).map(({ item }) => makeReviewCard(item, random));
 }
 export function reinsertUnsure(queue: ReviewCard[], position: number, random = Math.random): ReviewCard[] {
   const card = queue[position];

@@ -56,9 +56,48 @@ export async function mockCloud(
         data: initialSession,
       },
     );
+  // Legacy CRUD fixtures also exercise the new atomic review RPC. Database-level
+  // transaction/security behavior is checked independently against PostgreSQL.
+  const savedItems = new Map<string, Record<string, unknown>>();
+  const events = new Map<string, Record<string, unknown>>();
+  const routeWords = (route: Route) => words(new Proxy(route, { get(target, property) {
+    if (property === "fulfill") return async (options: Parameters<Route['fulfill']>[0]) => {
+      const rows = Array.isArray(options?.json) ? options.json : options?.json ? [options.json] : [];
+      for (const row of rows) if (row?.id) savedItems.set(row.id, { ...savedItems.get(row.id), ...row });
+      return target.fulfill(options);
+    };
+    const value = Reflect.get(target, property);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } }));
   await page.route(cloudOrigin + "/**", (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === "/rest/v1/words") return words(route);
+    if (path === "/rest/v1/words") return routeWords(route);
+    if (path === "/rest/v1/rpc/learning_calendar") return route.fulfill({ json: { tracking_since: new Date().toISOString(), days: [] } });
+    if (path === "/rest/v1/rpc/record_learning_review") {
+      const input = route.request().postDataJSON();
+      if (events.has(input.p_event_id)) return route.fulfill({ json: events.get(input.p_event_id) });
+      const changes = { due_at: input.p_due_at, interval_days: input.p_interval_days, review_state: input.p_review_state };
+      const request = new Proxy(route.request(), { get(target, property) {
+        if (property === "method") return () => 'PATCH';
+        if (property === "postDataJSON") return () => changes;
+        if (property === "url") return () => cloudOrigin + '/rest/v1/words?id=eq.' + input.p_item_id;
+        const value = Reflect.get(target, property);
+        return typeof value === 'function' ? value.bind(target) : value;
+      } });
+      return words(new Proxy(route, { get(target, property) {
+        if (property === "request") return () => request;
+        if (property === "fulfill") return async (options: Parameters<Route['fulfill']>[0]) => {
+          if (!options?.status || options.status < 400) {
+            const item = { ...savedItems.get(input.p_item_id), ...changes, id: input.p_item_id };
+            savedItems.set(input.p_item_id, item); events.set(input.p_event_id, item);
+            return target.fulfill({ ...options, json: item });
+          }
+          return target.fulfill(options);
+        };
+        const value = Reflect.get(target, property);
+        return typeof value === 'function' ? value.bind(target) : value;
+      } }));
+    }
     if (path === "/auth/v1/token") return route.fulfill({ json: session() });
     if (path === "/auth/v1/user") return route.fulfill({ json: user });
     if (path === "/auth/v1/logout") return route.fulfill({ json: {} });

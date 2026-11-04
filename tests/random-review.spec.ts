@@ -43,7 +43,7 @@ test.describe('adaptive Random Review', () => {
       }
       await page.getByRole('button', { name: 'Sure', exact: true }).click();
     }
-    await expect(page.getByRole('heading', { name: 'Random review complete.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     expect(store.writes).toHaveLength(3);
     for (const entry of store.entries()) {
       expect(entry.review_state?.last_rating).toBe('sure');
@@ -55,27 +55,22 @@ test.describe('adaptive Random Review', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
-  test('Not sure persists and returns after five other cards, without an immediate repeat', async ({ page }) => {
+  test('Not sure persists without repeating an item inside a finite session', async ({ page }) => {
     const store = await setup(page, 8);
     await page.goto('/review?mode=random');
-    await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible();
-    const first = (await page.locator('.review-card h2').textContent())!;
-    await page.getByRole('button', { name: 'Reveal answer' }).click();
-    await page.getByRole('button', { name: 'Not sure', exact: true }).click();
-    for (let i = 0; i < 5; i++) {
-      await expect(page.locator('.review-card h2')).not.toHaveText(first);
+    const seen = new Set<string>();
+    for (let i = 0; i < 8; i++) {
+      await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText(`${i} / 8`);
+      const word = (await page.locator('.review-card h2').textContent())!;
+      expect(seen.has(word)).toBe(false); seen.add(word);
       await page.getByRole('button', { name: 'Reveal answer' }).click();
-      await page.getByRole('button', { name: 'Sure', exact: true }).click();
+      await page.getByRole('button', { name: i === 0 ? 'Not sure' : 'Sure', exact: true }).click();
     }
-    await expect(page.locator('.review-card h2')).toHaveText(first);
+    await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     expect(store.entries()[0].review_state?.last_rating).toBe('unsure');
     expect(store.entries()[0].interval_days).toBe(0);
-    const state = store.entries()[0].review_state!;
-    expect(state.difficulty_score).toBeGreaterThan(.5);
-    expect(state.memory_strength).toBeLessThan(1);
-    await page.getByRole('button', { name: 'Reveal answer' }).click();
-    await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    expect(store.entries()[0].review_state?.review_count).toBe(2);
+    expect(store.entries()[0].review_state?.review_count).toBe(1);
+    expect(store.writes).toHaveLength(8);
   });
 
   test('failed save retains the revealed card for retry, then saves once and advances', async ({ page }) => {
@@ -99,7 +94,7 @@ test.describe('adaptive Random Review', () => {
     await page.goto('/review?mode=random');
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Not sure', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Random review complete.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     await page.goto('/library'); await expect(page.locator('.wb-familiarity')).toHaveText('Not sure');
     expect(store.entries()[0].review_state?.last_rating).toBe('unsure');
   });

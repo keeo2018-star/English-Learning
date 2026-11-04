@@ -1024,3 +1024,41 @@ summary:focus-visible {
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
+
+/* Learning metadata stays secondary to the flashcard. */
+.library-metadata { margin: 0 0 20px; font-size: 14px; }
+.library-metadata p { margin: 0 0 6px; font-weight: 500; }
+.library-metadata > span { color: #5b5b51; }
+.library-filters, .calendar-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.review-progress { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 14px; }
+.review-progress progress { appearance: none; height: 5px; width: min(200px, 55%); border: 0; border-radius: 8px; overflow: hidden; background: #deded7; }
+.review-progress progress::-webkit-progress-bar { background: #deded7; }
+.review-progress progress::-webkit-progress-value { background: var(--noted-lime); }
+.review-progress progress::-moz-progress-bar { background: var(--noted-lime); }
+.learning-calendar { margin-top: 40px; padding-top: 24px; border-top: 1px solid #d5d5cc; max-width: 560px; }
+.learning-calendar > summary { cursor: pointer; min-height: 48px; font-weight: 500; padding: 12px 0; }
+.learning-calendar-content { padding: 16px 0; }
+.calendar-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 20px; }
+.calendar-month h2 { font-size: 18px; letter-spacing: -.02em; margin: 0; text-align: center; }
+.calendar-month button { padding: 8px; min-width: 44px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.calendar-weekday { text-align: center; font-size: 11px; padding: 6px 0; }
+.calendar-grid .calendar-day { min-width: 0; width: 100%; min-height: 42px; padding: 4px; border-radius: 8px; border: 1px solid #ddddd5; color: var(--wb-black); background: transparent; font-size: 13px; }
+.calendar-grid .calendar-day[data-level="unknown"] { color: #77776c; border-style: dashed; }
+.calendar-grid .calendar-day[data-level="1"] { background: #edf9cb; }
+.calendar-grid .calendar-day[data-level="2"] { background: #dbf59b; }
+.calendar-grid .calendar-day[data-level="3"] { background: #c8f263; }
+.calendar-grid .calendar-day[data-level="4"] { background: var(--noted-lime); }
+.calendar-grid .calendar-day[aria-current="date"] { font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+.calendar-grid .calendar-day[aria-pressed="true"] { border: 2px solid var(--wb-black); }
+.calendar-day-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; font-size: 14px; }
+.calendar-day-summary strong { flex-basis: 100%; }
+.calendar-note { color: #5b5b51; font-size: 12px; line-height: 1.6; margin-bottom: 0; }
+@media (max-width: 480px) {
+  .calendar-grid { gap: 3px; }
+  .calendar-month h2 { font-size: 16px; }
+  .library-filters button { padding-inline: 16px; }
+}
+.review-completion { padding: 32px 24px; border: 1px solid #d5d5cc; border-radius: var(--wb-radius-card); text-align: center; }
+.review-completion h2 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 40px); }
+.review-completion p { margin: 0 0 24px; }

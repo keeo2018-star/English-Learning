@@ -161,7 +161,7 @@ test.describe("real Supabase", () => {
       await page
         .getByRole("button", { name: "Save changes", exact: true })
         .click();
-      await expect(page.getByRole("status")).toContainText("Word updated");
+      await expect(page.getByRole("status").filter({ hasText: "Word updated" })).toContainText("Word updated");
       await page.reload();
       await page.getByLabel("Search library").fill(marker);
       await expect(
