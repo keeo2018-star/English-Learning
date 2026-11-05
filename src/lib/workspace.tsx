@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -22,6 +22,7 @@ import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } f
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
 import { completeSessionCard, newReviewSession, readReviewSession, reviewSessionKey, type ReviewSession } from "./review-session";
 import { DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
+import { indexLibrary, normalizeLibraryQuery, LIBRARY_PAGE_SIZE } from "./library-search";
 type NewLearningItem = { word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = "saved" | "failed";
 function errorMessage(error: unknown, fallback: string) {
@@ -58,6 +59,8 @@ export default function Workspace({
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
+    [libraryPage, setLibraryPage] = useState(0),
+    [syncError, setSyncError] = useState(false),
     [revealed, setRevealed] = useState<string | null>(null),
     [session, setSession] = useState<ReviewSession | null>(null),
     [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
@@ -72,13 +75,13 @@ export default function Workspace({
   const loadVersion = useRef(0);
   const accountId = useRef<string | null>(null);
   const librarySearch = useRef<HTMLInputElement>(null);
+  const libraryResults = useRef<HTMLDivElement>(null);
   const revealButton = useRef<HTMLButtonElement>(null);
   const focusNextCard = useRef(false);
-  const load = useCallback(async (u: User | null) => {
+  const load = useCallback(async (u: User | null, background = false) => {
     if (supabase && (u?.id || null) !== accountId.current) return;
     const version = ++loadVersion.current;
-    setMessage("");
-    setLoadError(false);
+    if (!background) { setMessage(""); setLoadError(false); }
     try {
       if (supabase && u) {
         const all: Word[] = [];
@@ -97,8 +100,10 @@ export default function Workspace({
           throw new Error("Your local library could not be read.");
         setWords(saved);
       } else setWords([]);
+      if (version === loadVersion.current) { setSyncError(false); setLoadError(false); }
     } catch (error) {
-      if (version === loadVersion.current) {
+      if (version === loadVersion.current && background) { setSyncError(true); }
+      else if (version === loadVersion.current) {
         setWords([]);
         setLoadError(true);
         setMessage(errorMessage(error, "Could not load your library."));
@@ -141,6 +146,8 @@ export default function Workspace({
 
         setEditing(null);
         setDeleting(null);
+        setLibraryPage(0);
+        setSyncError(false);
         setReady(false);
       }
       setUser(session?.user || null);
@@ -154,7 +161,7 @@ export default function Workspace({
   }, [load]);
   useEffect(() => {
     if (!ready || (supabase && !user)) return;
-    const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current) { void load(user); } };
+    const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current && !editing) { void load(user, true); } };
     const visible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
@@ -163,7 +170,7 @@ export default function Workspace({
     const channel = client && user ? client.channel(`library:${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "words", filter: `user_id=eq.${user.id}` }, refresh).subscribe() : null;
     return () => { clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
-  }, [ready, user, load]);
+  }, [ready, user, load, editing]);
   const account = user?.id || "local-demo";
   const persistSession = useCallback((next: ReviewSession) => {
     try { localStorage.setItem(reviewSessionKey(next.account), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
@@ -430,15 +437,26 @@ export default function Workspace({
     );
     return () => clearTimeout(timer);
   }, []);
-  const visibleWords = words.filter(word => typeFilter === "all" || itemType(word) === typeFilter).filter((word) =>
-    view === "new"
-      ? word.interval_days === 0
-      : view === "learning"
-        ? word.interval_days > 0
-        : true,
-  );
-  const matchingWords = visibleWords.filter(w => (w.word + " " + w.meaning + " " + w.example).toLowerCase().includes(query.trim().toLowerCase()));
-  const wordCount = words.filter(word => itemType(word) === "word").length;
+  const deferredQuery = useDeferredValue(query);
+  const searchPending = query !== deferredQuery;
+  const libraryIndex = useMemo(() => indexLibrary(page === "library" ? words : []), [page, words]);
+  const visibleEntries = useMemo(() => libraryIndex.filter(entry =>
+    (typeFilter === "all" || entry.type === typeFilter) &&
+    (view === "new" ? entry.word.interval_days === 0 : view === "learning" ? entry.word.interval_days > 0 : true)), [libraryIndex, typeFilter, view]);
+  const matchingWords = useMemo(() => {
+    const term = normalizeLibraryQuery(deferredQuery);
+    return visibleEntries.filter(entry => !term || entry.text.includes(term)).map(entry => entry.word);
+  }, [visibleEntries, deferredQuery]);
+  const wordCount = useMemo(() => libraryIndex.filter(entry => entry.type === "word").length, [libraryIndex]);
+  const visibleWords = visibleEntries;
+  const currentPage = Math.min(libraryPage, Math.max(0, Math.ceil(matchingWords.length / LIBRARY_PAGE_SIZE) - 1));
+  const pageStart = currentPage * LIBRARY_PAGE_SIZE;
+  const displayedWords = matchingWords.slice(pageStart, pageStart + LIBRARY_PAGE_SIZE);
+  function changeLibraryPage(next: number) {
+    setLibraryPage(next);
+    libraryResults.current?.scrollIntoView({ block: "start" });
+    libraryResults.current?.focus({ preventScroll: true });
+  }
   return (
     <AppShell
       hideAddAction={page === "add"}
@@ -511,6 +529,7 @@ export default function Workspace({
         </nav>
       )}
       {message && <Feedback>{message}</Feedback>}
+      {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
       {page === "add" ? (
         <AddWordFlow
           busy={busy}
@@ -562,11 +581,11 @@ export default function Workspace({
                 </Card>
               )}
               <div className="library-metadata wb-ui-text">
-                <p role="status" aria-label="Library count">{query.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
+                <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
                 <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
               </div>
               <div className="library-filters" role="group" aria-label="Library content type">
-                {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => setTypeFilter(type)}>{label}</SelectableButton>)}
+                {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => { setTypeFilter(type); setLibraryPage(0); }}>{label}</SelectableButton>)}
               </div>
               <div className="library-tools">
                 <input
@@ -574,10 +593,11 @@ export default function Workspace({
                   ref={librarySearch}
                   placeholder="Search words or meanings…"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => { setQuery(e.target.value); setLibraryPage(0); }}
                 />
               </div>
-              {matchingWords.map((w) => (
+              <div ref={libraryResults} tabIndex={-1} role="region" className="library-results" aria-label="Library results" aria-busy={searchPending}>
+              {displayedWords.map((w) => (
                   <Card
                     color={
                       w.interval_days === 0 ? "paper" : collectionColor(w.id)
@@ -662,6 +682,12 @@ export default function Workspace({
                     </div>
                   </Card>
                 ))}
+              </div>
+              {matchingWords.length > LIBRARY_PAGE_SIZE && <nav className="library-pagination wb-ui-text" aria-label="Library pages">
+                <button type="button" className="secondary" disabled={currentPage === 0 || searchPending || !!editing} onClick={() => changeLibraryPage(currentPage - 1)}>Previous</button>
+                <span role="status">{pageStart + 1}–{Math.min(pageStart + LIBRARY_PAGE_SIZE, matchingWords.length)} of {matchingWords.length}</span>
+                <button type="button" className="secondary" disabled={pageStart + LIBRARY_PAGE_SIZE >= matchingWords.length || searchPending || !!editing} onClick={() => changeLibraryPage(currentPage + 1)}>Next</button>
+              </nav>}
               {!visibleWords.length && (
                 <StatePanel
                   title={words.length ? "No items in this view." : "Your next discovery starts here."}

@@ -1079,3 +1079,8 @@ summary:focus-visible {
   font-size: 16px;
   line-height: 1.5;
 }
+.library-results { scroll-margin-top: 24px; }
+.library-results:focus { outline: none; }
+.library-results:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 6px; border-radius: var(--wb-radius-small); }
+.library-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 24px 0; font-size: 13px; }
+.library-pagination button { padding-inline: 18px; }

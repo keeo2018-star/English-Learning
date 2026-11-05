@@ -24,12 +24,20 @@ function Pronunciation({ word, phonetics, showErrors = true, activeStyle = false
 }
 export function WordPronunciation({ word }: { word: string }) {
     const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"] | null>(null);
+    const anchor = useRef<HTMLDivElement>(null);
     useEffect(() => {
         let active = true;
-        void getPronunciations(word).then(data => { if (active) setPhonetics(data); });
-        return () => { active = false; };
+        const load = () => {
+            observer?.disconnect();
+            void getPronunciations(word).then(data => { if (active) setPhonetics(data); });
+        };
+        const observer = typeof IntersectionObserver === "function" ? new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) load();
+        }, { rootMargin: "180px 0px" }) : null;
+        if (observer && anchor.current) observer.observe(anchor.current); else load();
+        return () => { active = false; observer?.disconnect(); };
     }, [word]);
-    return phonetics && <Pronunciation word={word} phonetics={phonetics} showErrors={false} />;
+    return <div ref={anchor} className={styles.wordPronunciation}>{phonetics && <Pronunciation word={word} phonetics={phonetics} showErrors={false} />}</div>;
 }
 function DictionarySheet({ dialogId, word, meaning, onClose }: {
     dialogId: string;

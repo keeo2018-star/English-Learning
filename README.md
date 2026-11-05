@@ -152,3 +152,9 @@ Checks: `node --test tests/unit/dictionary-provider.mjs` (Node 24), `npm run bui
 `HighlightWord` and `highlightParts` render selectable lime marks only in Dictionary reference definitions, examples and synonyms. Library and Review cards and personal meanings stay unhighlighted. Matching is case-insensitive and requires complete words/phrases, with Unicode-aware boundaries. Original text, case and whitespace are preserved. Inflections are not guessed. All dictionary content is rendered as React text, never injected HTML.
 
 `tests/review-audio.spec.ts` covers Due autoplay, next-card preload, one shared player, cache reuse on reload, blocked-playback recovery and stale-response cancellation. `playwright.iphone.config.ts` includes these checks with an iPhone WebKit profile. Physical iOS installation and native autoplay policy still need device testing.
+
+## Library search performance and usability review
+
+Library displays 30 results per page and searches the entire synchronized Library using a memoized, normalized local index. Input updates are deferred separately from result rendering. Word pronunciation metadata is loaded near the viewport rather than for the complete Library. Background sync errors preserve the last loaded items and expose Retry sync; editing pauses background refresh. No database migration is required.
+
+`tests/library-performance.spec.ts` guards row/request budgets, full-Library search, pagination/filter behavior, Chinese/full-width queries and sync failure recovery. Run the standalone 1,000-item profiling sample with `node tests/performance/library-benchmark.mjs` against a running production server. See [APP_USABILITY_AUDIT.md](APP_USABILITY_AUDIT.md) for the measured comparison, confirmed remaining user-facing issues, and test limitations.

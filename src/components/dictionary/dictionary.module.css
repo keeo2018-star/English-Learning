@@ -77,3 +77,4 @@
 .reference blockquote p:first-child { margin-top: 0; }
 .reference blockquote p[lang="zh"] { color: #55554e; font-size: 15px; }
 .reference .credit { color: #65655e; font-size: 12px; line-height: 1.6; margin: 0; }
+.wordPronunciation { min-height: 48px; margin: 8px 0; }
