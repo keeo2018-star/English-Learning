@@ -15,24 +15,20 @@ export function VideoContextSection({ word }: { word: string }) {
   const [expanded, setExpanded] = useState(false);
   const [consented, setConsented] = useState(false);
   const [accent, setAccent] = useState<VideoAccent>('uk');
-  const [fitsPlayer, setFitsPlayer] = useState(false);
-  const section = useRef<HTMLElement>(null);
   const installed = useSyncExternalStore(subscribe, standalone, () => false);
   const id = useId();
-  useEffect(() => {
-    const observer = new ResizeObserver(entries => {
-      // 16:9 needs at least 356px width to satisfy the official 200px player height.
-      setFitsPlayer(entries[0].contentRect.width >= 356);
-    });
-    if (section.current) observer.observe(section.current);
-    return () => observer.disconnect();
-  }, []);
-  return <section ref={section} className={styles.section} aria-labelledby={`${id}-heading`}>
+  return <section className={styles.section} aria-labelledby={`${id}-heading`}>
     <h3 id={`${id}-heading`}>In the Wild</h3>
     <p>Hear it in a real conversation.</p>
-    <button type="button" className="wb-control wb-control-outline" aria-expanded={expanded} aria-controls={expanded ? id : undefined} onClick={() => setExpanded(value => !value)}>{expanded ? 'Hide video' : 'Watch in context'}</button>
-    {expanded && <div id={id} className={styles.expanded}>
-      {installed || !fitsPlayer ? <><p>Watch on YouGlish in your browser.</p><a className="wb-control wb-control-outline" href={officialContextUrl(word)} target="_blank" rel="noopener noreferrer" onClick={() => stopPronunciation()}>Open YouGlish ↗</a></> : <>
+    <div className={styles.card}>
+    {!expanded ? <button type="button" className={styles.preview} aria-label="Watch in context" aria-expanded={false} onClick={() => setExpanded(true)}>
+      <span className={styles.previewMeta}>VIDEO CONTEXT · {accent.toUpperCase()} ENGLISH</span>
+      <span className={styles.play} aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5v15l12-7.5z" /></svg></span>
+      <span className={styles.previewWord}>{word}</span>
+      <span className={styles.previewLabel}>{installed ? 'Watch in your browser' : 'Watch in context'}</span>
+    </button> : <div id={id} className={styles.expanded}>
+      <div className={styles.cardHeader}><span className={styles.previewMeta}>VIDEO CONTEXT</span><button type="button" className="wb-control wb-control-outline" aria-expanded={true} aria-controls={id} onClick={() => setExpanded(false)}>Hide video</button></div>
+      {installed ? <><p>Video examples for the installed app currently open in your browser.</p><a className="wb-control wb-control-outline" href={officialContextUrl(word)} target="_blank" rel="noopener noreferrer" onClick={() => stopPronunciation()}>Open YouGlish ↗</a></> : <>
         {!consented ? <div className={styles.notice}>
           <p>Loading connects to YouGlish and YouTube. They may use cookies and process your IP address and device information. Nothing loads until you choose below.</p>
           <p><a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy & terms</a></p>
@@ -45,6 +41,7 @@ export function VideoContextSection({ word }: { word: string }) {
         </>}
       </>}
     </div>}
+    </div>
   </section>;
 }
 function VideoContextPlayer({ word, accent }: { word: string; accent: VideoAccent }) {

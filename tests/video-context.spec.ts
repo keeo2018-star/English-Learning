@@ -34,6 +34,7 @@ test.describe('In the Wild', () => {
       await page.route(officialScript, route => { requests++; return route.fulfill({ contentType: 'application/javascript', body: widgetFixture }); });
       await setup(page, word);
       expect(requests).toBe(0);
+      await expect(page.getByRole('button', { name: 'Watch in context', exact: true }).locator('svg')).toBeVisible();
       await page.getByRole('button', { name: 'Watch in context', exact: true }).click();
       await expect(page.getByText('Loading connects to YouGlish and YouTube.', { exact: false })).toBeVisible();
       expect(requests).toBe(0);
@@ -93,15 +94,17 @@ test.describe('In the Wild', () => {
     await page.setViewportSize({ width, height: 844 });
     await page.route(officialScript, route => route.fulfill({ contentType: 'application/javascript', body: widgetFixture }));
     await setup(page, 'caught off guard', false);
+    const preview = page.getByRole('button', { name: 'Watch in context', exact: true });
+    await preview.scrollIntoViewIfNeeded();
+    await expect(preview.locator('svg')).toBeVisible();
+    expect(await preview.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(200);
+    await page.screenshot({ path: `/tmp/noted-video-card-preview-${width}.png` });
     await page.getByRole('button', { name: 'Watch in context', exact: true }).click();
-    if (width < 400) {
-      await expect(page.getByRole('link', { name: 'Open YouGlish' })).toBeVisible();
-      await expect(page.locator('iframe')).toHaveCount(0);
-    } else {
-      await page.getByRole('button', { name: 'Agree & load video', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'Replay', exact: true })).toBeVisible();
-      expect(await page.locator('iframe').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(356);
-    }
+    await page.getByRole('button', { name: 'Agree & load video', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Replay', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Open YouGlish' })).toHaveCount(0);
+    expect(await page.locator('iframe').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(200);
+    expect(await page.locator('iframe').evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(200);
     expect(await page.getByRole('dialog').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: `/tmp/noted-video-${width}.png` });
   });
