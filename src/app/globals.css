@@ -1084,3 +1084,5 @@ summary:focus-visible {
 .library-results:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 6px; border-radius: var(--wb-radius-small); }
 .library-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 24px 0; font-size: 13px; }
 .library-pagination button { padding-inline: 18px; }
+/* A rating locks navigation without flashing the mode controls half-transparent. */
+.review-modes[data-saving=true] button:disabled, button[data-rating-lock=true]:disabled { opacity: 1; }

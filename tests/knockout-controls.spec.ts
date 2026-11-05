@@ -102,3 +102,23 @@ for (const width of [390, 1440]) test(`one selected system across Home, Add, Lib
   await checkbox.uncheck();
   await expect(toggle).not.toHaveClass(/wb-knockout/);
 });
+
+test('cached masks still update for a changed label and resized control', async ({ page }) => {
+  test.skip(!cloudUrl, 'Requires mocked account data');
+  await mockCloud(page, route => route.fulfill({ json: [sampleWord] }));
+  await page.route('**/api/dictionary?*', route => route.fulfill({ status: 404, json: {} }));
+  await page.goto('/review');
+  const due = page.getByRole('button', { name: 'Due words', exact: true });
+  await expect(due).toHaveClass(/wb-knockout/);
+  await page.evaluate(async () => { await document.fonts.ready; await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))); });
+  const before = await due.evaluate(element => {
+    (element as HTMLElement).style.width = `${(element as HTMLElement).offsetWidth}px`;
+    return (element as HTMLElement).style.getPropertyValue('--wb-knockout-mask');
+  });
+  await due.evaluate(element => { element.firstChild!.textContent = 'Due items'; });
+  const changed = page.getByRole('button', { name: 'Due items', exact: true });
+  await expect.poll(() => changed.evaluate(element => (element as HTMLElement).style.getPropertyValue('--wb-knockout-mask'))).not.toBe(before);
+  const labelMask = await changed.evaluate(element => (element as HTMLElement).style.getPropertyValue('--wb-knockout-mask'));
+  await changed.evaluate(element => { (element as HTMLElement).style.width = `${(element as HTMLElement).offsetWidth + 45}px`; });
+  await expect.poll(() => changed.evaluate(element => (element as HTMLElement).style.getPropertyValue('--wb-knockout-mask'))).not.toBe(labelMask);
+});

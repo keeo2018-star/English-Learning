@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -58,7 +58,7 @@ export default function Workspace({
     [words, setWords] = useState<Word[]>([]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [query, setQuery] = useState(""),
+    [query, setQuery] = useState(() => searchParams.get("q") || ""),
     [libraryPage, setLibraryPage] = useState(0),
     [syncError, setSyncError] = useState(false),
     [revealed, setRevealed] = useState<string | null>(null),
@@ -116,7 +116,6 @@ export default function Workspace({
     const timer = setInterval(() => setNow(Date.now()), 30000);
     const initial = setTimeout(() => {
       setNow(Date.now());
-      setQuery(new URLSearchParams(window.location.search).get("q") || "");
       if (!supabase) void load(null);
     }, 0);
     if (!supabase)
@@ -485,6 +484,7 @@ export default function Workspace({
         user ? (
           <button
             className="text-button"
+            data-rating-lock={pendingRating !== null || undefined}
             disabled={busy}
             onClick={() => void signOut()}
           >
@@ -528,7 +528,7 @@ export default function Workspace({
         </p>
       </div>
       {page !== "add" && (
-        <nav className="review-modes" aria-label="Learning navigation">
+        <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
           {page === "review" ? <>
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
               onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
@@ -610,8 +610,8 @@ export default function Workspace({
                   aria-label="Search library"
                   ref={librarySearch}
                   placeholder="Search words or meanings…"
-                  value={query}
-                  onChange={(e) => { setQuery(e.target.value); setLibraryPage(0); }}
+                  defaultValue={query}
+                  onChange={(e) => { const value = e.target.value; startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
                 />
               </div>
               <div ref={libraryResults} tabIndex={-1} role="region" className="library-results" aria-label="Library results" aria-busy={searchPending}>

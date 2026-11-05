@@ -43,6 +43,28 @@ test.describe('Library search performance and reliability', () => {
     expect(state.lookups.length).toBeLessThan(35);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
+  test('query links and rapid native input keep the latest search text and stable selected controls', async ({ page }) => {
+    await setup(page, 1000);
+    await page.goto('/library?q=needle');
+    const input = page.getByLabel('Search library');
+    await expect(input).toHaveValue('needle');
+    await expect(page.locator('.word-row')).toHaveCount(1);
+    const active = page.getByRole('group', { name: 'Library content type' }).getByRole('button', { name: 'All', exact: true });
+    await expect(active).toHaveClass(/wb-knockout/);
+    await page.evaluate(async () => { await document.fonts.ready; await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))); });
+    await active.evaluate(element => {
+      const state = { writes: 0 };
+      new MutationObserver(records => { state.writes += records.length; }).observe(element, { attributes: true, attributeFilter: ['style'] });
+      Object.assign(window, { stableSearchControl: state });
+    });
+    await input.fill(''); await input.pressSequentially('caught off guard');
+    await expect(input).toHaveValue('caught off guard');
+    await expect(page.locator('.word-row')).toHaveCount(1);
+    await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await input.fill('捕捉'); await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await page.evaluate(() => (window as unknown as { stableSearchControl: { writes: number } }).stableSearchControl.writes)).toBe(0);
+  });
   test('pagination stays bounded, filters reset the page, and full-width/Chinese/example searches work', async ({ page }) => {
     await setup(page, 61); await page.goto('/library');
     const pages = page.getByRole('navigation', { name: 'Library pages' });

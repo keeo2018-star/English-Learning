@@ -8,7 +8,7 @@ import { selectedControlSelector } from "./selection";
 // remains accessible and determines sizing; only the black surface is masked.
 function maskLabel(element: HTMLElement) {
   const bounds = element.getBoundingClientRect();
-  if (!bounds.width || !bounds.height) return;
+  if (!bounds.width || !bounds.height) return false;
   const width = element.offsetWidth;
   const height = element.offsetHeight;
   const scaleX = bounds.width / width;
@@ -18,7 +18,7 @@ function maskLabel(element: HTMLElement) {
   canvas.width = Math.ceil(width * density);
   canvas.height = Math.ceil(height * density);
   const context = canvas.getContext('2d');
-  if (!context) return;
+  if (!context) return false;
   context.scale(density, density);
   context.fillStyle = '#fff';
   context.fillRect(0, 0, width, height);
@@ -60,6 +60,7 @@ function maskLabel(element: HTMLElement) {
   element.style.setProperty('--wb-knockout-mask', `url("${canvas.toDataURL()}")`);
   element.style.setProperty('--wb-knockout-inset', `-${getComputedStyle(element).borderLeftWidth}`);
   element.classList.add('wb-knockout');
+  return true;
 }
 
 export function KnockoutControls() {
@@ -68,12 +69,19 @@ export function KnockoutControls() {
     let frame = 0;
     let disposed = false;
     const observed = new Set<HTMLElement>();
-    const schedule = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(update);
-    };
-    const resize = new ResizeObserver(schedule);
+    const dirty = new Set<HTMLElement>();
+    const sizes = new Map<HTMLElement, { width: number; height: number }>();
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const invalidateAll = () => { for (const element of observed) dirty.add(element); schedule(); };
+    const resize = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const element = entry.target as HTMLElement, previous = sizes.get(element);
+        if (!previous || previous.width !== element.offsetWidth || previous.height !== element.offsetHeight) dirty.add(element);
+      }
+      if (dirty.size) schedule();
+    });
     function update() {
+      frame = 0;
       if (disposed) return;
       const selected = new Set(document.querySelectorAll<HTMLElement>(selectedControlSelector));
       for (const element of observed) {
@@ -82,29 +90,40 @@ export function KnockoutControls() {
         element.style.removeProperty('--wb-knockout-mask');
         element.style.removeProperty('--wb-knockout-inset');
         resize.unobserve(element);
-        observed.delete(element);
+        observed.delete(element); dirty.delete(element); sizes.delete(element);
       }
       for (const element of selected) {
-        if (!observed.has(element)) { observed.add(element); resize.observe(element); }
-        maskLabel(element);
+        if (!observed.has(element)) { observed.add(element); dirty.add(element); resize.observe(element); }
+        if (dirty.has(element)) {
+          if (maskLabel(element)) sizes.set(element, { width: element.offsetWidth, height: element.offsetHeight });
+          else sizes.delete(element); // Hidden Activity subtrees must repaint when shown again.
+          dirty.delete(element);
+        }
       }
     }
-    const mutations = new MutationObserver(schedule);
+    const mutations = new MutationObserver(records => {
+      for (const record of records) {
+        const element = record.target instanceof Element ? record.target : record.target.parentElement;
+        const control = element?.closest<HTMLElement>(selectedControlSelector);
+        if (control) dirty.add(control);
+      }
+      schedule();
+    });
     mutations.observe(document.body, {
       subtree: true, childList: true, characterData: true, attributes: true,
       attributeFilter: ['aria-current', 'aria-pressed', 'aria-selected', 'aria-checked', 'data-selected'],
     });
-    window.addEventListener('resize', schedule);
-    document.fonts.addEventListener('loadingdone', schedule);
-    void document.fonts.ready.then(() => { if (!disposed) schedule(); });
+    window.addEventListener('resize', invalidateAll);
+    document.fonts.addEventListener('loadingdone', invalidateAll);
+    void document.fonts.ready.then(() => { if (!disposed) invalidateAll(); });
     schedule();
     return () => {
       disposed = true;
       cancelAnimationFrame(frame);
       mutations.disconnect();
       resize.disconnect();
-      window.removeEventListener('resize', schedule);
-      document.fonts.removeEventListener('loadingdone', schedule);
+      window.removeEventListener('resize', invalidateAll);
+      document.fonts.removeEventListener('loadingdone', invalidateAll);
       for (const element of observed) {
         element.classList.remove('wb-knockout');
         element.style.removeProperty('--wb-knockout-mask');
