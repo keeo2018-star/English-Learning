@@ -3,7 +3,7 @@ import base from './playwright.config';
 
 export default defineConfig({
   ...base,
-  testMatch: ['**/library-performance.spec.ts', '**/learning-progress.spec.ts', '**/mobile-selection-inputs.spec.ts', '**/review-audio.spec.ts', '**/dictionary-highlight.spec.ts', '**/dictionary-controls.spec.ts', '**/pronunciation-consistency.spec.ts'],
+  testMatch: ['**/dictionary-edit.spec.ts', '**/library-performance.spec.ts', '**/learning-progress.spec.ts', '**/mobile-selection-inputs.spec.ts', '**/review-audio.spec.ts', '**/dictionary-highlight.spec.ts', '**/dictionary-controls.spec.ts', '**/pronunciation-consistency.spec.ts'],
   use: {
     ...base.use,
     ...devices['iPhone 13'],

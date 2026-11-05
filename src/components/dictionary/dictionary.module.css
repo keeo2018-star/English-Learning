@@ -78,3 +78,19 @@
 .reference blockquote p[lang="zh"] { color: #55554e; font-size: 15px; }
 .reference .credit { color: #65655e; font-size: 12px; line-height: 1.6; margin: 0; }
 .wordPronunciation { min-height: 48px; margin: 8px 0; }
+/* Keep one contour even when the dialog autofocuses Close. */
+.header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
+.header .close:focus-visible { background: var(--noted-lime); }
+.personalHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.personalHeader h3 { margin: 0; }
+.editActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.dragHandle { display: none; }
+@media (max-width: 699px) {
+  .dragHandle { display: flex; justify-content: center; padding: 0 0 12px; }
+  .dragHandle span { width: 36px; height: 4px; border-radius: 999px; background: #a4a49a; }
+  .sheet { transform: translateY(var(--dictionary-drag-y, 0px)); transition: transform 160ms ease-out; }
+  .sheet[data-dragging=true] { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+@media (forced-colors: active) { .header .close:focus-visible { background: Highlight; color: HighlightText; border-color: ButtonText; } }
+.savedNote { display: block; margin-top: 8px; font-size: 12px; color: #55554e; }

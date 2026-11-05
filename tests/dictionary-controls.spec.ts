@@ -45,7 +45,9 @@ test.describe('Dictionary control consistency', () => {
     await expect(dialog.getByText('fortune', { exact: true })).toBeVisible();
     await page.keyboard.press('Tab');
     await close.focus();
-    await expect(close).toHaveCSS('outline-width', '2px');
+    await expect(close).toHaveCSS('outline-style', 'none');
+    await expect(close).toHaveCSS('border-top-width', '1px');
+    await expect(close).toHaveCSS('box-shadow', 'none');
     expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     if (width === 390 || width === 1440) await page.screenshot({ path: `/tmp/noted-dictionary-controls-${width}.png`, fullPage: true });
     await close.click();

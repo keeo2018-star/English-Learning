@@ -262,6 +262,24 @@ export default function Workspace({
       setBusy(false);
     }
   }
+  async function saveDictionaryMeaning(word: Word, value: string) {
+    const meaning = value.trim();
+    if (!meaning || meaning.length > 2000) throw new Error("Enter a meaning between 1 and 2,000 characters.");
+    if (saving.current) throw new Error("A save is already in progress. Please try again.");
+    saving.current = true;
+    ++loadVersion.current;
+    setBusy(true); setMessage("");
+    try {
+      if (supabase) {
+        if (!user) throw new Error("Please sign in first.");
+        const { data, error } = await supabase.from("words").update({ meaning }).eq("id", word.id).eq("user_id", user.id).select("*").single();
+        if (error) throw new Error(errorMessage(error, "Could not save your meaning. Please try again."));
+        if (accountId.current !== user.id) throw new Error("Your account changed. Please reopen the item.");
+        setWords(previous => previous.map(item => item.id === word.id ? data : item));
+      } else persistLocal(words.map(item => item.id === word.id ? { ...item, meaning } : item));
+      setMessage("Meaning updated.");
+    } finally { saving.current = false; setBusy(false); }
+  }
   async function edit(e: React.FormEvent<HTMLFormElement>, word: Word) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -662,7 +680,7 @@ export default function Workspace({
                       </div>
                     )}
                     <div className="word-actions">
-                      <DictionaryButton word={w.word} meaning={w.meaning} />
+                      <DictionaryButton word={w.word} meaning={w.meaning} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
                       <button
                         className="text-button"
                         disabled={busy || editing === w.id}
@@ -728,7 +746,7 @@ export default function Workspace({
                   {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning : card.word}</p>
-                      <DictionaryButton word={card.word} meaning={card.meaning} />
+                      <DictionaryButton word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
