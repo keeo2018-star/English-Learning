@@ -1,4 +1,5 @@
 import { audioSource } from './audio-source';
+import { pauseContextVideos } from './learning-media';
 import { validateDictionaryWord, type DictionaryResult } from './dictionary';
 
 export const PRONUNCIATION_SETTINGS = Object.freeze({ locale: 'en-GB', rate: 1, pitch: 1, volume: 1 });
@@ -242,6 +243,7 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   owner: symbol; text: string; accent?: Accent; recording?: string | null;
   audio: HTMLAudioElement; report: (status: PronunciationStatus) => void; automatic?: boolean;
 }) {
+  pauseContextVideos();
   stopPronunciation();
   const title = englishText(text);
   if (!/\p{Script=Latin}/u.test(title)) return;

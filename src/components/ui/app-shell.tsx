@@ -55,6 +55,7 @@ export function AppShell({
         </main>
         <footer className="wb-app-footer">
           <span>NOTED /</span>
+          <Link href="/privacy">Privacy & terms</Link>
           <span>A LITTLE EVERY DAY. A LOT OVER TIME.</span>
         </footer>
       </div>

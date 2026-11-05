@@ -7,6 +7,7 @@ import { HighlightWord } from "./highlight-word";
 import { PronunciationControl } from "./pronunciation-control";
 import { getPronunciations, rememberPronunciations } from "@/lib/pronunciation";
 import styles from "./dictionary.module.css";
+import { VideoContextSection } from './video-context-section';
 export function DictionaryButton({ word, meaning, onSaveMeaning }: {
     onSaveMeaning?: (meaning: string) => Promise<void>;
     word: string;
@@ -158,6 +159,7 @@ function DictionarySheet({ dialogId, word, meaning, onSaveMeaning, onClose }: {
  <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy ? "Saving…" : "Save meaning"}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={() => { setEditingMeaning(false); setMeaningError(""); requestAnimationFrame(() => editButton.current?.focus({ preventScroll: true })); }}>Cancel</button></div>
  </form> : <><p className="wb-learning-content">{meaning}</p>{meaningSaved && <span role="status" className={`${styles.savedNote} wb-ui-text`}>Meaning saved.</span>}</>}
  </aside>
+ <VideoContextSection word={word} />
  {!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" className="wb-control" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
  {result && <div className={styles.reference}>

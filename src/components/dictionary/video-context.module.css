@@ -1,0 +1,13 @@
+.section { border-top: 1px solid #d5d5cc; margin: 28px 0; padding-top: 24px; min-width: 0; }
+.section h3 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 8px; }
+.section p { font-size: 15px; line-height: 1.65; margin: 0 0 16px; overflow-wrap: anywhere; }
+.expanded { margin-top: 20px; min-width: 0; }
+.notice { background: var(--wb-grey); padding: 16px; border-radius: var(--wb-radius-small); }
+.accents, .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.section button, .section a:global(.wb-control) { min-height: 44px; font-size: 14px; }
+.query { font-weight: 500; }
+.section .meta { font-size: 12px; color: #55554e; margin: 12px 0; }
+.widget { width: 100%; min-width: 0; min-height: 200px; margin-bottom: 16px; }
+/* Do not crop the official widget, its captions, branding, controls or ads. */
+.widget iframe { max-width: 100%; min-height: 200px; border: 0; }
+.widget[hidden] { display: none; }
