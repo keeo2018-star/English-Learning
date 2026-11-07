@@ -17,19 +17,22 @@ export default function Home() {
         <Link href="/add" aria-label="Add" aria-describedby="home-add-description" className={`${styles.action} ${styles.add}`}>
           <span className={styles.actionCopy}>
             <span className={styles.label}>Add</span>
-            <span id="home-add-description" className={styles.description}>A word, phrase, expression or sentence.</span>
+            <span id="home-add-description" className={styles.description}>Save your own words.</span>
           </span><ArrowIcon />
+        </Link>
+        <Link href="/discover" aria-label="Discover" aria-describedby="home-discover-description" className={`${styles.action} ${styles.discover}`}>
+          <span className={styles.actionCopy}><span className={styles.label}>Discover</span><span id="home-discover-description" className={styles.description}>Find words worth learning.</span></span><ArrowIcon />
         </Link>
         <Link href="/review?mode=random" onClick={() => prepareReviewPronunciation()} aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
           <span className={styles.actionCopy}>
             <span className={styles.label}>Random Review</span>
-            <span id="home-review-description" className={styles.description}>A little repetition goes a long way.</span>
+            <span id="home-review-description" className={styles.description}>Make it stick.</span>
           </span><ArrowIcon />
         </Link>
-        <Link href="/library" aria-label="Library" className={`${styles.action} ${styles.library}`}>
+      </div>
+        <Link href="/library" aria-label="Library" className={styles.library}>
           <span className={styles.label}>Library</span><ArrowIcon />
         </Link>
-      </div>
     </section>
   </AppShell>;
 }

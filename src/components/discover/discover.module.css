@@ -1,0 +1,32 @@
+.page { max-width: 760px; margin: 0 auto; }
+.header { margin: 0 0 28px; }
+.header h1 { font-size: clamp(32px, 5vw, 48px); letter-spacing: -.04em; line-height: 1.1; margin: 12px 0 0; }
+.page .blue { background: #8cb8ff; color: var(--wb-black); padding: 28px; border-radius: var(--wb-radius-card); min-width: 0; }
+.blue h2 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; letter-spacing: -.035em; margin: 12px 0 20px; overflow-wrap: anywhere; }
+.blue .word { font-size: clamp(36px, 7vw, 60px); margin: 12px 0 20px; }
+.blue h2:focus { outline: none; }
+.blue p { line-height: 1.7; margin: 20px 0; }
+.blue .note, .note { font-size: 13px; line-height: 1.7; }
+.blue blockquote { margin: 20px 0 28px; padding-left: 16px; border-left: 2px solid var(--wb-black); font-size: 17px; font-weight: 400; line-height: 1.7; overflow-wrap: anywhere; }
+.blue blockquote::before, .blue blockquote::after { content: none; }
+.blue .meaning { font-size: 25px; font-weight: 500; }
+.blue .meaning:focus { outline: none; }
+.choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.choices button { justify-content: flex-start; text-align: left; min-height: 52px; white-space: normal; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.actions button, .blue button { min-height: 48px; }
+.blue .unknown { margin-top: 20px; }
+.progress { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 13px; }
+.progress span { white-space: nowrap; }
+.progress progress { height: 5px; width: 100%; border: 0; border-radius: 99px; background: var(--wb-grey); accent-color: #8cb8ff; overflow: hidden; }
+.progress progress::-webkit-progress-bar { background: var(--wb-grey); }
+.progress progress::-webkit-progress-value { background: #8cb8ff; }
+.progress progress::-moz-progress-bar { background: #8cb8ff; }
+.dailyHeader h2 { font-size: 26px; margin: 24px 0 8px; }
+.dailyHeader p { font-size: 14px; margin: 0; }
+.options { margin-top: 28px; }
+.options summary { cursor: pointer; font-size: 13px; padding: 12px 0; min-height: 44px; }
+.sources { margin-top: 28px; font-size: 12px; }
+.error { padding: 20px; border: 1px solid #ccc; border-radius: 16px; margin-bottom: 24px; }
+.error a { display: inline-block; margin-left: 16px; }
+@media (max-width: 699px) { .page .blue { padding: 24px; } .actions { align-items: stretch; } .actions button { flex: 1 1 auto; } }

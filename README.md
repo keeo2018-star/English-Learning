@@ -11,9 +11,11 @@ npm ci
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Routes: `/` Add and Random Review, `/auth` sign in / sign up / request password reset, `/auth/reset` set a new password, `/add` collect words, `/review` practice due cards, `/library` search, edit, and delete words. Local demo data stays in this browser and is not automatically uploaded when cloud storage is enabled.
+Routes: `/` Add, Discover and Random Review, `/discover` optional vocabulary check and daily words, `/auth` sign in / sign up / request password reset, `/auth/reset` set a new password, `/add` collect words, `/review` practice due cards, `/library` search, edit, and delete words. Local demo data stays in this browser and is not automatically uploaded when cloud storage is enabled.
 
 Smart Add uses [Datamuse](https://www.datamuse.com/api/) autocomplete, existing UAPI bilingual definitions and MyMemory for complete-expression translation. See [SMART_ADD.md](SMART_ADD.md) for provider limits, manual-edit guarantees and the separate preflight/migration required before English-only saves can work with the original production constraint.
+
+Discover setup, licensed vocabulary sources, recommendation rules and migration safety are documented in [DISCOVER.md](DISCOVER.md).
 
 ## Random review
 
