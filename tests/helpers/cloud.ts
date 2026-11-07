@@ -43,6 +43,9 @@ export async function mockCloud(
   initialSession = session(),
 ) {
   await page.route('**/api/pronunciation?*', route => route.fulfill({ status: 503, body: 'Recording fixture unavailable' }));
+  // Legacy UI tests keep their manual meanings; Smart Add tests override these.
+  await page.route('**/api/smart-add/suggestions?*', route => route.fulfill({ json: { suggestions: [] } }));
+  await page.route('**/api/smart-add/meaning', route => route.fulfill({ json: { meaning: '', source: null } }));
   if (signedIn)
     await page.addInitScript(
       ({ key, data }) => {

@@ -13,6 +13,8 @@ npm run dev -- --hostname 0.0.0.0
 
 Routes: `/` Add and Random Review, `/auth` sign in / sign up / request password reset, `/auth/reset` set a new password, `/add` collect words, `/review` practice due cards, `/library` search, edit, and delete words. Local demo data stays in this browser and is not automatically uploaded when cloud storage is enabled.
 
+Smart Add uses [Datamuse](https://www.datamuse.com/api/) autocomplete, existing UAPI bilingual definitions and MyMemory for complete-expression translation. See [SMART_ADD.md](SMART_ADD.md) for provider limits, manual-edit guarantees and the separate preflight/migration required before English-only saves can work with the original production constraint.
+
 ## Random review
 
 Reveal an item, then choose **Not sure** or **Sure**. The choice is saved before the next card appears; failed saves leave the answer available for retry. Both review modes use the same internal adaptive model. Technical scores and intervals are not shown in the controls.
@@ -137,7 +139,7 @@ For live deployed testing, securely supply one confirmed disposable test account
 
 ## Personal meanings and dictionary reference
 
-`/add` saves the user's word, meaning and optional example through the existing Supabase/local flow. Review scheduling and ownership policies are unchanged. No dictionary definition is selected, copied, or saved automatically.
+`/add` saves through the existing Supabase/local flow. Smart Add may suggest an editable Chinese meaning; only the user's submitted form values are saved, and saved items are never updated by later suggestion responses. Review scheduling and ownership policies are unchanged. English-only capture needs the focused constraint migration described in SMART_ADD.md.
 
 Library items provide a **Dictionary** button. Review provides it after revealing the personal meaning. An accessible modal bottom sheet keeps **My meaning** separate from reference content. UK/US pronunciation, Chinese and English definitions, and up to three bilingual examples appear when available; synonyms are collapsed. Audio never autoplays and failure does not affect the item.
 

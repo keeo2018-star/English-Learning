@@ -204,8 +204,8 @@ export default function Workspace({
       created_at: new Date().toISOString(),
     };
     try {
-      if (!entry.word || !entry.meaning)
-        throw new Error("Enter a word and its meaning.");
+      if (!entry.word)
+        throw new Error("Enter a word or expression.");
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
         const { data, error } = await supabase
@@ -213,6 +213,7 @@ export default function Workspace({
           .insert({ ...entry, user_id: user.id })
           .select("*")
           .single();
+        if (error && !entry.meaning && error.code === '23514') throw new Error('English-only saving needs the database update. Add a meaning for now.');
         if (error) throw error;
         if (accountId.current !== user.id) return "failed";
         setWords((previous) => [data, ...previous]);
@@ -292,8 +293,8 @@ export default function Workspace({
     setBusy(true);
     setMessage("");
     try {
-      if (!changes.word || !changes.meaning)
-        throw new Error("Enter a word and its meaning.");
+      if (!changes.word)
+        throw new Error("Enter a word or expression.");
       let updated = { ...word, ...changes };
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
@@ -406,7 +407,8 @@ export default function Workspace({
   const sessionTotal = session?.queue.filter(entry => session.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
   const reviewedCount = session?.completed.length ?? 0;
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
-  const direction = randomMode ? reviewCard?.direction ?? "forward" : "forward";
+  const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
+  const direction = selectedDirection === 'reverse' && !card?.meaning.trim() ? 'forward' : selectedDirection;
   const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
   useEffect(() => {
     if (focusNextCard.current) {
@@ -646,7 +648,6 @@ export default function Workspace({
                           <textarea
                             name="meaning"
                             defaultValue={w.meaning}
-                            required
                             maxLength={2000}
                           />
                         </label>
@@ -745,7 +746,7 @@ export default function Workspace({
                   {(!randomMode || direction === "forward" || revealed === card.id) && <ReviewPronunciation text={card.word} automatic={autoPronunciation} />}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning : card.word}</p>
+                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       <DictionaryButton word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
