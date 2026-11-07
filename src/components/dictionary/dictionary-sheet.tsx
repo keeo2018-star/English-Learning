@@ -159,7 +159,6 @@ function DictionarySheet({ dialogId, word, meaning, onSaveMeaning, onClose }: {
  <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy ? "Saving…" : "Save meaning"}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={() => { setEditingMeaning(false); setMeaningError(""); requestAnimationFrame(() => editButton.current?.focus({ preventScroll: true })); }}>Cancel</button></div>
  </form> : <><p className="wb-learning-content">{meaning}</p>{meaningSaved && <span role="status" className={`${styles.savedNote} wb-ui-text`}>Meaning saved.</span>}</>}
  </aside>
- <VideoContextSection word={word} />
  {!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" className="wb-control" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
  {result && <div className={styles.reference}>
@@ -170,5 +169,6 @@ function DictionarySheet({ dialogId, word, meaning, onSaveMeaning, onClose }: {
  {!result.chinese.length && !result.english.length && !result.examples.length && <p className="wb-ui-text">No definitions or examples available for this entry.</p>}
  <p className={`${styles.credit} wb-ui-text`}>Reference via UAPI. Your saved meaning stays yours.</p>
  </div>}
+ <VideoContextSection word={word} />
  </dialog>;
 }

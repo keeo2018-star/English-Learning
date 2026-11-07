@@ -134,12 +134,12 @@ test.describe('mobile interface selection and iPhone field typography', () => {
   });
 });
 
-test('desktop field sizes remain unchanged', async ({ page, isMobile }) => {
+test('desktop search and capture fields remain readable', async ({ page, isMobile }) => {
   test.skip(!cloudUrl || isMobile, 'Desktop typography check');
   await page.setViewportSize({ width: 1440, height: 900 });
   await setup(page);
   await page.goto('/library');
   await expect(page.getByLabel('Search library')).toHaveCSS('font-size', '16px');
   await page.goto('/add');
-  await expect(page.getByLabel('Word or phrase')).toHaveCSS('font-size', '13px');
+  await expect(page.getByLabel('Word or phrase')).toHaveCSS('font-size', '16px');
 });

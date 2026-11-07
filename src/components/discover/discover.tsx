@@ -103,8 +103,8 @@ export default function Discover() {
   </Card> : !data ? !error && <LoadingState label="Finding your place…" /> : <>
    {assessment?.status === 'in_progress' && assessment.question ? <section aria-label="Vocabulary check">
     <div className={styles.progress}><span>{assessment.responses.length + 1} / 16</span><progress aria-label="Vocabulary check progress" value={assessment.responses.length} max={16} /></div>
-    <Card className={styles.blue} key={cardKey}><Pill>{posLabel(assessment.question.pos)}</Pill><h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{assessment.question.word}</h2>
-     <PronunciationControl text={assessment.question.word} accent="UK" />
+    <Card className={`${styles.blue} wb-learning-card`} key={cardKey}><Pill>{posLabel(assessment.question.pos)}</Pill><h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{assessment.question.word}</h2>
+     <PronunciationControl text={assessment.question.word} accent="UK" compact />
      {assessment.question.example && <blockquote className="wb-learning-content">{assessment.question.example}</blockquote>}
      <p>What does this word mean?</p><div className={styles.choices} role="group" aria-label="Meaning choices">{assessment.question.choices.map((option, index) => <SelectableButton key={option.id} selected={choice?.key === cardKey && choice.id === option.id} className="wb-control wb-control-outline" disabled={busy} onClick={() => answer(option.id)}><span aria-hidden="true">{String.fromCharCode(65 + index)}.</span> {option.meaning}</SelectableButton>)}</div>
      <button type="button" className={`wb-control wb-control-outline ${styles.unknown}`} disabled={busy} onClick={() => answer(0)}>I don’t know</button>
@@ -119,8 +119,8 @@ export default function Discover() {
    </Card> : !data.daily ? <button type="button" className="wb-control" disabled={busy} onClick={() => void perform('daily')}>Open today’s words</button> : item && progress ? <section aria-label="Daily Discover">
     <div className={styles.dailyHeader}><h2>{data.daily.items.length === 10 ? 'Your daily 10.' : 'Your daily picks.'}</h2><p>Picked for your current level.</p></div>
     <div className={styles.progress}><span>{progress.completed + 1} / {data.daily.items.length}</span><progress aria-label="Daily Discover progress" value={progress.completed} max={Math.max(1, data.daily.items.length)} /></div>
-    <Card className={styles.blue} key={cardKey}>
-     <h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{item.word}</h2><PronunciationControl text={item.word} accent="UK" />
+    <Card className={`${styles.blue} wb-learning-card`} key={cardKey}>
+     <h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{item.word}</h2><PronunciationControl text={item.word} accent="UK" compact />
      {revealed !== cardKey ? <><p>Do you know this word?</p><button type="button" className="wb-control" onClick={() => setRevealed(cardKey)}>Reveal meaning</button></> : <>
       <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p><blockquote className="wb-learning-content">{item.example}</blockquote>
       <div className={styles.actions}><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => respond('know')}>I know it</button><button type="button" className="wb-control" disabled={busy} onClick={() => respond('save')}>Save to Library</button></div>

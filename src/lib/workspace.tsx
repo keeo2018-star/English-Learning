@@ -740,16 +740,16 @@ export default function Workspace({
                 <Card
                   key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
                   color={collectionColor(card.id)}
-                  className="panel review-card"
+                  className="panel review-card wb-learning-card"
                 >
                   <h2 className="wb-learning-content">{prompt}</h2>
                   {(!randomMode || direction === "forward" || revealed === card.id) && <ReviewPronunciation text={card.word} automatic={autoPronunciation} />}
                   {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
-                      <DictionaryButton word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
+                      <DictionaryButton word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

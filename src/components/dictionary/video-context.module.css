@@ -1,17 +1,17 @@
-.section { border-top: 1px solid #d5d5cc; margin: 28px 0; padding-top: 24px; min-width: 0; }
+.section { border-top: 1px solid #d5d5cc; margin: 24px 0 0; padding-top: 24px; min-width: 0; }
 .section h3 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 8px; }
 .section p { font-size: 15px; line-height: 1.65; margin: 0 0 16px; overflow-wrap: anywhere; }
 .card { border: 1px solid #d5d5cc; border-radius: var(--wb-radius-small); min-width: 0; background: var(--wb-grey); }
-.section .preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; width: 100%; min-height: 220px; aspect-ratio: 16 / 9; padding: 20px; border: 0; border-radius: inherit; background: transparent; color: var(--wb-black); cursor: pointer; text-align: center; }
+.section .preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 160px; padding: 16px; border: 0; border-radius: inherit; background: transparent; color: var(--wb-black); cursor: pointer; text-align: center; }
 .section .preview:hover { background: #e1e1d9; }
 .section .preview:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 3px; }
-.play { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; background: var(--noted-lime); color: var(--wb-black); }
+.play { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; background: var(--noted-lime); color: var(--wb-black); }
 .play svg { margin-left: 3px; }
 .previewMeta { font-size: 10px; letter-spacing: .06em; font-weight: 500; line-height: 1.4; }
 .previewWord { font-size: 20px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .previewLabel { font-size: 13px; font-weight: 400; }
 .expanded { padding: 16px; min-width: 0; }
-.cardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.cardHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .notice { background: var(--wb-grey); padding: 16px; border-radius: var(--wb-radius-small); }
 .accents, .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .section button, .section a:global(.wb-control) { min-height: 44px; font-size: 14px; }

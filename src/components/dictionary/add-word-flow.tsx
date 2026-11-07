@@ -109,8 +109,11 @@ function SmartAddForm({ busy, onManualSubmit }: { busy: boolean; onManualSubmit:
         onPointerMove={event => { const start = touch.current; if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 12) touch.current = null; }}
         onClick={event => { if (ignoreClick.current && event.detail !== 0) { ignoreClick.current = false; return; } choose(item); }}><span>{item.word}</span>{item.meaning && <small>{item.meaning}</small>}</button>)}</div>}
     </div>
-    <label>Meaning<textarea ref={meaningInput} aria-label="Meaning" name="meaning" value={meaning} onCompositionStart={() => { manual.current = true; manualRevision.current++; setStatus(''); }} onChange={event => { manual.current = true; manualRevision.current++; setMeaning(event.target.value); setStatus(''); }} placeholder="中文解释或你的理解（可留空）" maxLength={2000} disabled={busy} /></label>
-    <div className={styles.meaningStatus}><span role={status ? 'status' : undefined}>{status}</span><button type="button" className="text-button" disabled={busy || !word.trim()} onClick={() => { explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
+    <div className={styles.meaningField}>
+      <div className={styles.meaningHeader}><label htmlFor={`${id}-meaning`}>Meaning</label><button type="button" className="text-button" disabled={busy || !word.trim()} onClick={() => { explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
+      <textarea ref={meaningInput} id={`${id}-meaning`} rows={3} aria-label="Meaning" name="meaning" value={meaning} onCompositionStart={() => { manual.current = true; manualRevision.current++; setStatus(''); }} onChange={event => { manual.current = true; manualRevision.current++; setMeaning(event.target.value); setStatus(''); }} placeholder="中文解释或你的理解（可留空）" maxLength={2000} disabled={busy} />
+      {status && <p className={styles.meaningStatus} role="status">{status}</p>}
+    </div>
     <label>Content type<select name="item_type" value={type} onChange={event => { version.current++; setType(event.target.value); }} disabled={busy}><option value="auto">Automatic</option><option value="word">Word</option><option value="expression">Expression</option></select></label>
     <div className="form-bottom"><span>Your meaning stays editable. <Link href="/privacy">Suggestion sources</Link></span><button disabled={busy}>{busy ? 'Saving…' : 'Add to my library + '}</button></div>
   </form>;

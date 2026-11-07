@@ -2,7 +2,7 @@
   box-sizing: border-box;
 }
 html {
-  scroll-padding-bottom: 110px;
+  scroll-padding-bottom: var(--wb-nav-clearance);
 }
 body {
   margin: 0;
@@ -145,13 +145,13 @@ summary:focus-visible {
 }
 .wb-app {
   min-height: 100vh;
-  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--wb-nav-clearance);
   background: var(--wb-offwhite);
 }
 .wb-app-frame {
   max-width: 1440px;
   margin: auto;
-  padding: 0 var(--wb-space-5);
+  padding: 0 var(--wb-page-gutter);
 }
 .wb-skip {
   position: absolute;
@@ -172,7 +172,7 @@ summary:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 26px 0;
+  padding: 24px 0;
   border: 0;
   letter-spacing: normal;
 }
@@ -208,28 +208,23 @@ summary:focus-visible {
 }
 .wb-app-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  font-size: 9px;
+  gap: 16px;
+  margin-top: 32px;
+  padding: 16px 0;
+  font-size: 11px;
   line-height: 1.5;
-  letter-spacing: 0.03em;
-  margin-top: 64px;
-  padding: 24px 0;
-  border-top: 1px solid #ccc;
+  color: #65655e;
 }
-.wb-app-footer > span:last-child {
-  max-width: 180px;
-  text-align: right;
-}
+.wb-app-footer a { display: inline-flex; align-items: center; min-height: 44px; }
 .wb-page-content {
-  padding-top: 24px;
+  padding-top: 16px;
   min-width: 0;
 }
 .wb-auth-content {
   width: 100%;
   max-width: 660px;
-  margin: 32px auto 0;
+  margin: 24px auto 0;
   min-width: 0;
 }
 .wb-auth-content > h1 {
@@ -309,7 +304,7 @@ summary:focus-visible {
   text-decoration: underline;
 }
 .page-title {
-  margin: 36px 0 32px;
+  margin: 24px 0;
   max-width: 1000px;
 }
 .eyebrow {
@@ -324,7 +319,7 @@ summary:focus-visible {
 .page-title > p {
   max-width: 560px;
   font-size: 15px;
-  margin: 20px 0 0;
+  margin: 16px 0 0;
 }
 .panel {
   border: 0;
@@ -346,7 +341,7 @@ summary:focus-visible {
   background: var(--wb-green);
 }
 .word-form {
-  max-width: 900px;
+  max-width: 760px;
   background: var(--wb-lavender);
 }
 .muted {
@@ -517,62 +512,10 @@ summary:focus-visible {
   font-size: 13px;
   text-decoration: underline;
 }
-.review-card {
-  text-align: center;
-  max-width: 1000px;
-  margin: 20px auto 0;
-  padding: 36px 24px;
-}
-.review-card.wb-card {
-  min-height: 380px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-}
-.review-card > .eyebrow {
-  font-size: 10px;
-  display: inline-flex;
-  border: 1px solid currentColor;
-  padding: 8px 12px;
-  border-radius: var(--wb-radius-pill);
-}
-.review-card h2 {
-  font-size: clamp(42px, 7vw, 88px);
-  line-height: 1;
-  max-width: 100%;
-  margin: 8px 0 0;
-}
-.review-card > p {
-  font-size: clamp(18px, 3vw, 25px);
-  max-width: 720px;
-  margin: 0;
-}
-.review-card blockquote {
-  max-width: 700px;
-  font-size: 18px;
-  margin: 0;
-}
-.review-card .actions {
-  justify-content: center;
-  width: 100%;
-  margin: 8px 0 0;
-}
-.review-card > .review-reveal {
-  margin-top: 16px;
-}
-.review-card .actions button {
-  width: 100%;
-}
-.review-card > .wb-state {
-  text-align: left;
-  width: 100%;
-  max-width: none;
-}
-.review-card > .wb-state h2 {
-  font-size: clamp(40px, 6vw, 72px);
-}
+.review-card { text-align: center; max-width: var(--wb-learning-width); margin: 16px auto 0; }
+.review-card > p { font-size: clamp(18px, 3vw, 24px); }
+.review-card > .wb-state { text-align: left; width: 100%; max-width: none; }
+.review-card > .wb-state h2 { font-size: clamp(40px, 6vw, 72px); }
 .wb-dialog {
   width: calc(100% - 32px);
   max-width: 540px;
@@ -611,7 +554,7 @@ summary:focus-visible {
 }
 @media (min-width: 700px) {
   .wb-app-frame {
-    padding: 0 48px;
+    padding: 0 var(--wb-page-gutter);
   }
   .wb-masthead {
     padding: 32px 0;
@@ -625,7 +568,7 @@ summary:focus-visible {
     margin-left: 32px;
   }
   .wb-page-content {
-    padding-top: 36px;
+    padding-top: 24px;
   }
   .wb-workspace-meta {
     flex-direction: row;
@@ -640,14 +583,14 @@ summary:focus-visible {
     justify-content: flex-end;
   }
   .page-title {
-    margin: 48px 0 40px;
+    margin: 32px 0;
   }
   .panel,
   .wb-auth-panel,
   .wb-state,
   .wb-collection-header,
   .word-row {
-    padding: 36px;
+    padding: var(--wb-card-padding);
   }
   .form-bottom {
     flex-direction: row;
@@ -677,24 +620,14 @@ summary:focus-visible {
     flex-direction: column;
     flex-shrink: 0;
   }
-  .review-card {
-    padding: 48px;
-  }
-  .review-card .actions button {
-    width: auto;
-    min-width: 190px;
-  }
-  .review-card.wb-card {
-    min-height: 420px;
-  }
   .wb-auth-content {
-    margin-top: 56px;
+    margin-top: 32px;
   }
   .wb-auth-panel {
-    padding: 40px;
+    padding: var(--wb-card-padding);
   }
   .wb-dialog {
-    padding: 40px;
+    padding: var(--wb-card-padding);
   }
   .wb-dialog h2 {
     font-size: 48px;
@@ -702,18 +635,18 @@ summary:focus-visible {
 }
 @media (min-width: 1100px) {
   .wb-app-frame {
-    padding: 0 72px;
+    padding: 0 var(--wb-page-gutter);
   }
   .wb-auth-content {
-    margin-top: 64px;
+    margin-top: 32px;
   }
   .word-row {
-    padding: 40px;
+    padding: var(--wb-card-padding);
   }
 }
 @media (max-width: 359px) {
   .wb-app-frame {
-    padding: 0 18px;
+    padding: 0 var(--wb-page-gutter);
   }
   .wb-wordmark {
     font-size: 26px;
@@ -738,10 +671,7 @@ summary:focus-visible {
   .wb-loading,
   .word-row,
   .wb-collection-header {
-    padding: 22px;
-  }
-  .review-card {
-    padding: 28px 20px;
+    padding: var(--wb-card-padding);
   }
   .wb-dialog .actions {
     flex-direction: column;
@@ -780,7 +710,7 @@ summary:focus-visible {
   }
 }
 
-.wb-color-blue button:not(.secondary):not(.text-button) {
+.wb-color-blue button:not(.secondary):not(.text-button):not(dialog button) {
   background: var(--wb-white);
   color: var(--wb-black);
 }
@@ -809,11 +739,11 @@ summary:focus-visible {
 
 @media (max-width: 699px) {
   .wb-app-frame {
-    padding-inline: 20px;
+    padding-inline: var(--wb-page-gutter);
   }
   .word-row.wb-card {
     width: 100%;
-    padding: 24px clamp(18px, 5.5vw, 24px);
+    padding: var(--wb-card-padding);
     border-radius: 24px;
     gap: 24px;
     margin-bottom: 20px;
@@ -852,41 +782,14 @@ summary:focus-visible {
     padding: 12px 8px;
     font-size: 12px;
   }
-  .review-card.wb-card {
-    width: 100%;
-    padding: 32px clamp(18px, 5.5vw, 24px);
-    border-radius: 24px;
-    gap: 20px;
-    min-height: 0;
-  }
-  .review-card h2 {
-    font-size: clamp(32px, 9vw, 48px);
-    line-height: 1.2;
-    margin: 4px 0 0;
-    text-wrap: pretty;
-  }
-  .review-card > p {
-    font-size: 18px;
-    line-height: 1.75;
-    padding-top: 4px;
-  }
-  .review-card > .review-reveal,
-  .review-card .actions button {
-    min-height: 48px;
-    max-width: 100%;
-  }
-  .review-card > p,
-  .review-card blockquote,
-  .review-card .actions {
-    margin: 0;
-  }
+
 }
 
 .review-modes {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin: 0 0 24px;
+  gap: 8px;
+  margin: 0 0 16px;
 }
 .review-modes :is(button, a) {
   min-height: 48px;
@@ -968,7 +871,7 @@ summary:focus-visible {
 }
 
 .review-auto-pronunciation {
-  margin: -12px 0 20px;
+  margin: 0 0 16px;
   font-size: 14px;
 }
 .random-pronunciation {
@@ -1030,7 +933,7 @@ summary:focus-visible {
 .library-metadata p { margin: 0 0 6px; font-weight: 500; }
 .library-metadata > span { color: #5b5b51; }
 .library-filters, .calendar-metrics { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.review-progress { display: flex; align-items: center; gap: 16px; margin: 20px 0; font-size: 14px; }
+.review-progress { display: flex; align-items: center; gap: 16px; margin: 16px auto; max-width: var(--wb-learning-width); font-size: 14px; }
 .review-progress progress { appearance: none; height: 5px; width: min(200px, 55%); border: 0; border-radius: 8px; overflow: hidden; background: #deded7; }
 .review-progress progress::-webkit-progress-bar { background: #deded7; }
 .review-progress progress::-webkit-progress-value { background: var(--noted-lime); }
@@ -1063,7 +966,7 @@ summary:focus-visible {
 .review-completion h2 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 40px); }
 .review-completion p { margin: 0 0 24px; }
 
-.profile-header h1 { margin: 24px 0 12px; font-size: clamp(36px, 5vw, 56px); letter-spacing: -.045em; }
+.profile-header h1 { margin: 16px 0; font-size: clamp(36px, 5vw, 56px); letter-spacing: -.045em; }
 .profile-email { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .profile-header ~ .learning-calendar { margin-top: 28px; }
 .word-form select, .edit-form select {
@@ -1086,3 +989,20 @@ summary:focus-visible {
 .library-pagination button { padding-inline: 18px; }
 /* A rating locks navigation without flashing the mode controls half-transparent. */
 .review-modes[data-saving=true] button:disabled, button[data-rating-lock=true]:disabled { opacity: 1; }
+
+/* Quick-capture forms use the same rhythm as other editorial interfaces. */
+.word-form { display: grid; gap: 16px; padding: var(--wb-card-padding); }
+.word-form label { margin: 0; font-size: 13px; }
+.word-form input, .word-form textarea, .word-form select { font-size: 16px; }
+.word-form input, .word-form select { min-height: var(--wb-control-height); margin-top: 8px; padding: 11px 16px; }
+.word-form select { padding-right: 40px; }
+.word-form textarea { min-height: 96px; margin-top: 0; padding: 12px 16px; }
+.word-form .form-bottom { padding-top: 16px; gap: 16px; border-top-color: rgb(0 0 0 / 16%); }
+.word-form .form-bottom > span { font-size: 12px; line-height: 1.6; }
+.word-form .form-bottom > button { min-height: 48px; }
+@media (max-width: 699px) {
+  .word-form .form-bottom { align-items: stretch; }
+  .word-form .form-bottom > button { width: 100%; }
+}
+
+.wb-workspace-meta > .wb-pill { border: 0; padding: 0; min-height: 20px; font-size: 12px; font-weight: 400; color: #55554e; }

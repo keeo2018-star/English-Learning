@@ -23,6 +23,15 @@
   --wb-space-7: 48px;
   --wb-space-8: 64px;
   --wb-space-9: 96px;
+  /* Shared layout rhythm: 8 / 16 / 24 / 32 / 48. */
+  --wb-page-gutter: 20px;
+  --wb-card-padding: 24px;
+  --wb-learning-padding: 24px;
+  --wb-learning-radius: 24px;
+  --wb-learning-width: 760px;
+  --wb-learning-word-size: clamp(40px, 7vw, 80px);
+  --wb-control-height: 48px;
+  --wb-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
   --wb-radius-card: 32px;
   --wb-radius-pill: 999px;
   --wb-radius-small: 16px;
@@ -31,7 +40,7 @@
   --wb-size-section: clamp(32px, 4vw, 52px);
 }
 .wb-card {
-  padding: var(--wb-space-5);
+  padding: var(--wb-card-padding);
   border-radius: var(--wb-radius-card);
   background: var(--wb-grey);
   color: var(--wb-black);
@@ -183,7 +192,7 @@
 
 
 /* Keep keyboard focus visible on both blue cards and the black navigation. */
-.wb-color-blue :focus-visible {
+.wb-color-blue :focus-visible:not(dialog *) {
   outline-color: var(--wb-white);
 }
 
@@ -272,3 +281,58 @@ button[aria-pressed="true"],
   .wb-knockout.wb-knockout:focus-visible,
   .wb-toggle:has(input:focus-visible) { outline-color: CanvasText; }
 }
+
+/* Editorial pages share gutters; learning cards share a centered composition. */
+@media (min-width: 700px) {
+  :root { --wb-page-gutter: 40px; --wb-card-padding: 32px; --wb-learning-padding: 40px; --wb-learning-radius: 32px; }
+}
+@media (min-width: 1100px) { :root { --wb-page-gutter: 64px; } }
+.wb-learning-card.wb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--wb-space-4);
+  width: 100%;
+  max-width: var(--wb-learning-width);
+  min-height: 360px;
+  margin-inline: auto;
+  padding: var(--wb-learning-padding);
+  border-radius: var(--wb-learning-radius);
+  text-align: center;
+}
+.wb-learning-card > h2.wb-learning-content {
+  font-size: var(--wb-learning-word-size);
+  line-height: 1.08;
+  letter-spacing: -.045em;
+  max-width: 100%;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wb-learning-card > .wb-pill {
+  min-height: 20px;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: #45453f;
+}
+.wb-learning-card > p { margin: 0; max-width: 640px; line-height: 1.65; }
+.wb-learning-card > blockquote {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: 600px;
+  font-size: 16px;
+  line-height: 1.65;
+  font-weight: 400;
+}
+.wb-learning-card > blockquote::before, .wb-learning-card > blockquote::after { content: none; }
+.wb-learning-card .random-pronunciation { gap: 4px; }
+.wb-learning-card .review-speaker { width: 48px; min-height: 48px; padding: 12px; }
+.wb-learning-card > .review-reveal { margin: auto 0 0; min-height: 48px; }
+.wb-learning-card .review-ratings { margin: auto 0 0; padding-top: 8px; max-width: 440px; }
+.wb-learning-card .review-ratings button { width: 100%; min-width: 0; }
+.wb-learning-card > button[aria-haspopup="dialog"] { font-size: 12px; padding: 10px 16px; min-height: 44px; }
+@media (min-width: 700px) { .wb-learning-card.wb-card { min-height: 400px; } }

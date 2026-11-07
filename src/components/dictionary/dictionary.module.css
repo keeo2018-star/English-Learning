@@ -1,96 +1,71 @@
-.sheet { border: 0; border-radius: var(--wb-radius-card, 32px) var(--wb-radius-card, 32px) 0 0; background: var(--wb-offwhite); color: var(--wb-black, #111); padding: var(--wb-space-5); width: 100%; max-width: 720px; max-height: 90dvh; margin: auto auto 0; overflow-y: auto; overscroll-behavior: contain; }
-.sheet::backdrop { background: rgb(0 0 0 / 55%); }
-.header { display: flex; align-items: center; justify-content: space-between; gap: var(--wb-space-3); }
-.sheet h2 { font-size: clamp(2.7rem, 10vw, 5rem); line-height: 1; letter-spacing: -.055em; overflow-wrap: anywhere; margin: 28px 0; }
-.personal { padding: 20px; border-radius: 24px; background: var(--wb-grey); margin-bottom: 28px; }
-.personal p { margin-bottom: 0; overflow-wrap: anywhere; }
-.reference { display: grid; gap: var(--wb-space-5); }
-.reference h3 { font-size: 1.5rem; margin: 0 0 16px; }
-.reference p { line-height: 1.6; overflow-wrap: anywhere; }
-.reference section { border-top: 1px solid currentColor; padding-top: 24px; }
-.reference blockquote { margin: 20px 0; padding-left: 16px; border-left: 3px solid currentColor; }
-.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
-.pronunciation:empty { display: none; }
-.phonetic { display: inline-flex; align-items: center; gap: var(--wb-space-2); }
-.credit { font-size: .85rem; }
-@media(min-width: 700px) { .sheet { margin: auto; border-radius: 32px; padding: 36px; } }
-
-.phonetic { min-width: 0; flex-wrap: wrap; font-size: 15px; }
-.phonetic button { padding: 8px 12px; min-height: 44px; font-size: 12px; gap: 8px; }
-
-@media (max-width: 699px) {
-  .pronunciation {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    width: 100%;
-    text-align: left;
-  }
-  .phonetic {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 12px;
-    font-size: 14px;
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-  }
-  .phonetic button {
-    min-height: 48px;
-    padding: 10px 8px;
-  }
-  .phonetic small {
-    grid-column: 2;
-  }
+.sheet {
+  border: 0;
+  border-radius: var(--wb-learning-radius) var(--wb-learning-radius) 0 0;
+  background: var(--wb-offwhite);
+  color: var(--wb-black);
+  text-align: left;
+  padding: 16px var(--wb-card-padding) calc(24px + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 720px;
+  max-height: 92dvh;
+  margin: auto auto 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-top: 72px;
 }
-
-.phonetic button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; }
-
-/* Dictionary actions use the same controls and selected renderer as the app. */
-.header { position: sticky; top: 0; z-index: 1; padding: 4px 0 12px; background: var(--wb-offwhite); }
+.sheet::backdrop { background: rgb(0 0 0 / 55%); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 1; padding: 0 0 8px; background: var(--wb-offwhite); }
 .kicker { font-size: 10px; font-weight: var(--wb-medium); letter-spacing: .05em; line-height: 1.5; }
-.personal h3 { font-size: 12px; font-weight: var(--wb-medium); margin: 0 0 12px; }
-.sheet .phonetic button { min-height: 48px; padding: 12px 16px; font-size: 14px; }
-.sheet summary { list-style: none; }
-.sheet summary::-webkit-details-marker { display: none; }
-@media (max-width: 699px) { .sheet .phonetic { grid-template-columns: max-content minmax(0, 1fr); } }
-.sheet .phonetic button:global(.wb-knockout) svg { color: var(--wb-offwhite); }
-.reference blockquote::before, .reference blockquote::after { content: none; }
-@media (forced-colors: active) { .sheet .phonetic button:global(.wb-knockout) svg { color: ButtonText; } }
-
-/* Keep lookup compact and give definitions a predictable reading rhythm. */
 .header .close { width: 48px; min-width: 48px; height: 48px; padding: 0; flex-shrink: 0; }
-.sheet h2 { font-size: clamp(32px, 7vw, 56px); line-height: 1.12; margin: 20px 0 16px; }
-.sheet > .pronunciation { margin-bottom: 24px; }
-.personal { margin: 0 0 24px; padding: 16px 20px; border-radius: var(--wb-radius-small); }
-.personal h3 { margin-bottom: 8px; }
-.personal p { margin: 0; font-size: 16px; line-height: 1.7; }
-.reference { gap: 28px; }
-.reference section { border-top-color: #d5d5cc; padding-top: 20px; }
-.reference h3 { font-size: 18px; line-height: 1.4; margin-bottom: 16px; letter-spacing: -.02em; }
-.reference p { margin: 8px 0 0; font-size: 16px; line-height: 1.8; }
-.definitions { margin: 0; padding-left: 24px; }
+.header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
+.header .close:focus-visible { background: var(--noted-lime); }
+.sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; margin: 8px 0 16px; }
+.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.pronunciation:empty { display: none; }
+.sheet > .pronunciation { margin-bottom: 16px; }
+.phonetic { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; font-size: 14px; line-height: 1.5; }
+.phonetic button { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; padding: 10px 12px; font-size: 14px; gap: 8px; }
+.sheet .phonetic button:global(.wb-knockout) svg { color: var(--wb-offwhite); }
+.personal { margin: 0 0 24px; padding: 16px; border-radius: var(--wb-radius-small); background: var(--wb-grey); }
+.personalHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.personalHeader h3 { margin: 0; font-size: 12px; font-weight: var(--wb-medium); letter-spacing: 0; }
+.personalHeader button { padding: 8px 12px; min-height: 44px; }
+.personal p { margin: 0; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.personal textarea { min-height: 96px; padding: 12px 16px; }
+.personal form label { margin-bottom: 16px; }
+.editActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.reference { display: grid; gap: 24px; }
+.reference section { border-top: 1px solid #d5d5cc; padding-top: 16px; }
+.reference h3 { font-size: 18px; line-height: 1.4; margin: 0 0 12px; letter-spacing: -.02em; }
+.reference p { margin: 8px 0 0; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.definitions { margin: 0; padding-left: 20px; }
 .definitions li { padding-left: 4px; }
-.definitions li + li { margin-top: 20px; }
+.definitions li + li { margin-top: 16px; }
 .definitions li::marker { font-size: 12px; color: #65655e; }
-.reference blockquote { margin: 0; padding: 0 0 0 16px; border-left: 2px solid #d5d5cc; font-size: inherit; font-weight: var(--wb-regular); }
-.reference blockquote + blockquote { margin-top: 24px; }
+.reference :global(.wb-pill) { border: 0; min-height: 20px; padding: 0; font-size: 12px; color: #55554e; }
+.reference blockquote { margin: 0; padding: 0 0 0 12px; border-left: 1px solid #d5d5cc; font-size: inherit; font-weight: var(--wb-regular); }
+.reference blockquote::before, .reference blockquote::after { content: none; }
+.reference blockquote + blockquote { margin-top: 16px; }
 .reference blockquote p:first-child { margin-top: 0; }
 .reference blockquote p[lang="zh"] { color: #55554e; font-size: 15px; }
 .reference .credit { color: #65655e; font-size: 12px; line-height: 1.6; margin: 0; }
-.wordPronunciation { min-height: 48px; margin: 8px 0; }
-/* Keep one contour even when the dialog autofocuses Close. */
-.header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
-.header .close:focus-visible { background: var(--noted-lime); }
-.personalHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
-.personalHeader h3 { margin: 0; }
-.editActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.sheet summary { list-style: none; }
+.sheet summary::-webkit-details-marker { display: none; }
+.wordPronunciation { min-height: 48px; margin: 0; }
+.savedNote { display: block; margin-top: 8px; font-size: 12px; color: #55554e; }
 .dragHandle { display: none; }
+@media (min-width: 700px) { .sheet { margin: auto; border-radius: var(--wb-radius-card); padding: var(--wb-card-padding); } }
 @media (max-width: 699px) {
-  .dragHandle { display: flex; justify-content: center; padding: 0 0 12px; }
-  .dragHandle span { width: 36px; height: 4px; border-radius: 999px; background: #a4a49a; }
+  .sheet > .pronunciation { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .sheet .phonetic { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px; overflow-wrap: anywhere; }
+  .sheet .phonetic small { grid-column: 2; }
+  .dragHandle { display: flex; justify-content: center; padding: 0 0 8px; }
+  .dragHandle span { width: 32px; height: 4px; border-radius: 999px; background: #a4a49a; }
   .sheet { transform: translateY(var(--dictionary-drag-y, 0px)); transition: transform 160ms ease-out; }
   .sheet[data-dragging=true] { transition: none; }
 }
 @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
-@media (forced-colors: active) { .header .close:focus-visible { background: Highlight; color: HighlightText; border-color: ButtonText; } }
-.savedNote { display: block; margin-top: 8px; font-size: 12px; color: #55554e; }
+@media (forced-colors: active) {
+  .sheet .phonetic button:global(.wb-knockout) svg { color: ButtonText; }
+  .header .close:focus-visible { background: Highlight; color: HighlightText; border-color: ButtonText; }
+}

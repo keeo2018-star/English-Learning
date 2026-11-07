@@ -1,7 +1,7 @@
 .home {
   max-width: 960px;
   margin: 0 auto;
-  padding: 16px 0 24px;
+  padding: 8px 0 0;
 }
 .eyebrow {
   display: flex;
@@ -29,7 +29,7 @@
   -webkit-box-decoration-break: clone;
   white-space: nowrap;
 }
-.intro { max-width: 390px; margin: 22px 0 28px; font-size: 14px; line-height: 1.6; color: #54544f; }
+.intro { max-width: 390px; margin: 24px 0; font-size: 14px; line-height: 1.6; color: #54544f; }
 .actions { display: grid; gap: 12px; }
 .action {
   display: flex;
@@ -37,8 +37,8 @@
   justify-content: space-between;
   gap: 16px;
   border-radius: var(--wb-radius-card);
-  padding: 22px 24px;
-  min-height: 114px;
+  padding: var(--wb-card-padding);
+  min-height: 112px;
   color: var(--wb-black);
   transition: box-shadow 150ms ease;
 }
@@ -46,7 +46,7 @@
 .add { background: var(--noted-lime); }
 .discover { background: #8cb8ff; }
 .review { background: var(--wb-coral); }
-.actionCopy { display: grid; gap: 10px; min-width: 0; }
+.actionCopy { display: grid; gap: 8px; min-width: 0; }
 .label { font-size: clamp(26px, 4vw, 36px); font-weight: var(--wb-medium); line-height: 1.1; letter-spacing: -.04em; }
 .description { max-width: 280px; font-size: 12px; line-height: 1.45; }
 .action svg { width: 24px; height: 24px; flex-shrink: 0; }
@@ -54,22 +54,22 @@
 .library .label { font-size: 18px; }
 .library svg { width: 20px; height: 20px; }
 @media (min-width: 700px) {
-  .home { padding: 28px 0 24px; }
-  .intro { font-size: 15px; margin-bottom: 36px; }
-  .actions { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .action { min-height: 132px; padding: 28px; align-items: flex-end; }
+  .home { padding: 16px 0 0; }
+  .intro { font-size: 15px; margin-bottom: 32px; }
+  .actions { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .action { min-height: 128px; padding: var(--wb-card-padding); align-items: flex-end; }
   .actionCopy { gap: 16px; }
   .description { font-size: 13px; }
   .action svg { margin-bottom: 2px; }
 }
-@media (min-width: 900px) { .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); } .action { min-height: 180px; } }
+@media (min-width: 900px) { .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); } .action { min-height: 184px; } }
 @media (max-height: 700px) and (max-width: 699px) {
   .home { padding-top: 0; }
   .eyebrow { margin-bottom: 12px; }
   .home h1 { font-size: 36px; }
   .intro { margin: 16px 0 20px; font-size: 13px; line-height: 1.45; }
   .action { min-height: 94px; padding: 16px 20px; }
-  .actionCopy { gap: 7px; }
+  .actionCopy { gap: 8px; }
   .label { font-size: 25px; }
 }
 @media (prefers-reduced-motion: reduce) { .action { transition: none; } }

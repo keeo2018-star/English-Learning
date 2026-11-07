@@ -19,7 +19,7 @@ export function VideoContextSection({ word }: { word: string }) {
   const id = useId();
   return <section className={styles.section} aria-labelledby={`${id}-heading`}>
     <h3 id={`${id}-heading`}>In the Wild</h3>
-    <p>Hear it in a real conversation.</p>
+    <p>{installed ? 'Video examples open on YouGlish in your browser.' : 'Hear it in a real conversation. Video via YouGlish.'}</p>
     <div className={styles.card}>
     {!expanded ? <button type="button" className={styles.preview} aria-label="Watch in context" aria-expanded={false} onClick={() => setExpanded(true)}>
       <span className={styles.previewMeta}>VIDEO CONTEXT · {accent.toUpperCase()} ENGLISH</span>

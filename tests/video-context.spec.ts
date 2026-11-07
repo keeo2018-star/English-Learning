@@ -97,7 +97,10 @@ test.describe('In the Wild', () => {
     const preview = page.getByRole('button', { name: 'Watch in context', exact: true });
     await preview.scrollIntoViewIfNeeded();
     await expect(preview.locator('svg')).toBeVisible();
-    expect(await preview.evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(200);
+    // The reference preview is intentionally compact; the actual official player below stays >=200px.
+    const previewHeight = await preview.evaluate(element => element.getBoundingClientRect().height);
+    expect(previewHeight).toBeGreaterThanOrEqual(160);
+    expect(previewHeight).toBeLessThanOrEqual(220);
     await page.screenshot({ path: `/tmp/noted-video-card-preview-${width}.png` });
     await page.getByRole('button', { name: 'Watch in context', exact: true }).click();
     await page.getByRole('button', { name: 'Agree & load video', exact: true }).click();

@@ -3,6 +3,10 @@
 .list .option { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 100%; min-height: 48px; padding: 10px 14px; gap: 3px; border: 0; border-radius: 10px; background: transparent; color: var(--wb-black); font-size: 16px; text-align: left; overflow-wrap: anywhere; }
 .list .option:hover, .list .option[aria-selected=true] { background: var(--noted-lime); }
 .option small { font-size: 12px; font-weight: 400; }
-.meaningStatus { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; min-height: 36px; margin-top: -12px; }
-.meaningStatus button { font-size: 12px; min-height: 44px; }
+.meaningField { display: grid; gap: 8px; min-width: 0; }
+.meaningHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-block: -8px -4px; }
+.meaningHeader label { flex: 1; }
+.meaningHeader button { min-height: 44px; padding: 8px 12px; font-size: 12px; border: 0; }
+.meaningHeader button:hover { text-decoration: underline; }
+.meaningStatus { margin: 0; color: #45453f; font-size: 12px; line-height: 1.5; }
 @media (max-width: 699px) { .field input { font-size: 16px; } }

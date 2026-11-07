@@ -54,7 +54,7 @@ test('word cards stay readable on phones and tablets', async ({ page }) => {
       })).toBeGreaterThanOrEqual(20);
     }
     if (width === 1440) {
-      expect(await card.evaluate(element => getComputedStyle(element).paddingLeft)).toBe('24px');
+      expect(await card.evaluate(element => getComputedStyle(element).paddingLeft)).toBe('32px');
       expect(await card.locator('h2').evaluate(element => getComputedStyle(element).fontSize)).toBe('52px');
     }
     if (width === 390) await page.screenshot({ path: '/tmp/word-cards-iphone.png', fullPage: true });
