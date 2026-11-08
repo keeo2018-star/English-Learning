@@ -1,5 +1,7 @@
 # Discover
 
+The current continuous-batch upgrade is documented in [CONTINUOUS_DISCOVER.md](CONTINUOUS_DISCOVER.md). Existing projects should apply only the new upgrade after its read-only preflight; do not rerun the original migration. The daily-set behavior below describes the original v1 baseline and is superseded once the continuous migration is active.
+
 Discover adds an optional 16-question vocabulary check and up to ten daily learning cards. It reuses the existing Supabase account, Library writes and shared pronunciation controller. Existing Review scheduling and events are unchanged. Home offers Add (lime), Discover (blue) and Random Review (orange); Library remains available through the learning controls and a secondary home link.
 
 ## Database rollout

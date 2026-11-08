@@ -39,3 +39,10 @@
 .blue:global(.wb-learning-card) .actions { width: 100%; justify-content: center; padding-top: 8px; }
 .blue:global(.wb-learning-card) .actions button { flex: 1; max-width: 240px; }
 .blue:global(.wb-learning-card) .choices { width: 100%; max-width: 520px; gap: 8px; }
+
+.completion { text-align: center; }
+.completion > button, .completion > a { margin: 8px; }
+.summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 32px; margin: 24px 0; font-size: 14px; }
+.summary > div { display: flex; gap: 8px; }
+.summary dt, .summary dd { margin: 0; }
+.summary dd { font-weight: 700; }

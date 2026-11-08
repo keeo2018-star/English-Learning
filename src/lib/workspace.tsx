@@ -739,7 +739,7 @@ export default function Workspace({
                 </div> : <p className="eyebrow" role="status">{due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW</p>}
                 <Card
                   key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
-                  color={collectionColor(card.id)}
+                  color={randomMode ? "coral" : collectionColor(card.id)}
                   className="panel review-card wb-learning-card"
                 >
                   <h2 className="wb-learning-content">{prompt}</h2>

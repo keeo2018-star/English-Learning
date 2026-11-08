@@ -1,0 +1,15 @@
+-- Read-only. Run this before the continuous Discover migration.
+begin transaction read only;
+select jsonb_pretty(jsonb_build_object(
+ 'preflight_version',2,
+ 'server_version',current_setting('server_version'),
+ 'columns',(select jsonb_agg(jsonb_build_object('table',n.nspname||'.'||c.relname,'column',a.attname,'type',format_type(a.atttypid,a.atttypmod),'nullable',not a.attnotnull)) from pg_attribute a join pg_class c on c.oid=a.attrelid join pg_namespace n on n.oid=c.relnamespace where a.attnum>0 and not a.attisdropped and ((n.nspname='public' and c.relname in ('words','review_events','discover_profiles','discover_assessments','discover_daily_sets','discover_known','discover_vocabulary','discover_batches')) or (n.nspname='auth' and c.relname='users' and a.attname='id'))),
+ 'functions',(select jsonb_agg(jsonb_build_object('name',p.proname,'arguments',pg_get_function_identity_arguments(p.oid),'returns',pg_get_function_result(p.oid),'owner',pg_get_userbyid(p.proowner),'security_definer',p.prosecdef,'marker',obj_description(p.oid,'pg_proc'))) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.proname like 'discover_%' or p.proname='noted_guard_duplicate_word')),
+ 'tables',(select jsonb_agg(jsonb_build_object('name',c.relname,'rls',c.relrowsecurity,'marker',obj_description(c.oid,'pg_class'))) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('words','review_events','discover_profiles','discover_assessments','discover_daily_sets','discover_known','discover_vocabulary','discover_batches')),
+ 'triggers',(select jsonb_agg(jsonb_build_object('table',tgrelid::regclass::text,'name',tgname,'definition',pg_get_triggerdef(oid))) from pg_trigger where tgrelid in (to_regclass('public.words'),to_regclass('public.discover_daily_sets')) and not tgisinternal),
+ 'policies',(select jsonb_agg(jsonb_build_object('table',tablename,'name',policyname,'command',cmd,'using',qual,'check',with_check)) from pg_policies where schemaname='public' and tablename in ('words','discover_profiles','discover_assessments','discover_daily_sets','discover_known','discover_vocabulary','discover_batches')),
+ 'grants',(select jsonb_agg(jsonb_build_object('table',table_name,'role',grantee,'privilege',privilege_type)) from information_schema.role_table_grants where table_schema='public' and table_name in ('words','discover_profiles','discover_daily_sets','discover_batches') and grantee in ('anon','authenticated')),
+ 'function_grants',(select jsonb_agg(jsonb_build_object('function',routine_name,'role',grantee,'privilege',privilege_type)) from information_schema.routine_privileges where routine_schema='public' and routine_name like 'discover_%' and grantee in ('PUBLIC','anon','authenticated')),
+ 'profile_column_marker',col_description(to_regclass('public.discover_profiles'),(select attnum from pg_attribute where attrelid=to_regclass('public.discover_profiles') and attname='active_discover_batch'))
+)) as noted_continuous_discover_preflight;
+rollback;

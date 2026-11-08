@@ -66,7 +66,8 @@ test('word cards stay readable on phones and tablets', async ({ page }) => {
       const pronunciation = button.previousElementSibling!;
       return button.getBoundingClientRect().top - pronunciation.getBoundingClientRect().bottom;
     });
-    expect(spacing).toBeGreaterThanOrEqual(36);
+    expect(spacing).toBeGreaterThanOrEqual(32);
+    expect(spacing).toBeLessThanOrEqual(48);
     if (width === 1440) await page.locator('.review-card').screenshot({ path: '/tmp/review-desktop-spacing.png' });
     await reveal.click();
     const review = page.locator('.review-card');

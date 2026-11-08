@@ -336,3 +336,9 @@ button[aria-pressed="true"],
 .wb-learning-card .review-ratings button { width: 100%; min-width: 0; }
 .wb-learning-card > button[aria-haspopup="dialog"] { font-size: 12px; padding: 10px 16px; min-height: 44px; }
 @media (min-width: 700px) { .wb-learning-card.wb-card { min-height: 400px; } }
+
+/* Review follows its visible content, without reserving a hidden answer area. */
+.wb-learning-card.wb-card.review-card { min-height: 0; padding: var(--wb-card-padding); justify-content: center; }
+.review-card.wb-learning-card > h2.wb-learning-content { margin: 0; }
+.review-card.wb-learning-card > .review-reveal { margin: var(--wb-space-4) 0 0; }
+.review-card.wb-learning-card .review-ratings { margin: var(--wb-space-2) 0 0; }
