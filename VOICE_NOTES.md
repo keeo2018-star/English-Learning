@@ -38,3 +38,9 @@ Recording releases microphone tracks on stop, interruption and unmount. Temporar
 - Existing full browser suite was run; issues found were fixed and affected regressions rerun successfully. Five account/configuration-dependent cases were skipped. Hosted authenticated cross-user tests are not confirmed without disposable accounts and an applied migration.
 - iPhone WebKit: 31 passed (Voice Notes plus Review audio and spacing). Microphone behaviour here uses controlled fixtures, not physical iPhone hardware.
 - Production database/storage activation must still be confirmed through the preflight and administrator-run migration above; browser fixtures do not establish that activation.
+
+## Short-recording reliability update
+
+The recording indicator now starts on MediaRecorder’s actual start event. Quick Stop requests allow a minimum 600 ms encoder capture window, then wait for final audio data before releasing microphone tracks. Recording uses one complete final container instead of 250 ms fragments. Finishing prevents duplicate actions; missing/empty output gives a retry message and retains any prior draft. Cancellation and navigation still release tracks, and callbacks from an earlier recording cannot release a newer microphone stream. A five-second finalization timeout prevents stuck controls. No database migration is needed for this update.
+
+Validation includes 14 Voice Notes cases on Chromium and iPhone WebKit, delayed final-data and empty-output fixtures, and a real Chromium MediaRecorder quick-stop/playback test with a synthetic microphone. Physical iPhone hardware still needs user verification.
