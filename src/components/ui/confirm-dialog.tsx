@@ -6,8 +6,12 @@ export function ConfirmDialog({
   busy,
   onConfirm,
   onCancel,
+  recordingWarning=false,
+  returnFocus,
 }: {
   word: string;
+  recordingWarning?: boolean;
+  returnFocus?: HTMLElement | null;
   busy: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -17,7 +21,7 @@ export function ConfirmDialog({
   const id = useId();
   useEffect(() => {
     const element = dialog.current;
-    const previousFocus = document.activeElement;
+    const previousFocus = returnFocus || document.activeElement;
     element?.showModal();
     cancel.current?.focus();
     return () => {
@@ -25,7 +29,7 @@ export function ConfirmDialog({
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
         previousFocus.focus({ preventScroll: true });
     };
-  }, []);
+  }, [returnFocus]);
   return (
     <dialog
       ref={dialog}
@@ -40,7 +44,7 @@ export function ConfirmDialog({
       <Pill>YOUR LIBRARY</Pill>
       <h2 id={id + "-title"}>Delete this word?</h2>
       <p id={id + "-description"} className="wb-ui-text">
-        “<span className="wb-learning-content">{word}</span>” will be removed from your library. This can’t be undone.
+        “<span className="wb-learning-content">{word}</span>” will be removed from your library. {recordingWarning&&"Any attached voice note will also be removed. "}This can’t be undone.
       </p>
       <div className="actions">
         <button

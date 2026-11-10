@@ -75,6 +75,7 @@ export async function mockCloud(
   await page.route(cloudOrigin + "/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/rest/v1/words") return routeWords(route);
+    if (path === "/rest/v1/rpc/voice_notes_list") return route.fulfill({json:{version:1,files:[]}});
     if (path === "/rest/v1/rpc/learning_calendar") return route.fulfill({ json: { tracking_since: new Date().toISOString(), days: [] } });
     if (path === "/rest/v1/rpc/record_learning_review") {
       const input = route.request().postDataJSON();

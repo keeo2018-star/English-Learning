@@ -23,8 +23,13 @@ import { ReviewPronunciation } from "@/components/dictionary/review-pronunciatio
 import { completeSessionCard, newReviewSession, readReviewSession, reviewSessionKey, type ReviewSession } from "./review-session";
 import { DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
 import { indexLibrary, normalizeLibraryQuery, LIBRARY_PAGE_SIZE } from "./library-search";
+import {useVoiceNotes} from './use-voice-notes';
+import {clearItemVoice,voiceFiles,removeVoiceFiles,uploadVoice,voiceError,type VoiceDraft} from './voice-notes';
+import {VoiceManager} from '@/components/voice-notes/voice-manager';
+import {VoiceConfirm} from '@/components/voice-notes/voice-confirm';
+import {ExpressionReviewAudio} from '@/components/voice-notes/review-audio';
 type NewLearningItem = { word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
-type SaveResult = "saved" | "failed";
+type SaveResult = Word | null;
 function errorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error && "code" in error && error.code === "PGRST204" && "message" in error && String(error.message).includes("item_type"))
     return "Content types aren’t available yet. Keep Automatic for now, or try again once learning activity is enabled.";
@@ -69,6 +74,10 @@ export default function Workspace({
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
+  const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
+  const [deleteHasRecording,setDeleteHasRecording]=useState(false);
+  const [voiceTypeEdit,setVoiceTypeEdit]=useState<{word:Word;changes:NewLearningItem}|null>(null);
+  const [voiceUploads,setVoiceUploads]=useState<{owner:string;item:Word;draft:VoiceDraft;error:string}[]>([]);
   const requestedRandom = useRef(false);
   const saving = useRef(false);
   const ratingInFlight = useRef(false);
@@ -145,6 +154,7 @@ export default function Workspace({
 
         setEditing(null);
         setDeleting(null);
+        setVoiceTypeEdit(null);setVoiceUploads([]);
         setLibraryPage(0);
         setSyncError(false);
         setReady(false);
@@ -188,7 +198,7 @@ export default function Workspace({
     setWords(next);
   };
   async function saveEntry(input: NewLearningItem): Promise<SaveResult> {
-    if (saving.current) return "failed";
+    if (saving.current) return null;
     saving.current = true;
     setBusy(true);
     setMessage("");
@@ -203,6 +213,7 @@ export default function Workspace({
       interval_days: 0,
       created_at: new Date().toISOString(),
     };
+    let created:Word|null=null;
     try {
       if (!entry.word)
         throw new Error("Enter a word or expression.");
@@ -215,20 +226,20 @@ export default function Workspace({
           .single();
         if (error && !entry.meaning && error.code === '23514') throw new Error('English-only saving needs the database update. Add a meaning for now.');
         if (error) throw error;
-        if (accountId.current !== user.id) return "failed";
-        setWords((previous) => [data, ...previous]);
-      } else persistLocal([{ ...entry, id: crypto.randomUUID() }, ...words]);
+        if (accountId.current !== user.id) return null;
+        created=data;setWords((previous) => [data, ...previous]);
+      } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...words]);}
       setMessage("Word saved. Ready for your next review.");
-      return "saved";
+      return created;
     } catch (error) {
       setMessage(errorMessage(error, "Could not save word."));
-      return "failed";
+      return null;
     } finally {
       setBusy(false);
       saving.current = false;
     }
   }
-  async function add(event: React.FormEvent<HTMLFormElement>) {
+  async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft) {
     event.preventDefault();
     const form = event.currentTarget;
     const values = new FormData(form);
@@ -238,7 +249,15 @@ export default function Workspace({
       example: "",
       item_type: values.get("item_type") === "auto" ? null : String(values.get("item_type")) as "word" | "expression",
     });
-    if (result === "saved") form.reset();
+    if (result) {
+      if(voice){setBusy(true);try{await uploadVoice(result.id,voice);if(accountId.current===user?.id)setMessage('Expression and voice note saved.');}catch(error){if(accountId.current===user?.id){setVoiceUploads(previous=>[...previous,{owner:user?.id||'local-demo',item:result,draft:voice,error:voiceError(error)}]);setMessage('Expression saved. Voice note upload needs retry.');}}finally{setBusy(false);}}
+      form.reset();
+    }
+  }
+  async function requestDelete(word:Word){
+    setDeleteTrigger(document.activeElement instanceof HTMLElement?document.activeElement:null);
+    setBusy(true);setMessage('');const owner=accountId.current;
+    try{let files=[];try{files=await voiceFiles([word.id]);}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}if(accountId.current!==owner)return;setDeleteHasRecording(files.length>0);setDeleting(word);}catch(error){setMessage(voiceError(error));}finally{setBusy(false);}
   }
   async function remove(id: string) {
     const owner = accountId.current;
@@ -246,6 +265,7 @@ export default function Workspace({
     setMessage("");
     try {
       if (supabase) {
+        stopPronunciation();await clearItemVoice(id);
         const { error } = await supabase
           .from("words")
           .delete()
@@ -290,6 +310,12 @@ export default function Workspace({
       ...(word.item_type !== undefined || String(form.get("item_type")) !== itemType(word)
         ? { item_type: String(form.get("item_type")) as "word" | "expression" } : {}),
     };
+    if(supabase&&changes.item_type==='word'&&itemType(word)==='expression'){
+      try{if((await voiceFiles([word.id])).length){setVoiceTypeEdit({word,changes});return;}}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||'')){setMessage(voiceError(error));return;}}
+    }
+    await applyEdit(word,changes);
+  }
+  async function applyEdit(word:Word,changes:NewLearningItem,preserve=false,removeRecording=false){
     setBusy(true);
     setMessage("");
     try {
@@ -298,12 +324,10 @@ export default function Workspace({
       let updated = { ...word, ...changes };
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
-        const { data, error } = await supabase
-          .from("words")
-          .update(changes)
-          .eq("id", word.id)
-          .select("*")
-          .single();
+        if(removeRecording){stopPronunciation();await clearItemVoice(word.id);}
+        const { data, error } = preserve
+          ? await supabase.rpc('voice_note_edit_item',{p_item:word.id,p_changes:changes,p_preserve:true})
+          : await supabase.from("words").update(changes).eq("id",word.id).select("*").single();
         if (error) throw error;
         if (accountId.current !== user.id) return;
         updated = data;
@@ -314,9 +338,10 @@ export default function Workspace({
         persistLocal(
           words.map((item) => (item.id === word.id ? updated : item)),
         );
-      setEditing(null);
+      setEditing(null);setVoiceTypeEdit(null);
       setMessage("Word updated.");
     } catch (error) {
+      setVoiceTypeEdit(null);
       setMessage(errorMessage(error, "Could not update word."));
     } finally {
       setBusy(false);
@@ -471,6 +496,8 @@ export default function Workspace({
   const currentPage = Math.min(libraryPage, Math.max(0, Math.ceil(matchingWords.length / LIBRARY_PAGE_SIZE) - 1));
   const pageStart = currentPage * LIBRARY_PAGE_SIZE;
   const displayedWords = matchingWords.slice(pageStart, pageStart + LIBRARY_PAGE_SIZE);
+  const voiceIds=page==='library'?displayedWords.filter(w=>itemType(w)==='expression').map(w=>w.id):page==='review'&&card&&itemType(card)==='expression'?[card.id]:[];
+  const voiceMetadata=useVoiceNotes(user?.id,voiceIds);
   function changeLibraryPage(next: number) {
     setLibraryPage(next);
     libraryResults.current?.scrollIntoView({ block: "start" });
@@ -549,6 +576,7 @@ export default function Workspace({
         </nav>
       )}
       {message && <Feedback>{message}</Feedback>}
+      {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
       {page === "add" ? (
         <AddWordFlow
@@ -673,9 +701,9 @@ export default function Workspace({
                       </form>
                     ) : (
                       <div className="wb-word-content">
-                        <h2 className="wb-learning-content">{w.word}</h2>
-                        <WordPronunciation key={w.word} word={w.word} />
+                        {itemType(w)==='expression'?<div className="expression-title"><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word}/></div>:<><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word}/></>}
                         <p className="wb-learning-content">{w.meaning}</p>
+                        {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
                         {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
                       </div>
@@ -694,7 +722,7 @@ export default function Workspace({
                         className="text-button"
                         disabled={busy}
                         aria-label={"Delete " + w.word}
-                        onClick={() => setDeleting(w)}
+                        onClick={() => void requestDelete(w)}
                       >
                         Delete
                       </button>
@@ -743,7 +771,7 @@ export default function Workspace({
                   className="panel review-card wb-learning-card"
                 >
                   <h2 className="wb-learning-content">{prompt}</h2>
-                  {(!randomMode || direction === "forward" || revealed === card.id) && <ReviewPronunciation text={card.word} automatic={autoPronunciation} />}
+                  {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio text={card.word} automatic={autoPronunciation} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation text={card.word} automatic={autoPronunciation}/>)}
                   {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
@@ -790,9 +818,12 @@ export default function Workspace({
             ))}
         </>
       )}
+      {voiceTypeEdit&&<VoiceConfirm title="Change this Expression to Word?" description="Choose whether to preserve the private recording for when you switch back to Expression, or permanently remove it." busy={busy} confirmLabel="Delete recording and change type" onCancel={()=>setVoiceTypeEdit(null)} preserve={()=>void applyEdit(voiceTypeEdit.word,voiceTypeEdit.changes,true)} onConfirm={()=>void applyEdit(voiceTypeEdit.word,voiceTypeEdit.changes,false,true)}/>}
       {deleting && (
         <ConfirmDialog
+          returnFocus={deleteTrigger}
           word={deleting.word}
+          recordingWarning={deleteHasRecording}
           busy={busy}
           onCancel={() => setDeleting(null)}
           onConfirm={async () => {

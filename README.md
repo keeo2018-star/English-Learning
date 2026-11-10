@@ -15,6 +15,9 @@ Routes: `/` Add, Discover and Random Review, `/discover` optional vocabulary che
 
 Smart Add uses [Datamuse](https://www.datamuse.com/api/) autocomplete, existing UAPI bilingual definitions and MyMemory for complete-expression translation. See [SMART_ADD.md](SMART_ADD.md) for provider limits, manual-edit guarantees and the separate preflight/migration required before English-only saves can work with the original production constraint.
 
+Voice Notes are optional private audio attachments for Expressions in Add, Library and Review. Standard pronunciation/autoplay stays unchanged; personal recordings are manual and share audio ownership. See [VOICE_NOTES.md](VOICE_NOTES.md) for the read-only preflight, separate additive migration, private Storage activation, recovery behaviour and device-testing limits. Deploying the frontend alone does not activate storage.
+
+
 Discover setup and licensed vocabulary sources are documented in [DISCOVER.md](DISCOVER.md). The additive continuous-batch upgrade, manual SQL steps and natural Review spacing are documented in [CONTINUOUS_DISCOVER.md](CONTINUOUS_DISCOVER.md).
 
 ## Random review

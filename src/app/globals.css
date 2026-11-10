@@ -1006,3 +1006,6 @@ summary:focus-visible {
 }
 
 .wb-workspace-meta > .wb-pill { border: 0; padding: 0; min-height: 20px; font-size: 12px; font-weight: 400; color: #55554e; }
+
+.expression-title { display: grid; gap: 8px; min-width: 0; }
+.expression-title > h2 { margin: 0; }

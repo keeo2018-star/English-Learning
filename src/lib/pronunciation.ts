@@ -166,7 +166,7 @@ export function selectEnglishVoice(catalog: SpeechSynthesisVoice[], locale: stri
   return selected;
 }
 
-type Request = { owner: symbol; audio: HTMLAudioElement; cleanups: (() => void)[]; report: (status: PronunciationStatus) => void; speech?: SpeechSynthesisUtterance; retry?: () => void };
+type Request = { kind?: 'voice'; owner: symbol; audio: HTMLAudioElement; cleanups: (() => void)[]; report: (status: PronunciationStatus) => void; speech?: SpeechSynthesisUtterance; retry?: () => void };
 let current: Request | undefined;
 let reviewAudio: HTMLAudioElement | undefined;
 let reviewAutoplayBlocked = false;
@@ -176,7 +176,7 @@ const SILENT_RECORDING = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEA
 // Run directly in a navigation/toggle/speaker gesture, before async lookup.
 export function prepareReviewPronunciation() {
   // A selected mode is also a trusted recovery gesture. Keep its request alive.
-  if (current?.retry) { current.retry(); return; }
+  if (current?.retry && current.kind !== 'voice') { current.retry(); return; }
   if (typeof window === 'undefined' || typeof Audio !== 'function' || reviewPlaybackUnlocked || unlocking) return;
   const audio = reviewAudio ??= new Audio();
   if (current?.audio === audio) return;
@@ -312,4 +312,40 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
     request.retry = playRecording;
     report('blocked');
   } else playRecording();
+}
+
+// Private notes and previews use the same ownership/request token as dictionary
+// recordings and TTS. No independent playback controller can overlap them.
+export function claimVoiceAudio(owner: symbol, audio: HTMLAudioElement, report: (status: PronunciationStatus) => void) {
+  if (current?.owner === owner) return current;
+  pauseContextVideos(); stopPronunciation();
+  const request: Request = { kind: 'voice', owner, audio, report, cleanups: [] };
+  current = request;
+  const ended = () => finish(request, 'idle');
+  const failed = () => finish(request, 'error');
+  audio.addEventListener('ended', ended); audio.addEventListener('error', failed);
+  request.cleanups.push(() => { audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); });
+  return request;
+}
+export async function playVoiceAudio({ owner, audio, source, report, onReady }: {
+  owner: symbol; audio: HTMLAudioElement; source: () => Promise<string>; report: (status: PronunciationStatus) => void; onReady?: () => void;
+}) {
+  const request = claimVoiceAudio(owner, audio, report);
+  report('loading');
+  try {
+    const url = await source();
+    if (!active(request)) return;
+    if (audio.src !== url) { audio.preload = 'none'; audio.src = url; }
+    onReady?.();
+    const play = () => {
+      if (!active(request)) return;
+      request.retry = undefined;
+      void audio.play().then(() => { if (active(request)) report('playing'); }, error => {
+        if (!active(request)) return;
+        if (error instanceof DOMException && error.name === 'NotAllowedError') { request.retry = play; report('blocked'); }
+        else finish(request, 'error');
+      });
+    };
+    play();
+  } catch { if (active(request)) finish(request, 'error'); }
 }

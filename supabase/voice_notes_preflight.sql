@@ -1,0 +1,14 @@
+-- Read-only structure/configuration inspection. No user recordings or words are read.
+begin transaction read only;
+select jsonb_pretty(jsonb_build_object(
+ 'columns',(select jsonb_agg(jsonb_build_object('table',n.nspname||'.'||c.relname,'column',a.attname,'type',format_type(a.atttypid,a.atttypmod))) from pg_attribute a join pg_class c on c.oid=a.attrelid join pg_namespace n on n.oid=c.relnamespace where a.attnum>0 and not a.attisdropped and ((n.nspname='auth' and c.relname='users' and a.attname='id') or(n.nspname='public' and c.relname in ('words','expression_voice_files')) or(n.nspname='storage' and c.relname in ('buckets','objects')))),
+ 'bucket',(select jsonb_agg(jsonb_build_object('id',id,'public',public,'file_size_limit',file_size_limit,'allowed_mime_types',allowed_mime_types)) from storage.buckets where id='noted-voice-notes'),
+ 'policies',(select jsonb_agg(jsonb_build_object('schema',schemaname,'table',tablename,'name',policyname,'command',cmd,'using',qual,'check',with_check)) from pg_policies where (schemaname='storage' and tablename='objects') or(schemaname='public' and tablename in ('words','expression_voice_files'))),
+ 'functions',(select jsonb_agg(jsonb_build_object('name',p.proname,'arguments',pg_get_function_identity_arguments(p.oid),'owner',pg_get_userbyid(p.proowner),'marker',obj_description(p.oid,'pg_proc'))) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'voice_note%'),
+ 'objects',(select jsonb_agg(jsonb_build_object('name',c.relname,'rls',c.relrowsecurity,'marker',obj_description(c.oid,'pg_class'))) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname like '%voice%'),
+ 'rls',(select jsonb_agg(jsonb_build_object('schema',n.nspname,'table',c.relname,'enabled',c.relrowsecurity,'forced',c.relforcerowsecurity)) from pg_class c join pg_namespace n on n.oid=c.relnamespace where (n.nspname='storage' and c.relname in ('objects','buckets')) or(n.nspname='public' and c.relname in ('words','expression_voice_files'))),
+ 'grants',(select jsonb_agg(jsonb_build_object('schema',table_schema,'table',table_name,'role',grantee,'privilege',privilege_type)) from information_schema.role_table_grants where (table_schema='storage' and table_name in ('objects','buckets')) or(table_schema='public' and table_name in ('words','expression_voice_files'))),
+ 'constraints',(select jsonb_agg(jsonb_build_object('table',conrelid::regclass::text,'name',conname,'definition',pg_get_constraintdef(oid))) from pg_constraint where conrelid in (to_regclass('public.words'),to_regclass('public.expression_voice_files'),to_regclass('auth.users'))),
+ 'word_triggers',(select jsonb_agg(jsonb_build_object('name',tgname,'definition',pg_get_triggerdef(oid))) from pg_trigger where tgrelid=to_regclass('public.words') and not tgisinternal)
+)) as noted_voice_notes_preflight;
+rollback;

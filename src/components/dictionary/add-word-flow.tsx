@@ -4,16 +4,23 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Card } from '@/components/ui/primitives';
 import type { Suggestion, MeaningSuggestion } from '@/lib/smart-add';
 import styles from './smart-add.module.css';
+import {Microphone} from '@/components/voice-notes/voice-editor';
+import {VoiceDraftBox} from '@/components/voice-notes/voice-draft-box';
+import {VoiceConfirm} from '@/components/voice-notes/voice-confirm';
+import type {VoiceDraft} from '@/lib/voice-notes';
+import {itemType} from '@/lib/learning';
+import voiceStyles from '@/components/voice-notes/voice-notes.module.css';
 const cache = new Map<string, Suggestion[]>();
 const knownMeanings = new Map<string, string>();
 export function AddWordFlow(props: {
   busy: boolean; canSave: boolean; checkingAccount: boolean;
-  onManualSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft) => void | Promise<void>;
 }) {
   if (!props.canSave) return <Card className="wb-ui-text"><p>{props.checkingAccount ? 'Checking your account…' : 'Sign in to save words to your private library.'}</p>{!props.checkingAccount && <Link className="wb-control" href="/auth">Sign in</Link>}</Card>;
   return <SmartAddForm {...props} />;
 }
-function SmartAddForm({ busy, onManualSubmit }: { busy: boolean; onManualSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void> }) {
+function SmartAddForm({ busy, onManualSubmit }: { busy: boolean; onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft) => void | Promise<void> }) {
+  const [voice,setVoice]=useState<VoiceDraft|null>(null),[voiceBusy,setVoiceBusy]=useState(false),[voiceOpen,setVoiceOpen]=useState(false),[pendingType,setPendingType]=useState<string|null>(null);
   const [word, setWord] = useState(''), [meaning, setMeaning] = useState(''), [type, setType] = useState('auto');
   const [items, setItems] = useState<Suggestion[]>([]), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
   const [status, setStatus] = useState(''), [revision, setRevision] = useState(0), [composing, setComposing] = useState(false);
@@ -84,13 +91,13 @@ function SmartAddForm({ busy, onManualSubmit }: { busy: boolean; onManualSubmit:
   }, [word, type, revision, composing]);
   function reset() {
     cancel.current(); version.current++; current.current = ''; manual.current = false;
-    setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
+    setVoice(null);setVoiceOpen(false);setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
     requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
   }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (submitted.current) return;
+    event.preventDefault(); if (submitted.current||voiceBusy) return;
     submitted.current = true; cancel.current(); version.current++; setOpen(false); setStatus('');
-    try { await onManualSubmit(event); } finally { submitted.current = false; }
+    try { await onManualSubmit(event,voice||undefined); } finally { submitted.current = false; }
   }
   return <form className="panel word-form" onSubmit={submit} onReset={reset}>
     <div className={styles.field}>
@@ -114,7 +121,9 @@ function SmartAddForm({ busy, onManualSubmit }: { busy: boolean; onManualSubmit:
       <textarea ref={meaningInput} id={`${id}-meaning`} rows={3} aria-label="Meaning" name="meaning" value={meaning} onCompositionStart={() => { manual.current = true; manualRevision.current++; setStatus(''); }} onChange={event => { manual.current = true; manualRevision.current++; setMeaning(event.target.value); setStatus(''); }} placeholder="中文解释或你的理解（可留空）" maxLength={2000} disabled={busy} />
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
-    <label>Content type<select name="item_type" value={type} onChange={event => { version.current++; setType(event.target.value); }} disabled={busy}><option value="auto">Automatic</option><option value="word">Word</option><option value="expression">Expression</option></select></label>
-    <div className="form-bottom"><span>Your meaning stays editable. <Link href="/privacy">Suggestion sources</Link></span><button disabled={busy}>{busy ? 'Saving…' : 'Add to my library + '}</button></div>
+    <label>Content type<select name="item_type" value={type} onChange={event => { const value=event.target.value;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setType(value); }} disabled={busy||voiceBusy}><option value="auto">Automatic</option><option value="word">Word</option><option value="expression">Expression</option></select></label>
+    {itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression'&&<details className={voiceStyles.draft} open={voiceOpen} onToggle={event=>setVoiceOpen(event.currentTarget.open)}><summary><Microphone/>Add a voice note</summary>{voiceOpen&&<VoiceDraftBox draft={voice} onDraft={value=>{setVoice(value);if(value)setType('expression');}} onBusy={setVoiceBusy} disabled={busy}/>}</details>}
+    {pendingType!==null&&<VoiceConfirm title="Discard this draft recording?" description="Voice Notes are available only for Expressions. Keep Expression to retain this recording." confirmLabel="Discard and change type" busy={false} onCancel={()=>setPendingType(null)} onConfirm={()=>{setVoice(null);setType(pendingType);setPendingType(null);setVoiceOpen(false);}}/>}
+    <div className="form-bottom"><span>Your meaning stays editable. <Link href="/privacy">Suggestion sources</Link></span><button disabled={busy||voiceBusy}>{busy ? 'Saving…' : 'Add to my library + '}</button></div>
   </form>;
 }
