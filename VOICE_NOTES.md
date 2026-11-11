@@ -32,15 +32,22 @@ Recording releases microphone tracks on stop, interruption and unmount. Temporar
 
 ## Validation for this release
 
-- `npm run lint`, `npm run typecheck`, `npm run build`: passed.
-- `npm test`: 71 passed, including 9 PostgreSQL Voice Notes lifecycle/isolation tests. The updated read-only preflight was separately rerun against that database fixture.
-- Chromium: 12 Voice Notes cases passed, including simulated permission denial, recording lifecycle/30-second stop/interruption/navigation cleanup, file validation, failed-upload retry without duplicate item insertion, lazy playback, mutual exclusion, deletion confirmation, type-change confirmation, stale URL cancellation, setup fallback and metadata refresh.
-- Existing full browser suite was run; issues found were fixed and affected regressions rerun successfully. Five account/configuration-dependent cases were skipped. Hosted authenticated cross-user tests are not confirmed without disposable accounts and an applied migration.
-- iPhone WebKit: 31 passed (Voice Notes plus Review audio and spacing). Microphone behaviour here uses controlled fixtures, not physical iPhone hardware.
-- Production database/storage activation must still be confirmed through the preflight and administrator-run migration above; browser fixtures do not establish that activation.
+- Lint, type checking and production build passed.
+- All 92 unit/database tests passed, including recorder state/race tests, noise/quiet-input/boundary tests, real WAV bytes, one-pass decode and fallback/resource-cleanup tests. Existing data/RLS preservation tests remain included.
+- The full browser suite was run; issues it exposed were corrected, then all affected flows were rerun: 62 desktop tests passed, including real Chromium MediaRecorder encoding with a synthetic microphone. Five account/configuration-dependent cases in the full suite were skipped.
+- iPhone WebKit: 48 passed across Voice Notes, Related Words, Dictionary controls, layouts, video and calendar/typography refinements. These are browser/device emulation and controlled audio fixtures, not physical iPhone microphones.
+- The upgrade requires no new database migration. Hosted account isolation and physical iOS permission/interruption/noise handling still need disposable accounts / real-device verification; mocked browser tests do not establish those results.
 
-## Short-recording reliability update
+## Hold recording and reversible silence trimming
 
-The recording indicator now starts on MediaRecorder’s actual start event. Quick Stop requests allow a minimum 600 ms encoder capture window, then wait for final audio data before releasing microphone tracks. Recording uses one complete final container instead of 250 ms fragments. Finishing prevents duplicate actions; missing/empty output gives a retry message and retains any prior draft. Cancellation and navigation still release tracks, and callbacks from an earlier recording cannot release a newer microphone stream. A five-second finalization timeout prevents stuck controls. No database migration is needed for this update.
+This upgrade reuses the deployed private bucket, metadata/RPCs, playback owner and file limits; **no additional SQL is needed**.
 
-Validation includes 14 Voice Notes cases on Chromium and iPhone WebKit, delayed final-data and empty-output fixtures, and a real Chromium MediaRecorder quick-stop/playback test with a synthetic microphone. Physical iPhone hardware still needs user verification.
+The first explicit interaction prepares the microphone and supported recorder, then displays Ready to record. Hold again to record; release anywhere to stop. Permission preparation never automatically turns into capture. Releasing while permission is pending cancels that attempt; a late stream is immediately stopped. Keyboard Enter/Space and the small Use tap recording option provide a start/stop alternative using the same button. Recording status/timer begin only on MediaRecorder's actual start event, not on permission resolution or a delay.
+
+Pointer capture plus window-level release/cancel listeners cover release outside the button. Lost capture, backgrounding, window blur and closing/unmounting stop/cancel capture. Final data is collected before releasing microphone tracks. Late callbacks cannot stop a newer stream. Encoder start/finalization have bounded timeouts; a ready, unused microphone is released after twenty seconds. A small Web Audio level meter reports input energy, not recognised speech.
+
+After capture, client-side analysis uses frequency-limited energy, zero-crossing activity, an estimated background-noise floor, sustained activity and hysteresis. Only leading/trailing silence is removed, with approximately 250 ms safety padding. Internal pauses are preserved. A new PCM16 WAV contains the actual selected samples at the original decoded sample rate and channel count, preserving timing/pitch. Oversized output or unsupported/failed processing retains the playable original. No audio is sent to an AI, transcription or VAD service.
+
+Detection is intentionally conservative and cannot prove speech in arbitrary noise. Near-silent clips cannot be accepted as new notes; uncertain clips can be previewed and explicitly kept as originals. Original and trimmed versions can be compared/restored before Save. Existing saved recordings are never reprocessed. Only the selected version is uploaded after explicit Save; original comparison is for the current unsaved draft, not a second stored attachment. Uploaded files retain the existing validation workflow.
+
+Automated coverage includes audio boundary/padding/internal-pause/noise/quiet-input tests, real WAV payload checks, recorder readiness and late-event races, hold/release/cancellation, tap/keyboard fallback, silence/uncertainty, restore-original playback and real Chromium MediaRecorder encoding with a synthetic microphone. iPhone WebKit emulation cannot certify physical Safari/PWA microphone permission, hardware startup or OS interruption behaviour. Those remain real-device checks.

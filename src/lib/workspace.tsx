@@ -197,7 +197,7 @@ export default function Workspace({
     localStorage.setItem(storageKey, JSON.stringify(next));
     setWords(next);
   };
-  async function saveEntry(input: NewLearningItem): Promise<SaveResult> {
+  async function saveEntry(input: NewLearningItem,propagate=false): Promise<SaveResult> {
     if (saving.current) return null;
     saving.current = true;
     setBusy(true);
@@ -232,12 +232,19 @@ export default function Workspace({
       setMessage("Word saved. Ready for your next review.");
       return created;
     } catch (error) {
+      if(propagate)throw error;
       setMessage(errorMessage(error, "Could not save word."));
       return null;
     } finally {
       setBusy(false);
       saving.current = false;
     }
+  }
+  async function saveRelated(input:NewLearningItem){
+    const key=(s:string)=>s.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
+    if(words.some(w=>key(w.word)===key(input.word)))return;
+    try{const result=await saveEntry(input,true);if(!result)throw new Error('Could not save right now. Please try again.');}
+    catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return;}throw error instanceof Error?error:new Error((error as {message?:string}).message||'Could not save. Please try again.');}
   }
   async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft) {
     event.preventDefault();
@@ -498,6 +505,7 @@ export default function Workspace({
   const displayedWords = matchingWords.slice(pageStart, pageStart + LIBRARY_PAGE_SIZE);
   const voiceIds=page==='library'?displayedWords.filter(w=>itemType(w)==='expression').map(w=>w.id):page==='review'&&card&&itemType(card)==='expression'?[card.id]:[];
   const voiceMetadata=useVoiceNotes(user?.id,voiceIds);
+  const dictionarySavedWords=useMemo(()=>words.map(item=>item.word),[words]);
   function changeLibraryPage(next: number) {
     setLibraryPage(next);
     libraryResults.current?.scrollIntoView({ block: "start" });
@@ -709,7 +717,7 @@ export default function Workspace({
                       </div>
                     )}
                     <div className="word-actions">
-                      <DictionaryButton word={w.word} meaning={w.meaning} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={w.word} meaning={w.meaning} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
                       <button
                         className="text-button"
                         disabled={busy || editing === w.id}
@@ -777,7 +785,7 @@ export default function Workspace({
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
-                      <DictionaryButton word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

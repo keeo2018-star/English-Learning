@@ -43,7 +43,7 @@ test.describe('personal meanings and dictionary reference', () => {
         await page.getByRole('button', { name: 'Reveal answer' }).click();
         await expect(page.getByText('做事特别仔细，一丝不苟', { exact: true })).toBeVisible();
         await page.getByRole('button', { name: 'Sure', exact: true }).click();
-        expect(stored).toMatchObject({ meaning: '做事特别仔细，一丝不苟', interval_days: 1 });
+        await expect.poll(()=>stored).toMatchObject({ meaning: '做事特别仔细，一丝不苟', interval_days: 1 });
     });
     for (const width of [390, 1440])
         test('reference layout ' + width, async ({ page }) => { await page.setViewportSize({ width, height: 844 }); await mockCloud(page, r => r.fulfill({ json: [{ ...sampleWord, word: 'meticulous', meaning: '做事特别仔细，一丝不苟' }] })); await page.route('**/api/dictionary?*', r => r.fulfill({ json: result })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for meticulous' }).click(); const sheet = page.getByRole('dialog'); await expect(sheet.getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2); await expect(sheet.locator('audio[controls]')).toHaveCount(0); await expect(sheet.getByRole('heading', { name: 'Examples' })).toBeVisible(); expect(await sheet.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true); await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeFocused(); if (width === 390)

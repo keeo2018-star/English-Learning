@@ -19,7 +19,7 @@
 .header .close { width: 48px; min-width: 48px; height: 48px; padding: 0; flex-shrink: 0; }
 .header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
 .header .close:focus-visible { background: var(--noted-lime); }
-.sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; margin: 8px 0 16px; }
+.sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: var(--wb-brand-tracking); overflow-wrap: anywhere; margin: 8px 0 16px; }
 .pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .pronunciation:empty { display: none; }
 .sheet > .pronunciation { margin-bottom: 16px; }
@@ -69,3 +69,16 @@
   .sheet .phonetic button:global(.wb-knockout) svg { color: ButtonText; }
   .header .close:focus-visible { background: Highlight; color: HighlightText; border-color: ButtonText; }
 }
+.related { margin-top:var(--wb-space-6);padding-top:var(--wb-space-5);border-top:1px solid rgb(0 0 0 / 16%); }
+.relatedGrid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--wb-space-2); }
+.relatedItem { display:flex;align-items:center;min-width:0;border:1px solid rgb(0 0 0 / 18%);border-radius:16px; }
+.relatedTerm { flex:1;display:grid;gap:4px;justify-content:start;text-align:left;min-width:0;min-height:48px;padding:10px 12px;border:0;border-radius:16px 0 0 16px;background:transparent;color:var(--wb-black);overflow-wrap:anywhere; }
+.relatedTerm small { font-size:12px;line-height:1.5;font-weight:400; }
+.relatedSave { flex:none;min-height:44px;padding:8px;font-size:12px; }
+.relatedMeaning { display:grid;gap:var(--wb-space-2);margin-top:var(--wb-space-3); }
+@media(max-width:359px) { .relatedGrid { grid-template-columns:1fr; } }
+
+.related h3 { font-size:18px;line-height:1.4;letter-spacing:-.02em;margin:0 0 var(--wb-space-3); }
+.related .relatedSave { min-width:44px;padding:6px;border:0;border-left:1px solid rgb(0 0 0 / 12%);border-radius:0 16px 16px 0;align-self:stretch; }
+.relatedTerm small { display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+.related .credit { font-size:12px;line-height:1.6;color:#65655e;margin:12px 0 0; }

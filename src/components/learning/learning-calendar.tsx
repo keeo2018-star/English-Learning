@@ -83,7 +83,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
   const offset = first ? (first.getDay() + 6) % 7 : 0;
   const selectedData = data?.days.find(day => day.date === selected);
   const coverage = data ? reviewCoverage(selected, data.tracking_since, timezone) : 'unknown';
-  return <details className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
+  return <details data-metric={metric} className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>Learning calendar</summary>
     {open && month && <div className="learning-calendar-content">
       <div className="calendar-metrics" role="group" aria-label="Calendar activity">
@@ -111,6 +111,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
               disabled={date > today} onClick={() => setSelected(date)}>{i + 1}</button>;
           })}
         </div>
+        <div className="calendar-legend" aria-label={`${metric==='added'?'Added':'Reviewed'} activity scale`}>{['0','1–4','5–14','15–29','30+'].map((label,index)=><span key={label}><span className="calendar-swatch" data-level={index} aria-hidden="true"/>{label}</span>)}</div>
         <div className="calendar-day-summary" aria-live="polite" aria-atomic="true">
           <strong>{new Date(selected + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' })}</strong>
           <span>Reviewed: {coverage === 'unknown' ? 'Unavailable' : `${selectedData?.reviewed ?? 0}${coverage === 'partial' ? ' · partial day' : ''}`}</span>

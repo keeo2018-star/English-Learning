@@ -99,10 +99,11 @@ label {
 h1,
 h2,
 h3 {
+  letter-spacing: -.02em;
   font-family: var(--wb-font);
   font-weight: var(--wb-bold);
   margin: 0;
-  letter-spacing: -0.045em;
+  letter-spacing: var(--wb-brand-tracking);
   overflow-wrap: anywhere;
 }
 h1 {
@@ -179,7 +180,7 @@ summary:focus-visible {
 .wb-wordmark {
   font-size: 30px;
   font-weight: var(--wb-bold);
-  letter-spacing: -1.7px;
+  letter-spacing: var(--wb-brand-tracking);
   line-height: 1;
 }
 .wb-wordmark:hover {
@@ -353,7 +354,7 @@ summary:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
+  gap: var(--wb-space-4);
 }
 .form-bottom > span {
   font-size: 12px;
@@ -362,9 +363,9 @@ summary:focus-visible {
 .actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--wb-space-3);
   flex-wrap: wrap;
-  margin-top: 24px;
+  margin-top: var(--wb-space-5);
 }
 .wb-feedback {
   padding: 18px 22px;
@@ -478,7 +479,7 @@ summary:focus-visible {
 }
 .word-actions {
   display: flex;
-  gap: 10px;
+  gap: var(--wb-space-3);
   flex-wrap: wrap;
 }
 .word-actions .text-button {
@@ -754,7 +755,7 @@ summary:focus-visible {
   .wb-word-content h2 {
     font-size: clamp(28px, 8vw, 34px);
     line-height: 1.2;
-    letter-spacing: -.035em;
+    letter-spacing: var(--wb-brand-tracking);
     word-break: normal;
     text-wrap: pretty;
   }
@@ -938,7 +939,7 @@ summary:focus-visible {
 .review-progress progress::-webkit-progress-bar { background: #deded7; }
 .review-progress progress::-webkit-progress-value { background: var(--noted-lime); }
 .review-progress progress::-moz-progress-bar { background: var(--noted-lime); }
-.learning-calendar { margin-top: 40px; padding-top: 24px; border-top: 1px solid #d5d5cc; max-width: 560px; }
+.learning-calendar { margin-top: var(--wb-space-6); padding-top: var(--wb-space-5); border-top: 1px solid #d5d5cc; max-width: 560px; }
 .learning-calendar > summary { cursor: pointer; min-height: 48px; font-weight: 500; padding: 12px 0; }
 .learning-calendar-content { padding: 16px 0; }
 .calendar-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 20px; }
@@ -948,10 +949,16 @@ summary:focus-visible {
 .calendar-weekday { text-align: center; font-size: 11px; padding: 6px 0; }
 .calendar-grid .calendar-day { min-width: 0; width: 100%; min-height: 42px; padding: 4px; border-radius: 8px; border: 1px solid #ddddd5; color: var(--wb-black); background: transparent; font-size: 13px; }
 .calendar-grid .calendar-day[data-level="unknown"] { color: #77776c; border-style: dashed; }
-.calendar-grid .calendar-day[data-level="1"] { background: #edf9cb; }
-.calendar-grid .calendar-day[data-level="2"] { background: #dbf59b; }
-.calendar-grid .calendar-day[data-level="3"] { background: #c8f263; }
-.calendar-grid .calendar-day[data-level="4"] { background: var(--noted-lime); }
+/* Distinct amount steps; the legend also labels exact count ranges. */
+.learning-calendar { --activity-1:#e5edc1;--activity-2:#c2df82;--activity-3:var(--noted-lime);--activity-4:#82ac20; }
+.learning-calendar[data-metric="added"] { --activity-1:#ede6fb;--activity-2:var(--wb-lavender);--activity-3:#b096e7;--activity-4:#9672ce; }
+.learning-calendar [data-level="1"] { background:var(--activity-1); }
+.learning-calendar [data-level="2"] { background:var(--activity-2); }
+.learning-calendar [data-level="3"] { background:var(--activity-3); }
+.learning-calendar [data-level="4"] { background:var(--activity-4); }
+.calendar-legend { display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:16px;font-size:11px; }
+.calendar-legend > span { display:inline-flex;align-items:center;gap:4px; }
+.calendar-swatch { display:inline-block;width:14px;height:14px;border:1px solid #b7b7ae;border-radius:3px; }
 .calendar-grid .calendar-day[aria-current="date"] { font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
 .calendar-grid .calendar-day[aria-pressed="true"] { border: 2px solid var(--wb-black); }
 .calendar-day-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; font-size: 14px; }
@@ -966,7 +973,7 @@ summary:focus-visible {
 .review-completion h2 { margin: 0 0 12px; font-size: clamp(28px, 4vw, 40px); }
 .review-completion p { margin: 0 0 24px; }
 
-.profile-header h1 { margin: 16px 0; font-size: clamp(36px, 5vw, 56px); letter-spacing: -.045em; }
+.profile-header h1 { margin: 16px 0; font-size: clamp(36px, 5vw, 56px); letter-spacing: var(--wb-brand-tracking); }
 .profile-email { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
 .profile-header ~ .learning-calendar { margin-top: 28px; }
 .word-form select, .edit-form select {

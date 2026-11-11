@@ -14,6 +14,7 @@
   --wb-regular: 400;
   --wb-medium: 500;
   --wb-bold: 700;
+  --wb-brand-tracking: -.055em;
   --wb-space-1: 4px;
   --wb-space-2: 8px;
   --wb-space-3: 12px;
@@ -304,7 +305,7 @@ button[aria-pressed="true"],
 .wb-learning-card > h2.wb-learning-content {
   font-size: var(--wb-learning-word-size);
   line-height: 1.08;
-  letter-spacing: -.045em;
+  letter-spacing: var(--wb-brand-tracking);
   max-width: 100%;
   margin: 8px 0 0;
   overflow-wrap: anywhere;

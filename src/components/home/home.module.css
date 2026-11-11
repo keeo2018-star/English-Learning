@@ -17,7 +17,7 @@
   font-size: clamp(40px, 7vw, 72px);
   font-weight: var(--wb-bold);
   line-height: 1.06;
-  letter-spacing: -.055em;
+  letter-spacing: var(--wb-brand-tracking);
   margin: 0;
 }
 .highlight {
@@ -47,7 +47,7 @@
 .discover { background: #8cb8ff; }
 .review { background: var(--wb-coral); }
 .actionCopy { display: grid; gap: 8px; min-width: 0; }
-.label { font-size: clamp(26px, 4vw, 36px); font-weight: var(--wb-medium); line-height: 1.1; letter-spacing: -.04em; }
+.label { font-size: clamp(26px, 4vw, 36px); font-weight: var(--wb-medium); line-height: 1.1; letter-spacing: var(--wb-brand-tracking); }
 .description { max-width: 280px; font-size: 12px; line-height: 1.45; }
 .action svg { width: 24px; height: 24px; flex-shrink: 0; }
 .library { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; margin-top: 16px; border: 1px solid #ccc; border-radius: var(--wb-radius-small); color: var(--wb-black); min-height: 56px; }

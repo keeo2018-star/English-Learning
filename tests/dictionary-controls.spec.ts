@@ -42,7 +42,7 @@ test.describe('Dictionary control consistency', () => {
     const synonyms = dialog.locator('summary');
     await synonyms.click();
     await expect(synonyms).toHaveClass(/wb-knockout/);
-    await expect(dialog.getByText('fortune', { exact: true })).toBeVisible();
+    await expect(dialog.locator('details').getByText('fortune', { exact: true })).toBeVisible();
     await page.keyboard.press('Tab');
     await close.focus();
     await expect(close).toHaveCSS('outline-style', 'none');

@@ -1,8 +1,8 @@
 .page { max-width: 760px; margin: 0 auto; }
 .header { margin: 0 0 24px; }
-.header h1 { font-size: clamp(32px, 5vw, 48px); letter-spacing: -.04em; line-height: 1.1; margin: 12px 0 0; }
+.header h1 { font-size: clamp(32px, 5vw, 48px); letter-spacing: var(--wb-brand-tracking); line-height: 1.1; margin: 12px 0 0; }
 .page .blue { background: #8cb8ff; color: var(--wb-black); padding: var(--wb-card-padding); border-radius: var(--wb-radius-card); min-width: 0; }
-.blue h2 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; letter-spacing: -.035em; margin: 12px 0 20px; overflow-wrap: anywhere; }
+.blue h2 { font-size: clamp(30px, 5vw, 44px); line-height: 1.15; letter-spacing: var(--wb-brand-tracking); margin: 12px 0 20px; overflow-wrap: anywhere; }
 .blue .word { font-size: clamp(36px, 7vw, 60px); margin: 12px 0 20px; }
 .blue h2:focus { outline: none; }
 .blue p { line-height: 1.7; margin: 20px 0; }
