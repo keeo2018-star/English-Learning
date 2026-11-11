@@ -15,6 +15,7 @@ import {
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
 import { SelectableLink, SelectableButton, SelectableToggle } from "@/components/ui/selection";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
@@ -197,7 +198,7 @@ export default function Workspace({
     localStorage.setItem(storageKey, JSON.stringify(next));
     setWords(next);
   };
-  async function saveEntry(input: NewLearningItem,propagate=false): Promise<SaveResult> {
+  async function saveEntry(input: NewLearningItem,propagate=false,requestId?:string): Promise<SaveResult> {
     if (saving.current) return null;
     saving.current = true;
     setBusy(true);
@@ -208,7 +209,7 @@ export default function Workspace({
       ...(item_type ? { item_type } : {}),
       word: input.word.trim(),
       meaning: input.meaning.trim(),
-      example: input.example.trim(),
+      example: requestId?input.example:input.example.trim(),
       due_at: new Date().toISOString(),
       interval_days: 0,
       created_at: new Date().toISOString(),
@@ -219,15 +220,19 @@ export default function Workspace({
         throw new Error("Enter a word or expression.");
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("words")
-          .insert({ ...entry, user_id: user.id })
+          .insert({ ...entry, ...(requestId?{id:requestId}:{}), user_id: user.id })
           .select("*")
           .single();
-        if (error && !entry.meaning && error.code === '23514') throw new Error('English-only saving needs the database update. Add a meaning for now.');
+        if(error?.code==='23505'&&requestId){
+          const previous=await supabase.from('words').select('*').eq('id',requestId).eq('user_id',user.id).maybeSingle();
+          if(previous.data&&previous.data.word===entry.word&&previous.data.meaning===entry.meaning&&previous.data.example===entry.example){data=previous.data;error=null;}
+        }
+        if (error && !entry.meaning && error.code === '23514') throw new Error('Add a meaning before saving. Your text is kept.');
         if (error) throw error;
         if (accountId.current !== user.id) return null;
-        created=data;setWords((previous) => [data, ...previous]);
+        created=data;setWords((previous) => [data, ...previous.filter(item=>item.id!==data.id)]);
       } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...words]);}
       setMessage("Word saved. Ready for your next review.");
       return created;
@@ -246,20 +251,17 @@ export default function Workspace({
     try{const result=await saveEntry(input,true);if(!result)throw new Error('Could not save right now. Please try again.');}
     catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return;}throw error instanceof Error?error:new Error((error as {message?:string}).message||'Could not save. Please try again.');}
   }
-  async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const values = new FormData(form);
-    const result = await saveEntry({
-      word: String(values.get("word")),
-      meaning: String(values.get("meaning")),
-      example: "",
-      item_type: values.get("item_type") === "auto" ? null : String(values.get("item_type")) as "word" | "expression",
-    });
-    if (result) {
+  async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string):Promise<AddOutcome> {
+    event.preventDefault();const form=event.currentTarget,values=new FormData(form);
+    const content={word:String(values.get('word')||''),meaning:String(values.get('meaning')||''),example:String(values.get('example')||''),item_type:values.get('item_type')==='auto'?null:String(values.get('item_type')) as 'word'|'expression'};
+    if(textLength(content.word.trim())>ITEM_TEXT_LIMIT||textLength(content.example)>CONTEXT_TEXT_LIMIT)return {saved:false,message:'Extract or shorten the item/context before saving. Your text has been kept.'};
+    if(words.some(item=>item.id!==requestId&&captureKey(item.word)===captureKey(content.word)))return {saved:false,duplicate:true,message:'Already in your Library'};
+    try{
+      const result=await saveEntry(content,true,requestId);if(!result)return {saved:false,message:'Another save is in progress. Please retry.'};
+      setMessage('Added to Library');
       if(voice){setBusy(true);try{await uploadVoice(result.id,voice);if(accountId.current===user?.id)setMessage('Expression and voice note saved.');}catch(error){if(accountId.current===user?.id){setVoiceUploads(previous=>[...previous,{owner:user?.id||'local-demo',item:result,draft:voice,error:voiceError(error)}]);setMessage('Expression saved. Voice note upload needs retry.');}}finally{setBusy(false);}}
-      form.reset();
-    }
+      form.reset();return {saved:true};
+    }catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return {saved:false,duplicate:true,message:'Already in your Library'};}const message=errorMessage(error,'Could not save. Check your connection and retry.');setMessage('');return {saved:false,message};}
   }
   async function requestDelete(word:Word){
     setDeleteTrigger(document.activeElement instanceof HTMLElement?document.activeElement:null);
@@ -591,6 +593,7 @@ export default function Workspace({
           busy={busy}
           canSave={ready && (!supabase || !!user)}
           checkingAccount={!ready}
+          library={words}
           onManualSubmit={add}
         />
       ) : !ready ? (

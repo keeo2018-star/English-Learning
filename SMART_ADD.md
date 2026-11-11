@@ -6,7 +6,7 @@ Chinese meanings prefer the existing UAPI bilingual dictionary. It is a dictiona
 
 For full expressions or sentences without dictionary coverage, the official [MyMemory GET API](https://mymemory.translated.net/doc/spec.php) receives the complete English segment, never separate word-by-word requests. Its anonymous free allowance is [5,000 characters/day](https://mymemory.translated.net/doc/usagelimits.php), potentially shared by a deployment's outbound IP. No email, paid plan, private translation memory or API key is configured. Quota failure leaves manual capture available. Machine/translation-memory suggestions are explicitly labeled Translation, not dictionary definitions. Provider accuracy is not guaranteed. Successful suggestions have a bounded one-hour process cache. Private Chinese meanings are never sent. Privacy disclosures link the provider terms, including MyMemory's long-term segment retention.
 
-Saving never waits for these requests and captures the actual form values. Manual typing, pasting, partial edits and deliberate clearing take precedence. A cleared meaning can be suggested again explicitly, or after changing the English item. Non-empty manual meanings survive English changes. Cancellation, a request generation and a submit lock prevent late results from changing a new or saved item. No background update to a saved item exists.
+Saving never waits for these requests and captures the actual form values. Manual typing, pasting, partial edits and deliberate clearing take precedence. A cleared meaning can be suggested again explicitly. Both non-empty manual meanings and deliberately cleared meanings survive English changes. Cancellation, a request generation and a submit lock prevent late results from changing a new or saved item. No background update to a saved item exists.
 
 ## Database prerequisite for English-only capture
 
@@ -18,7 +18,11 @@ The repository schema and the user's previous production preflight both contain 
 
 Do not report English-only production saving as active until the schema has actually been updated. This workspace has no production database administrator credential.
 
-## Validation
+## Adaptive capture
+
+See [ADAPTIVE_ADD.md](ADAPTIVE_ADD.md) for the editable multiline typography, manual expression extraction, current storage bounds, duplicate detection and retry behaviour. No new database migration is required for that UI update.
+
+## Validation of the original provider integration
 
 Build, lint and typecheck passed. All 39 unit tests passed; the focused migration/provider tests also passed after the migration lock guard was added. The full browser regression run had 140 passes and 5 expected skips for unconfigured demo/confirmed-account flows. Final Smart Add runs passed all 18 cases in Chromium and all 18 in iPhone/WebKit, including actual touchscreen taps, Chinese IME ownership, explicit-retry failure, stale responses, saving during lookup, installed-PWA behavior and the old-schema fallback. Browser save tests use isolated Supabase fixtures, not production account credentials.
 

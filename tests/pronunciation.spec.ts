@@ -21,7 +21,7 @@ test('word phonetics and accent buttons appear in library and review', async ({ 
   await page.getByLabel('Word or phrase').fill('hello');
   await page.getByLabel('Meaning', { exact: true }).fill('A greeting');
   await page.getByRole('button', { name: 'Add to my library' }).click();
-  await expect(page.getByRole('status')).toContainText('Word saved');
+  await expect(page.getByRole('status')).toContainText('Added to Library');
   }
   for (const path of ['/library', '/review']) {
     await page.goto(path);

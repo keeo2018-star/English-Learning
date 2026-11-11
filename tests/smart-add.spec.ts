@@ -24,7 +24,7 @@ test.describe('Smart Add', () => {
     await expect(word).toHaveValue('subtle'); await expect(page.getByRole('listbox')).toHaveCount(0);
     await expect(page.getByLabel('Meaning', { exact: true })).toHaveValue('微妙的');
     await expect(page.getByText('Auto-filled · Editable', { exact: true })).toBeVisible(); expect(writes).toHaveLength(0);
-    await word.press('Enter'); await expect(page.getByText('Word saved. Ready for your next review.')).toBeVisible();
+    await word.press('Enter'); await expect(page.getByText('Added to Library')).toBeVisible();
     expect(writes[0]).toMatchObject({ word: 'subtle', meaning: '微妙的' }); await expect(word).toHaveValue('');
   });
   test('Enter without an active suggestion quick-saves English only', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('Smart Add', () => {
     await page.route('**/api/smart-add/meaning', async route => { await new Promise(resolve => setTimeout(resolve, 1500)); await route.fulfill({ json: { meaning: '迟到的结果', source: 'dictionary' } }); });
     const word = page.getByLabel('Word or phrase'); await word.fill('subt'); await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(3);
     await expect(page.getByText('Finding meaning…')).toBeVisible(); await word.press('Enter');
-    await expect(page.getByText('Word saved. Ready for your next review.')).toBeVisible();
+    await expect(page.getByText('Added to Library')).toBeVisible();
     expect(writes).toHaveLength(1); expect(writes[0]).toMatchObject({ word: 'subt', meaning: '' });
     await page.waitForTimeout(1700); await expect(page.getByLabel('Meaning', { exact: true })).toHaveValue(''); expect(writes).toHaveLength(1);
   });
@@ -64,7 +64,7 @@ test.describe('Smart Add', () => {
     await word.fill('subtle'); await expect(meaning).toHaveValue('微妙的'); await meaning.fill('微妙的，个人备注');
     await word.fill('substantial'); await page.waitForTimeout(750); await expect(meaning).toHaveValue('微妙的，个人备注');
     await meaning.fill(''); await page.getByRole('button', { name: 'Suggest meaning' }).click(); await expect(meaning).toHaveValue('微妙的');
-    await meaning.fill(''); await word.fill('subtly'); await expect(meaning).toHaveValue('微妙的');
+    await meaning.fill(''); await word.fill('subtly'); await page.waitForTimeout(750);await expect(meaning).toHaveValue('');await page.getByRole('button',{name:'Suggest meaning'}).click();await expect(meaning).toHaveValue('微妙的');
   });
   test('complete expression and custom sentence are preserved with type override', async ({ page }) => {
     const writes = await setup(page); const requests: { word: string; type: string }[] = [];
@@ -133,10 +133,10 @@ test.describe('Smart Add', () => {
     });
     await page.getByLabel('Word or phrase').fill('subtle');
     await page.getByLabel('Word or phrase').press('Enter');
-    await expect(page.getByText('English-only saving needs the database update. Add a meaning for now.')).toBeVisible();
+    await expect(page.getByText('Add a meaning before saving. Your text is kept.')).toBeVisible();
     await expect(page.getByLabel('Word or phrase')).toHaveValue('subtle');
     await page.getByLabel('Meaning', { exact: true }).fill('自定义');
     await page.getByRole('button', { name: /Add to my library/ }).click();
-    await expect(page.getByText('Word saved. Ready for your next review.')).toBeVisible();
+    await expect(page.getByText('Added to Library')).toBeVisible();
   });
 });

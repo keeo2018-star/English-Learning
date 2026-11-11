@@ -106,7 +106,7 @@ test.describe("real Supabase", () => {
         .getByLabel("Meaning", { exact: true })
         .fill("A temporary learning item");
       await page.getByRole("button", { name: "Add to my library" }).click();
-      await expect(page.getByRole("status")).toContainText("Word saved");
+      await expect(page.getByRole("status")).toContainText("Added to Library");
       await page.goto("/library");
       await page.reload();
       await page.getByLabel("Search library").fill(marker);
@@ -254,7 +254,7 @@ test.describe("real Supabase", () => {
         .getByLabel("Meaning", { exact: true })
         .fill("Live integration test meaning");
       await a.getByRole("button", { name: "Add to my library" }).click();
-      await expect(a.getByRole("status")).toContainText("Word saved");
+      await expect(a.getByRole("status")).toContainText("Added to Library");
       const own = await fetch(
         new URL("/rest/v1/words?word=eq." + marker + "&select=*", url),
         { headers: headers(tokenA!) },

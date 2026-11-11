@@ -206,7 +206,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await other.getByLabel('Meaning', { exact: true }).fill('new');
     await other.getByRole('combobox', { name: 'Content type', exact: true }).selectOption('word');
     await other.getByRole('button', { name: /Add to my library/ }).click();
-    await expect(other.getByRole('status')).toContainText('Word saved');
+    await expect(other.getByText('Added to Library', { exact: true })).toBeVisible();
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(counter).toHaveText('4 items');
     await expect(page.getByText('Words: 2 · Expressions: 2', { exact: true })).toBeVisible();

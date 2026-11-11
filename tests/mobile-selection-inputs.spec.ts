@@ -141,5 +141,5 @@ test('desktop search and capture fields remain readable', async ({ page, isMobil
   await page.goto('/library');
   await expect(page.getByLabel('Search library')).toHaveCSS('font-size', '16px');
   await page.goto('/add');
-  await expect(page.getByLabel('Word or phrase')).toHaveCSS('font-size', '16px');
+  expect(await page.getByLabel('Word or phrase').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(36);
 });

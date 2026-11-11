@@ -14,7 +14,7 @@ test("collect, persist, search, review, and delete a word in local demo", async 
     .fill("A happy discovery by chance");
   await expect(page.getByLabel("Example sentence")).toHaveCount(0);
   await page.getByRole("button", { name: "Add to my library" }).click();
-  await expect(page.getByRole("status")).toContainText("Word saved");
+  await expect(page.getByRole("status")).toContainText("Added to Library");
   await page.getByRole("link", { name: "03 Library" }).click();
   await expect(
     page.getByRole("heading", { name: "serendipity" }),

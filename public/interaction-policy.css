@@ -17,7 +17,7 @@
 }
 /* Apply before focus, so iOS never needs its small-text focus zoom. */
 @media (max-width: 699px), (pointer: coarse) {
-  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select, [contenteditable="true"]) {
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea:not([data-adaptive-editor]), select, [contenteditable="true"]) {
     font-size: max(16px, 1em);
     line-height: 1.5;
     scroll-margin-block: 24px;

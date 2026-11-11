@@ -1,5 +1,5 @@
 /* Only public install assets are cached. No account pages, APIs or sessions. */
-const CACHE = 'noted-install-v4';
+const CACHE = 'noted-install-v5';
 const ASSETS = ['/interaction-policy.css', '/offline.html', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

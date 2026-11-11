@@ -106,13 +106,13 @@ test.describe("production UX regressions (mocked service)", () => {
     await page.getByLabel("Word or phrase").fill("retry-word");
     await page.getByLabel("Meaning", { exact: true }).fill("Retry meaning");
     await page.getByRole("button", { name: "Add to my library" }).click();
-    await expect(page.getByRole("status")).toContainText(
+    await expect(page.getByRole("form",{name:"Add learning item"}).getByRole("alert")).toContainText(
       "Saving is temporarily unavailable",
     );
     await expect(page.getByLabel("Word or phrase")).toHaveValue("retry-word");
     fail = false;
-    await page.getByRole("button", { name: "Add to my library" }).click();
-    await expect(page.getByRole("status")).toContainText("Word saved");
+    await page.getByRole("button", { name: "Retry", exact:true }).click();
+    await expect(page.getByRole("status")).toContainText("Added to Library");
   });
   test("sign-in accepts existing accounts with six-character passwords", async ({
     page,

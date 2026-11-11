@@ -22,7 +22,7 @@ test.describe('personal meanings and dictionary reference', () => {
         await page.getByLabel('Word or phrase').fill('meticulous');
         await page.getByLabel('Meaning', { exact: true }).fill('做事特别仔细，一丝不苟');
         await page.getByRole('button', { name: 'Add to my library' }).click();
-        await expect(page.getByText('Word saved. Ready for your next review.')).toBeVisible();
+        await expect(page.getByText('Added to Library')).toBeVisible();
         expect(lookups).toBe(0);
         expect(writes[0]).toMatchObject({ word: 'meticulous', meaning: '做事特别仔细，一丝不苟', interval_days: 0, example: '' });
         expect(writes[0]).not.toHaveProperty('dictionary_metadata');

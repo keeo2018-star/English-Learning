@@ -10,3 +10,30 @@
 .meaningHeader button:hover { text-decoration: underline; }
 .meaningStatus { margin: 0; color: #45453f; font-size: 12px; line-height: 1.5; }
 @media (max-width: 699px) { .field input { font-size: 16px; } }
+/* The editable control and its measurement probe share exact typography. */
+.field textarea.english, .probe { font-family:var(--wb-font);font-weight:var(--wb-bold);line-height:1.16;letter-spacing:var(--wb-brand-tracking);--capture-size:clamp(2.25rem,10vw,3.25rem);font-size:var(--capture-size); }
+.field textarea.english[data-scale="1"], .probe[data-scale="1"] { --capture-size:clamp(1.875rem,8.6vw,2.5rem);font-size:var(--capture-size); }
+.field textarea.english[data-scale="2"], .probe[data-scale="2"] { --capture-size:clamp(1.625rem,7.6vw,2rem);font-size:var(--capture-size); }
+.field textarea.english[data-scale="3"], .probe[data-scale="3"] { --capture-size:clamp(1.375rem,6.4vw,1.625rem);font-size:var(--capture-size); }
+.field textarea.english[data-scale="4"], .probe[data-scale="4"] { --capture-size:clamp(1.25rem,5.6vw,1.375rem);font-size:var(--capture-size); }
+.field textarea.english { display:block;width:100%;min-height:76px;margin:0;padding:16px 60px 16px 16px;resize:none;overflow-wrap:anywhere;word-break:normal;white-space:pre-wrap;color:var(--wb-black);background:var(--wb-offwhite);transition:none;scroll-padding-block:16px; }
+.field textarea.english::placeholder { font-size:1rem;font-weight:400;letter-spacing:normal;color:#64645e;opacity:1; }
+.mirror { position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;box-sizing:border-box;border:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal; }
+.probe { position:fixed;visibility:hidden;pointer-events:none;left:-100000px; }
+.field .clear { position:absolute;top:12px;right:8px;width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--wb-black); }
+.list[data-above] { top:auto;bottom:calc(100% + 6px); }
+.captureHelp { display:grid;gap:8px;font-size:12px;line-height:1.6; }
+.captureHelp:empty { display:none; }
+.captureHelp > button { justify-self:start; }
+.extraction p { margin:0 0 8px; }
+.inlineActions { display:flex;flex-wrap:wrap;gap:8px; }
+.inlineActions button { font-size:12px;min-height:44px;padding:8px 12px; }
+.duplicate { display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px; }
+.duplicate a { font-size:12px;min-height:44px;padding:8px 12px; }
+.contextField { min-width:0; }
+.contextField summary { cursor:pointer;font-size:13px;min-height:44px;display:flex;align-items:center;gap:8px;list-style:none; }
+.contextField summary::-webkit-details-marker { display:none; }
+.contextField summary span { color:#45453f;font-size:12px;font-weight:400; }
+.contextField textarea { margin-top:8px; }
+.meaningField textarea[name="meaning"], .contextField textarea[name="example"] { font-size:1rem;line-height:1.5; }
+.saveError { margin:0;font-size:13px;line-height:1.6; }

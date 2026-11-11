@@ -11,9 +11,9 @@ test.describe('Editorial pages and centered learning cards',()=>{
   await page.route('**/api/dictionary?*',route=>route.fulfill({json:{word:item.word,phonetics:[{accent:'UK',text:'straɪd'},{accent:'US',text:'straɪd'}],chinese:['从容应对'],english:[{partOfSpeech:'expression',definition:'Deal calmly with a difficult situation.'}],examples:[{source:item.example,translation:'她学会了从容应对。'}],synonyms:[]}}));
   await page.goto('/add');
   const input=page.getByRole('combobox',{name:'Word or phrase'}),meaning=page.getByRole('textbox',{name:'Meaning',exact:true});
-  await expect(input).toBeVisible();await expect(input).toHaveCSS('font-size','16px');
+  await expect(input).toBeVisible();expect(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(36);
   const inputBox=(await input.boundingBox())!,meaningBox=(await meaning.boundingBox())!;
-  expect(inputBox.height).toBeGreaterThanOrEqual(48);expect(inputBox.height).toBeLessThanOrEqual(52);
+  expect(inputBox.height).toBeGreaterThanOrEqual(76);expect(inputBox.height).toBeLessThanOrEqual(100);
   expect(meaningBox.height).toBeGreaterThanOrEqual(96);expect(meaningBox.height).toBeLessThanOrEqual(112);
   const assist=(await page.getByRole('button',{name:'Suggest meaning'}).boundingBox())!;expect(assist.y+assist.height).toBeLessThanOrEqual(meaningBox.y);
   const framePadding=await page.locator('.wb-app-frame').evaluate(el=>getComputedStyle(el).paddingLeft);
