@@ -3,7 +3,7 @@ import base from './playwright.config';
 
 export default defineConfig({
   ...base,
-  testMatch: ['**/adaptive-add.spec.ts', '**/related-words.spec.ts', '**/visual-refinements.spec.ts', '**/voice-notes.spec.ts', '**/review-spacing.spec.ts', '**/layout-refinement.spec.ts', '**/discover.spec.ts', '**/home-design.spec.ts', '**/smart-add.spec.ts', '**/video-context.spec.ts', '**/review-controls-stability.spec.ts', '**/dictionary-edit.spec.ts', '**/library-performance.spec.ts', '**/learning-progress.spec.ts', '**/mobile-selection-inputs.spec.ts', '**/review-audio.spec.ts', '**/dictionary-highlight.spec.ts', '**/dictionary-controls.spec.ts', '**/pronunciation-consistency.spec.ts'],
+  testMatch: ['**/add-review-refinement.spec.ts', '**/adaptive-add.spec.ts', '**/related-words.spec.ts', '**/visual-refinements.spec.ts', '**/voice-notes.spec.ts', '**/review-spacing.spec.ts', '**/layout-refinement.spec.ts', '**/discover.spec.ts', '**/home-design.spec.ts', '**/smart-add.spec.ts', '**/video-context.spec.ts', '**/review-controls-stability.spec.ts', '**/dictionary-edit.spec.ts', '**/library-performance.spec.ts', '**/learning-progress.spec.ts', '**/mobile-selection-inputs.spec.ts', '**/review-audio.spec.ts', '**/dictionary-highlight.spec.ts', '**/dictionary-controls.spec.ts', '**/pronunciation-consistency.spec.ts'],
   use: {
     ...base.use,
     ...devices['iPhone 13'],

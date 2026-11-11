@@ -1016,3 +1016,10 @@ summary:focus-visible {
 
 .expression-title { display: grid; gap: 8px; min-width: 0; }
 .expression-title > h2 { margin: 0; }
+
+/* Keep capture actions scrollable beyond the keyboard and its accessory controls. */
+.word-form { margin-bottom:var(--capture-keyboard-inset,0px); }
+.word-form .form-bottom > button { scroll-margin-block:24px calc(96px + env(safe-area-inset-bottom,0px)); }
+.wb-learning-card.wb-card.review-card:has(> .review-card-tools) { position:relative;padding-top:calc(var(--wb-card-padding) + 32px); }
+.review-card-tools { position:absolute;top:8px;right:8px; }
+.review-card-tools .review-delete { display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;padding:12px;border:0;background:transparent;color:var(--wb-black);border-radius:var(--wb-radius-small); }

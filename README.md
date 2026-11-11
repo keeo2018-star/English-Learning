@@ -174,3 +174,5 @@ Review grading keeps top mode/account controls visually stable while their exist
 Related Words extends Dictionary / Reference using existing dictionary synonyms and the [Datamuse API](https://www.datamuse.com/api/) for semantic/topic connections. See [RELATED_WORDS.md](RELATED_WORDS.md) for limits, attribution, optional API-key setup, Chinese lookup and safe Library saving.
 
 The Add editor uses stable adaptive typography, multiline capture, exact-selection expression extraction and draft-preserving/idempotent retries. See [ADAPTIVE_ADD.md](ADAPTIVE_ADD.md) for behaviour, existing database limits and device-testing scope.
+
+Random Review reuses Library deletion with an explicit confirmation, retry-safe error handling, private audio cleanup and unrated session advancement. See [REVIEW_DELETION.md](REVIEW_DELETION.md) for behavior and test scope.

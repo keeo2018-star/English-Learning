@@ -12,7 +12,7 @@ export function readReviewSession(raw: string | null, account: string): ReviewSe
   try {
     const s = JSON.parse(raw || 'null');
     if (!s || s.version !== 1 || s.account !== account || typeof s.id !== 'string' || !Number.isFinite(Date.parse(s.startedAt)) ||
-      !Array.isArray(s.queue) || !s.queue.length || s.queue.length > 30 || !Array.isArray(s.completed) ||
+      !Array.isArray(s.queue) || s.queue.length > 30 || !Array.isArray(s.completed) ||
       s.queue.some((c: ReviewCard & { eventId: string }) => !c || typeof c.id !== 'string' || typeof c.eventId !== 'string' || !['forward', 'reverse', 'context'].includes(c.direction)) ||
       new Set(s.queue.map((c: ReviewCard) => c.id)).size !== s.queue.length ||
       new Set(s.queue.map((c: { eventId: string }) => c.eventId)).size !== s.queue.length ||
@@ -23,4 +23,9 @@ export function readReviewSession(raw: string | null, account: string): ReviewSe
 export function completeSessionCard(session: ReviewSession, eventId: string): ReviewSession {
   if (!session.queue.some(card => card.eventId === eventId) || session.completed.includes(eventId)) return session;
   return { ...session, completed: [...session.completed, eventId] };
+}
+
+// Removing an ungraded card never fabricates a response or erases completed reviews.
+export function removeSessionItem(session:ReviewSession,id:string):ReviewSession {
+ return {...session,queue:session.queue.filter(card=>card.id!==id||session.completed.includes(card.eventId))};
 }

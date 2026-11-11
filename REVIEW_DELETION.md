@@ -1,0 +1,11 @@
+# Random Review entry deletion
+
+The current Random Review card exposes a 44px top-right trash action named Delete entry. It is separate from recall ratings and opens the existing Library confirmation dialog, using Cancel / Delete labels and the actual English item. The dialog explicitly says the entry is removed from Library and warns about attached recordings when present.
+
+The existing Library delete path still handles private recording cleanup, owner-isolated Supabase deletion and local Library state. Only a confirmed successful delete removes a pending item from the persisted review session and advances the card. It creates no review event and does not increment completed responses. Already completed reviews remain represented in the session summary. An empty queue is a valid persisted completion state. In-flight deletion is guarded, and older background Library responses are invalidated after success.
+
+Failure keeps the same card and confirmation dialog, shows an accessible error, and permits retry or cancellation. Cancel/Escape restore focus to the triggering trash action; success focuses the next Reveal answer action or the completion button. Library keeps its existing labels and uses the same retry-capable dialog behavior. No database migration or user-data reset is introduced.
+
+Browser fixtures cover title styling at 320/390/1440 widths, empty/short/multiline input, focused divider and clear action, a keyboard-sized viewport with an unobstructed save action, cancel, successful removal from Library and session across reloads, final-card completion and failed deletion retry without any rating RPC. These are isolated fixtures, not live private-account lifecycle or physical iPhone tests.
+
+Validation: build, ESLint and typecheck passed; all 97 unit tests passed. The complete Chromium run passed 221 cases with five expected account/configuration skips and identified one Library focus-timing regression. After correcting focus restoration to occur after dialog cleanup, the final 21-case Chromium run passed (including that regression and all requested deletion cases). The final iPhone WebKit run passed all 47 Add, adaptive-layout, Review-spacing and Voice Notes cases. Screenshots were inspected for empty/short/multiline titles, the keyboard-sized viewport, and the Review card toolbar.

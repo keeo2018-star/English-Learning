@@ -21,7 +21,7 @@ import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dic
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
-import { completeSessionCard, newReviewSession, readReviewSession, reviewSessionKey, type ReviewSession } from "./review-session";
+import { completeSessionCard, newReviewSession, readReviewSession, removeSessionItem, reviewSessionKey, type ReviewSession } from "./review-session";
 import { DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
 import { indexLibrary, normalizeLibraryQuery, LIBRARY_PAGE_SIZE } from "./library-search";
 import {useVoiceNotes} from './use-voice-notes';
@@ -77,6 +77,8 @@ export default function Workspace({
     [deleting, setDeleting] = useState<Word | null>(null);
   const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
   const [deleteHasRecording,setDeleteHasRecording]=useState(false);
+  const [deleteError,setDeleteError]=useState('');
+  const deletionInFlight=useRef(false),deleteFocusPending=useRef(false);
   const [voiceTypeEdit,setVoiceTypeEdit]=useState<{word:Word;changes:NewLearningItem}|null>(null);
   const [voiceUploads,setVoiceUploads]=useState<{owner:string;item:Word;draft:VoiceDraft;error:string}[]>([]);
   const requestedRandom = useRef(false);
@@ -264,11 +266,15 @@ export default function Workspace({
     }catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return {saved:false,duplicate:true,message:'Already in your Library'};}const message=errorMessage(error,'Could not save. Check your connection and retry.');setMessage('');return {saved:false,message};}
   }
   async function requestDelete(word:Word){
+    if(busy||ratingInFlight.current||deletionInFlight.current)return;
+    deletionInFlight.current=true;setDeleteError('');
     setDeleteTrigger(document.activeElement instanceof HTMLElement?document.activeElement:null);
     setBusy(true);setMessage('');const owner=accountId.current;
-    try{let files=[];try{files=await voiceFiles([word.id]);}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}if(accountId.current!==owner)return;setDeleteHasRecording(files.length>0);setDeleting(word);}catch(error){setMessage(voiceError(error));}finally{setBusy(false);}
+    try{let files=[];try{files=await voiceFiles([word.id]);}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}if(accountId.current!==owner)return;setDeleteHasRecording(files.length>0);setDeleting(word);}catch(error){setMessage(voiceError(error));}finally{deletionInFlight.current=false;setBusy(false);}
   }
-  async function remove(id: string) {
+  async function remove(id: string):Promise<boolean> {
+    if(deletionInFlight.current)return false;
+    deletionInFlight.current=true;setDeleteError('');
     const owner = accountId.current;
     setBusy(true);
     setMessage("");
@@ -282,13 +288,18 @@ export default function Workspace({
           .select("id")
           .single();
         if (error) throw error;
-        if (accountId.current !== owner) return;
+        if (accountId.current !== owner) return false;
+        ++loadVersion.current;
         setWords((previous) => previous.filter((w) => w.id !== id));
       } else persistLocal(words.filter((w) => w.id !== id));
+      let latest=session;
+      try { latest=readReviewSession(localStorage.getItem(reviewSessionKey(account)),account)||latest; } catch { /* Keep the in-memory session. */ }
+      if(latest)persistSession(removeSessionItem(latest,id));
+      setRevealed(null);return true;
     } catch (error) {
-      setMessage(errorMessage(error, "Could not delete word."));
+      setDeleteError(errorMessage(error, "Could not delete entry. Please try again."));return false;
     } finally {
-      setBusy(false);
+      deletionInFlight.current=false;setBusy(false);
     }
   }
   async function saveDictionaryMeaning(word: Word, value: string) {
@@ -441,6 +452,12 @@ export default function Workspace({
   const sessionTotal = session?.queue.filter(entry => session.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
   const reviewedCount = session?.completed.length ?? 0;
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
+  useEffect(()=>{
+    if(deleting||!deleteFocusPending.current)return;
+    deleteFocusPending.current=false;
+    if(page==='review')(revealButton.current||document.querySelector<HTMLButtonElement>('.review-completion button'))?.focus({preventScroll:true});
+    else librarySearch.current?.focus({preventScroll:true});
+  },[deleting,page]);
   const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
   const direction = selectedDirection === 'reverse' && !card?.meaning.trim() ? 'forward' : selectedDirection;
   const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
@@ -781,6 +798,7 @@ export default function Workspace({
                   color={randomMode ? "coral" : collectionColor(card.id)}
                   className="panel review-card wb-learning-card"
                 >
+                  {randomMode&&<div className="review-card-tools"><button type="button" className="review-delete" aria-label="Delete entry" disabled={busy} onClick={()=>void requestDelete(card)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></button></div>}
                   <h2 className="wb-learning-content">{prompt}</h2>
                   {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio text={card.word} automatic={autoPronunciation} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation text={card.word} automatic={autoPronunciation}/>)}
                   {revealed === card.id ? (
@@ -834,13 +852,14 @@ export default function Workspace({
         <ConfirmDialog
           returnFocus={deleteTrigger}
           word={deleting.word}
+          entry={page==='review'}
+          error={deleteError}
           recordingWarning={deleteHasRecording}
           busy={busy}
           onCancel={() => setDeleting(null)}
           onConfirm={async () => {
-            await remove(deleting.id);
-            setDeleting(null);
-            requestAnimationFrame(() => librarySearch.current?.focus());
+            if(!await remove(deleting.id))return;
+            deleteFocusPending.current=true;setDeleting(null);
           }}
         />
       )}

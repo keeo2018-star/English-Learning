@@ -13,10 +13,10 @@ test.describe('Review uses natural content height',()=>{
   // Measure steady-state spacing in CSS pixels, without entrance transforms.
   const metrics=await card.evaluate(element=>{
    const heading=element.querySelector('h2')!.getBoundingClientRect(),audio=element.querySelector('.random-pronunciation')!.getBoundingClientRect(),button=element.querySelector('.review-reveal')!.getBoundingClientRect(),style=getComputedStyle(element);
-   return {wordToAudio:Math.round(audio.top-heading.bottom),audioToReveal:Math.round(button.top-audio.bottom),height:element.getBoundingClientRect().height,minHeight:style.minHeight,font:parseFloat(getComputedStyle(element.querySelector('h2')!).fontSize),padding:parseFloat(style.paddingTop),visibleHeight:heading.height+audio.height+button.height};
+   return {wordToAudio:Math.round(audio.top-heading.bottom),audioToReveal:Math.round(button.top-audio.bottom),height:element.getBoundingClientRect().height,minHeight:style.minHeight,font:parseFloat(getComputedStyle(element.querySelector('h2')!).fontSize),padding:parseFloat(style.paddingBottom),topPadding:parseFloat(style.paddingTop),visibleHeight:heading.height+audio.height+button.height};
   });
-  expect(metrics.minHeight).toBe('0px');expect(metrics.wordToAudio).toBeGreaterThanOrEqual(16);expect(metrics.wordToAudio).toBeLessThanOrEqual(24);expect(metrics.audioToReveal).toBeGreaterThanOrEqual(32);expect(metrics.audioToReveal).toBeLessThanOrEqual(48);expect(metrics.padding).toBeGreaterThanOrEqual(24);expect(metrics.padding).toBeLessThanOrEqual(32);expect(metrics.font).toBeGreaterThanOrEqual(40);
-  expect(metrics.height-metrics.visibleHeight-2*metrics.padding).toBeLessThanOrEqual(72);
+  expect(metrics.minHeight).toBe('0px');expect(metrics.wordToAudio).toBeGreaterThanOrEqual(16);expect(metrics.wordToAudio).toBeLessThanOrEqual(24);expect(metrics.audioToReveal).toBeGreaterThanOrEqual(32);expect(metrics.audioToReveal).toBeLessThanOrEqual(48);expect(metrics.padding).toBeGreaterThanOrEqual(24);expect(metrics.padding).toBeLessThanOrEqual(32);expect(metrics.font).toBeGreaterThanOrEqual(40);expect(metrics.topPadding).toBe(metrics.padding+(mode==='random'?32:0));
+  expect(metrics.height-metrics.visibleHeight-metrics.padding-metrics.topPadding).toBeLessThanOrEqual(72);
   if(mode==='random')await expect(card).toHaveCSS('background-color','rgb(255, 138, 91)');
   await card.screenshot({path:`/tmp/noted-review-hidden-${mode}-${width}.png`});
   await reveal.click();await expect(card.locator('.wb-meaning-reveal')).toHaveCSS('opacity','1');await expect(card.getByRole('button',{name:'Sure',exact:true})).toBeVisible();expect((await card.boundingBox())!.height).toBeGreaterThan(metrics.height);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createReviewQueue } from '../../src/lib/review.ts';
-import { newReviewSession, readReviewSession, completeSessionCard } from '../../src/lib/review-session.ts';
+import { newReviewSession, readReviewSession, completeSessionCard, removeSessionItem } from '../../src/lib/review-session.ts';
 import { localDateKey, reviewCoverage, activityLevel } from '../../src/lib/activity.ts';
 import { itemType } from '../../src/lib/learning.ts';
 const item = {word:'hello',id:'one',meaning:'test',example:'',interval_days:0,due_at:'2020-01-01T00:00:00Z'};
@@ -39,4 +39,13 @@ test('legacy item types infer without rewriting user text; explicit types win', 
   assert.equal(itemType({word:' hello '}),'word');
   assert.equal(itemType({word:'caught off guard'}),'expression');
   assert.equal(itemType({word:'hello',item_type:'expression'}),'expression');
+});
+
+test('deleting pending cards preserves ratings and persists an empty completed queue',()=>{
+ let s=newReviewSession('a',[{id:'one',direction:'forward'},{id:'two',direction:'forward'}]);
+ s=completeSessionCard(s,s.queue[0].eventId);
+ const next=removeSessionItem(s,'two');assert.equal(next.queue.length,1);assert.deepEqual(next.completed,s.completed);
+ assert.equal(removeSessionItem(next,'one').completed.length,1);
+ const empty=removeSessionItem(newReviewSession('a',[{id:'last',direction:'forward'}]),'last');
+ assert.deepEqual(empty.queue,[]);assert.deepEqual(empty.completed,[]);assert.deepEqual(readReviewSession(JSON.stringify(empty),'a'),empty);
 });

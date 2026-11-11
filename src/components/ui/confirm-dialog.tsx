@@ -8,8 +8,12 @@ export function ConfirmDialog({
   onCancel,
   recordingWarning=false,
   returnFocus,
+  entry=false,
+  error,
 }: {
   word: string;
+  entry?: boolean;
+  error?: string;
   recordingWarning?: boolean;
   returnFocus?: HTMLElement | null;
   busy: boolean;
@@ -42,10 +46,11 @@ export function ConfirmDialog({
       }}
     >
       <Pill>YOUR LIBRARY</Pill>
-      <h2 id={id + "-title"}>Delete this word?</h2>
+      <h2 id={id + "-title"}>{entry?'Delete this entry?':'Delete this word?'}</h2>
       <p id={id + "-description"} className="wb-ui-text">
         “<span className="wb-learning-content">{word}</span>” will be removed from your library. {recordingWarning&&"Any attached voice note will also be removed. "}This can’t be undone.
       </p>
+      {error&&<p role="alert">{error}</p>}
       <div className="actions">
         <button
           ref={cancel}
@@ -54,7 +59,7 @@ export function ConfirmDialog({
           disabled={busy}
           onClick={onCancel}
         >
-          Keep word
+          {entry?'Cancel':'Keep word'}
         </button>
         <button
           type="button"
@@ -62,7 +67,7 @@ export function ConfirmDialog({
           disabled={busy}
           onClick={onConfirm}
         >
-          {busy ? "Deleting…" : "Delete word"}
+          {busy ? "Deleting…" : entry?"Delete":"Delete word"}
         </button>
       </div>
     </dialog>
