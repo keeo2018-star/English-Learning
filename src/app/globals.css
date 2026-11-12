@@ -950,7 +950,7 @@ summary:focus-visible {
 .calendar-grid .calendar-day { min-width: 0; width: 100%; min-height: 42px; padding: 4px; border-radius: 8px; border: 1px solid #ddddd5; color: var(--wb-black); background: transparent; font-size: 13px; }
 .calendar-grid .calendar-day[data-level="unknown"] { color: #77776c; border-style: dashed; }
 /* Distinct amount steps; the legend also labels exact count ranges. */
-.learning-calendar { --activity-1:#e5edc1;--activity-2:#c2df82;--activity-3:var(--noted-lime);--activity-4:#82ac20; }
+.learning-calendar { --activity-1:#e5edc1;--activity-2:#c2df82;--activity-3:var(--noted-lime);--activity-4:#6acb00; }
 .learning-calendar[data-metric="added"] { --activity-1:#ede6fb;--activity-2:var(--wb-lavender);--activity-3:#b096e7;--activity-4:#9672ce; }
 .learning-calendar [data-level="1"] { background:var(--activity-1); }
 .learning-calendar [data-level="2"] { background:var(--activity-2); }
