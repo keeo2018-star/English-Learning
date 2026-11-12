@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { activityLevel, localDateKey, reviewCoverage, type ActivityMonth } from '@/lib/activity';
+import { activityLevel, activityScale, localDateKey, reviewCoverage, type ActivityMonth } from '@/lib/activity';
 import { SelectableButton } from '@/components/ui/selection';
 import type { LearningItem } from '@/lib/learning';
 export const DEMO_EVENTS_KEY = 'noted-demo-review-events-v1';
@@ -106,12 +106,12 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
             const value = data.days.find(day => day.date === date)?.[metric] || 0;
             const unknown = metric === 'reviewed' && reviewCoverage(date, data.tracking_since, timezone) === 'unknown';
             const label = `${new Date(year, number - 1, i + 1, 12).toLocaleDateString('en', { month: 'long', day: 'numeric' })}: ${unknown ? 'review history unavailable' : `${value} ${metric}`}`;
-            return <button key={date} type="button" className="calendar-day" data-level={unknown ? 'unknown' : activityLevel(value)}
+            return <button key={date} type="button" className="calendar-day" data-level={unknown ? 'unknown' : activityLevel(value,metric)}
               aria-label={label} aria-pressed={selected === date} aria-current={date === today ? 'date' : undefined}
               disabled={date > today} onClick={() => setSelected(date)}>{i + 1}</button>;
           })}
         </div>
-        <div className="calendar-legend" aria-label={`${metric==='added'?'Added':'Reviewed'} activity scale`}>{['0','1–4','5–14','15–29','30+'].map((label,index)=><span key={label}><span className="calendar-swatch" data-level={index} aria-hidden="true"/>{label}</span>)}</div>
+        <div className="calendar-legend" aria-label={`${metric==='added'?'Added':'Reviewed'} activity scale`}>{activityScale(metric).map((label,index)=><span key={label}><span className="calendar-swatch" data-level={index} aria-hidden="true"/>{label}</span>)}</div>
         <div className="calendar-day-summary" aria-live="polite" aria-atomic="true">
           <strong>{new Date(selected + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' })}</strong>
           <span>Reviewed: {coverage === 'unknown' ? 'Unavailable' : `${selectedData?.reviewed ?? 0}${coverage === 'partial' ? ' · partial day' : ''}`}</span>

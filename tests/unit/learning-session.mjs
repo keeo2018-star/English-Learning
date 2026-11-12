@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createReviewQueue } from '../../src/lib/review.ts';
 import { newReviewSession, readReviewSession, completeSessionCard, removeSessionItem } from '../../src/lib/review-session.ts';
-import { localDateKey, reviewCoverage, activityLevel } from '../../src/lib/activity.ts';
+import { localDateKey, reviewCoverage, activityLevel, activityScale } from '../../src/lib/activity.ts';
 import { itemType } from '../../src/lib/learning.ts';
 const item = {word:'hello',id:'one',meaning:'test',example:'',interval_days:0,due_at:'2020-01-01T00:00:00Z'};
 test('30-item weighted session contains unique Words and Expressions; smaller pools stay finite', () => {
@@ -33,7 +33,7 @@ test('local dates and coverage distinguish unknown history, partial day and genu
   assert.equal(reviewCoverage('2026-10-31',instant.toISOString(),'America/Los_Angeles'),'partial');
   assert.equal(reviewCoverage('2026-11-01',instant.toISOString(),'America/Los_Angeles'),'complete');
   assert.equal(reviewCoverage('2026-11-01',null,'UTC'),'unknown');
-  assert.deepEqual([0,1,5,15,30].map(activityLevel),[0,1,2,3,4]);
+  assert.deepEqual([0,1,5,15,30].map(n=>activityLevel(n,'added')),[0,1,2,3,4]);
 });
 test('legacy item types infer without rewriting user text; explicit types win', () => {
   assert.equal(itemType({word:' hello '}),'word');
@@ -48,4 +48,11 @@ test('deleting pending cards preserves ratings and persists an empty completed q
  assert.equal(removeSessionItem(next,'one').completed.length,1);
  const empty=removeSessionItem(newReviewSession('a',[{id:'last',direction:'forward'}]),'last');
  assert.deepEqual(empty.queue,[]);assert.deepEqual(empty.completed,[]);assert.deepEqual(readReviewSession(JSON.stringify(empty),'a'),empty);
+});
+
+test('Reviewed calendar uses a 100+ ceiling independently of Added',()=>{
+ assert.deepEqual([0,1,19,20,49,50,93,99,100,140].map(n=>activityLevel(n,'reviewed')),[0,1,1,2,2,3,3,3,4,4]);
+ assert.deepEqual(activityScale('reviewed'),['0','1–19','20–49','50–99','100+']);
+ assert.deepEqual([0,1,5,15,30].map(n=>activityLevel(n,'added')),[0,1,2,3,4]);
+ assert.equal(activityScale('added')[4],'30+');
 });
