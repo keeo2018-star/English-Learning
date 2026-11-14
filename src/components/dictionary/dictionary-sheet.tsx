@@ -1,4 +1,6 @@
 "use client";
+import {ImeTextarea} from '@/components/ui/ime-field';
+import {imeBlocksSubmit,formIsComposing} from '@/lib/ime';
 import { useEffect, useId, useRef, useState } from "react";
 import type { DictionaryResult } from "@/lib/dictionary";
 import { Pill, ArrowIcon } from "@/components/ui/primitives";
@@ -64,7 +66,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         [meaningBusy, setMeaningBusy] = useState(false), [meaningError, setMeaningError] = useState(""), [meaningSaved, setMeaningSaved] = useState(false);
     async function saveMeaning(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!onSaveMeaning || savingMeaning.current) return;
+        if (!onSaveMeaning || savingMeaning.current || imeBlocksSubmit(event.currentTarget,event.timeStamp)) return;
         const value = draft.trim();
         if (!value) { setMeaningError("Enter your meaning before saving."); return; }
         savingMeaning.current = true; setMeaningBusy(true); setMeaningError("");
@@ -73,7 +75,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         finally { savingMeaning.current = false; setMeaningBusy(false); }
     }
     function requestClose() {
-        if (savingMeaning.current) return;
+        if (savingMeaning.current || formIsComposing(dialog.current)) return;
         if (editingMeaning && draft !== meaning) { setMeaningError("Save or cancel your edit before closing."); meaningInput.current?.focus(); return; }
         onClose();
     }
@@ -85,7 +87,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         const reset = () => { start = null; element.removeAttribute("data-dragging"); element.style.removeProperty("--dictionary-drag-y"); };
         const begin = (event: TouchEvent) => {
             reset();
-            if (!window.matchMedia("(max-width: 699px)").matches || editingMeaning || savingMeaning.current || event.touches.length !== 1) return;
+            if (!window.matchMedia("(max-width: 699px)").matches || editingMeaning || savingMeaning.current || formIsComposing(element) || event.touches.length !== 1) return;
             const target = event.target instanceof Element ? event.target : null;
             if (target?.closest("button,input,textarea,select,summary,a,[contenteditable=true]")) return;
             const handle = !!target?.closest("[data-dictionary-drag-handle]");
@@ -106,7 +108,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
             element.setAttribute("data-dragging", "true");
             element.style.setProperty("--dictionary-drag-y", `${Math.min(dy, 180)}px`);
         };
-        const end = () => { const dismiss = !!start && start.distance >= 96; reset(); if (dismiss && !savingMeaning.current) onClose(); };
+        const end = () => { const dismiss = !!start && start.distance >= 96; reset(); if (dismiss && !savingMeaning.current && !formIsComposing(element)) onClose(); };
         element.addEventListener("touchstart", begin, { passive: true });
         element.addEventListener("touchmove", move, { passive: false });
         element.addEventListener("touchend", end);
@@ -135,7 +137,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
                 const data=await dictionaryReference(word);
                 if (!controller.signal.aborted) {
                     rememberPronunciations(word, data.phonetics);
-                    setResult(data);requestAnimationFrame(()=>{if(!controller.signal.aborted)dialog.current?.scrollTo({top:restoreScroll.current});});
+                    setResult(data);requestAnimationFrame(()=>{if(!controller.signal.aborted){const active=document.activeElement;if(!(active instanceof Element&&dialog.current?.contains(active)&&active.matches('input,textarea')))dialog.current?.scrollTo({top:restoreScroll.current});}});
                 }
             }
             catch (e) {
@@ -146,8 +148,8 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         return () => controller.abort();
     }, [word, attempt]);
     function resetEntry(){stopPronunciation();setResult(null);setError('');setSynonymsOpen(false);setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
-    function navigate(next:string){if(savingMeaning.current)return;if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus();return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});close.current?.focus({preventScroll:true});});}
-    function back(){if(savingMeaning.current)return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>{close.current?.focus({preventScroll:true});});}
+    function navigate(next:string){if(savingMeaning.current||formIsComposing(dialog.current))return;if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus();return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});close.current?.focus({preventScroll:true});});}
+    function back(){if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>{close.current?.focus({preventScroll:true});});}
     return <dialog id={dialogId} ref={dialog} className={styles.sheet} aria-labelledby={id}
  onPointerDown={event => { backdropPress.current = outside(event.clientX, event.clientY); }}
  onClick={event => { const dismiss = backdropPress.current && outside(event.clientX, event.clientY); backdropPress.current = false; if (dismiss) requestClose(); }}
@@ -160,7 +162,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
  {!trail.length&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">My meaning</h3>{onSaveMeaning && !editingMeaning && <button ref={editButton} type="button" className="text-button" aria-label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}>Edit</button>}</div>
  {editingMeaning ? <form onSubmit={saveMeaning} aria-label="Edit my meaning">
- <label>My meaning<textarea ref={meaningInput} value={draft} onChange={event => setDraft(event.target.value)} maxLength={2000} required disabled={meaningBusy} /></label>
+ <label>My meaning<ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy} /></label>
  {meaningError && <p role="alert" className="wb-ui-text">{meaningError}</p>}
  <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy ? "Saving…" : "Save meaning"}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={() => { setEditingMeaning(false); setMeaningError(""); requestAnimationFrame(() => editButton.current?.focus({ preventScroll: true })); }}>Cancel</button></div>
  </form> : <><p className="wb-learning-content">{meaning}</p>{meaningSaved && <span role="status" className={`${styles.savedNote} wb-ui-text`}>Meaning saved.</span>}</>}

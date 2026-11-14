@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import {ImeInput} from '@/components/ui/ime-field';
+import {imeBlocksSubmit} from '@/lib/ime';
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { AppShell } from "@/components/ui/app-shell";
@@ -22,6 +24,7 @@ export default function Reset() {
   }, []);
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if(imeBlocksSubmit(e.currentTarget,e.timeStamp))return;
     if (!supabase) return;
     setBusy(true);
     setMessage("");
@@ -50,7 +53,7 @@ export default function Reset() {
           <form onSubmit={submit}>
             <label>
               New password
-              <input
+              <ImeInput
                 type="password"
                 name="password"
                 autoComplete="new-password"

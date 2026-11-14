@@ -176,3 +176,5 @@ Related Words extends Dictionary / Reference using existing dictionary synonyms 
 The Add editor uses stable adaptive typography, multiline capture, exact-selection expression extraction and draft-preserving/idempotent retries. See [ADAPTIVE_ADD.md](ADAPTIVE_ADD.md) for behaviour, existing database limits and device-testing scope.
 
 Random Review reuses Library deletion with an explicit confirmation, retry-safe error handling, private audio cleanup and unrated session advancement. See [REVIEW_DELETION.md](REVIEW_DELETION.md) for behavior and test scope.
+
+Editable text fields preserve native Chinese IME preedit and guard candidate-confirmation keys from submission. See [IME_INPUT.md](IME_INPUT.md) for field coverage, regression checks and the remaining physical iPhone/PWA verification.

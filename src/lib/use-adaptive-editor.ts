@@ -7,13 +7,14 @@ export function useAdaptiveEditor(input:RefObject<HTMLTextAreaElement|null>,valu
  const mirror=useRef<HTMLDivElement|null>(null),probe=useRef<HTMLSpanElement|null>(null),generation=useRef(0);
 
  useLayoutEffect(()=>{
+  if(composing)return;
   const data=prepareMirror(input.current,mirror.current);if(!data)return;const {el,m,css}=data,oldScroll=el.scrollTop;
   el.style.height='0px';const height=el.scrollHeight+2,min=Math.max(76,Math.ceil(parseFloat(css.lineHeight)+parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+2)),max=Math.max(min,96,Math.min(320,(window.visualViewport?.height||window.innerHeight)*.36));
   el.style.height=Math.max(min,Math.min(height,max))+'px';el.style.overflowY=height>max?'auto':'hidden';el.scrollTop=oldScroll;
   if(document.activeElement===el){m.textContent=el.value.slice(0,el.selectionEnd)+'\u200b';const line=parseFloat(css.lineHeight),caret=m.getBoundingClientRect().height-parseFloat(css.paddingBottom)-line;
    if(caret<el.scrollTop)el.scrollTop=Math.max(0,caret-parseFloat(css.paddingTop));else if(caret+line>el.scrollTop+el.clientHeight)el.scrollTop=caret+line-el.clientHeight+parseFloat(css.paddingBottom);
   }
- },[value,scale,viewport,input]);
+ },[value,scale,viewport,input,composing]);
  useEffect(()=>{
   if(composing)return;const ticket=++generation.current;
   const measure=(growth:boolean)=>{if(ticket!==generation.current||!input.current||!probe.current||input.current.selectionStart!==input.current.selectionEnd)return;const lines:number[]=[];

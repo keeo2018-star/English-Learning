@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
+import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
+import {imeBlocksSubmit} from './ime';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -322,6 +324,7 @@ export default function Workspace({
   }
   async function edit(e: React.FormEvent<HTMLFormElement>, word: Word) {
     e.preventDefault();
+    if(imeBlocksSubmit(e.currentTarget,e.timeStamp))return;
     const form = new FormData(e.currentTarget);
     const changes = {
       word: String(form.get("word")).trim(),
@@ -664,12 +667,12 @@ export default function Workspace({
                 {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => { setTypeFilter(type); setLibraryPage(0); }}>{label}</SelectableButton>)}
               </div>
               <div className="library-tools">
-                <input
+                <ImeInput
                   aria-label="Search library"
                   ref={librarySearch}
                   placeholder="Search words or meanings…"
                   defaultValue={query}
-                  onChange={(e) => { const value = e.target.value; startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
+                  onValueChange={(value) => { startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
                 />
               </div>
               <div ref={libraryResults} tabIndex={-1} role="region" className="library-results" aria-label="Library results" aria-busy={searchPending}>
@@ -689,7 +692,7 @@ export default function Workspace({
                       >
                         <label>
                           Word or phrase
-                          <input
+                          <ImeInput
                             name="word"
                             defaultValue={w.word}
                             required
@@ -701,7 +704,7 @@ export default function Workspace({
                         </label>
                         <label>
                           Meaning
-                          <textarea
+                          <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                             name="meaning"
                             defaultValue={w.meaning}
                             maxLength={2000}
@@ -709,7 +712,7 @@ export default function Workspace({
                         </label>
                         <label>
                           Example sentence
-                          <textarea
+                          <ImeTextarea
                             name="example"
                             defaultValue={w.example}
                             maxLength={3000}

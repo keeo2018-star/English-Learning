@@ -1,5 +1,7 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
+import {ImeInput} from '@/components/ui/ime-field';
+import {imeBlocksSubmit} from '@/lib/ime';
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { LearningCalendar } from "@/components/learning/learning-calendar";
@@ -50,6 +52,7 @@ function AuthForm() {
   }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if(imeBlocksSubmit(e.currentTarget,e.timeStamp))return;
     if (!supabase) return;
     setBusy(true);
     setMessage("");
@@ -135,7 +138,7 @@ function AuthForm() {
             <form onSubmit={submit}>
               <label>
                 Email
-                <input
+                <ImeInput
                   type="email"
                   name="email"
                   autoComplete="email"
@@ -145,7 +148,7 @@ function AuthForm() {
               {mode !== "reset" && (
                 <label>
                   Password
-                  <input
+                  <ImeInput
                     type="password"
                     name="password"
                     minLength={mode === "signup" ? 8 : undefined}

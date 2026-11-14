@@ -1,4 +1,6 @@
 "use client";
+import {ImeInput} from '@/components/ui/ime-field';
+import {imeBlocksSubmit} from '@/lib/ime';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {vocabularyKey,type RelatedTerm} from '@/lib/related-words';
 import {dictionaryReference} from '@/lib/dictionary-client';
@@ -28,7 +30,7 @@ export function RelatedWords({word,synonyms,onOpen,onSave,savedWords=[],referenc
   {!all.length&&phase==='error'&&<p className="wb-ui-text">Connections are unavailable. <button type="button" className="text-button" onClick={()=>{setPhase('loading');setAttempt(x=>x+1)}}>Try related words again</button></p>}
   <div className={styles.relatedGrid}>{shown.map(item=>{const key=vocabularyKey(item.word);return <div className={styles.relatedItem} key={key}><button type="button" className={styles.relatedTerm} onClick={()=>onOpen(item.word)}><span className="wb-learning-content">{item.word}</span>{translations[key]&&<small lang="zh">{translations[key].slice(0,100)}</small>}</button>{onSave&&<button type="button" className={`text-button ${styles.relatedSave}`} aria-label={(known.has(key)?'Saved ':'Save ')+item.word} disabled={known.has(key)||saving.includes(key)} onClick={()=>void save(item.word)}>{known.has(key)?'Saved':saving.includes(key)?'Saving…':'Save'}</button>}</div>})}</div>
   {all.length>6&&!more&&<button type="button" className="text-button" onClick={()=>setMore(true)}>Explore more</button>}
-  {needsMeaning&&<form className={styles.relatedMeaning} onSubmit={e=>{e.preventDefault();void save(needsMeaning)}}><label>Meaning for {needsMeaning}<input aria-label="Meaning for related word" value={custom} onChange={e=>setCustom(e.target.value)} maxLength={2000} required/></label><button disabled={saving.includes(vocabularyKey(needsMeaning))}>Save with meaning</button></form>}
+  {needsMeaning&&<form className={styles.relatedMeaning} onSubmit={e=>{e.preventDefault();if(!imeBlocksSubmit(e.currentTarget,e.timeStamp))void save(needsMeaning)}}><label>Meaning for {needsMeaning}<ImeInput lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-label="Meaning for related word" value={custom} onValueChange={setCustom} maxLength={2000} required/></label><button disabled={saving.includes(vocabularyKey(needsMeaning))}>Save with meaning</button></form>}
   {message&&<p role="status">{message}</p>}
   {!!all.length&&<p className={styles.credit}>Connections via Datamuse / dictionary synonyms. Meanings via UAPI when available.</p>}
  </section>;
