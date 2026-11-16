@@ -1,3 +1,15 @@
+// Preserve lexical apostrophes; never turn d’oeuvre / wouldn’t into separate words.
+export function englishPunctuation(text:string) {
+ return text.normalize('NFKC').replace(/[‘’ʼ＇]/g,"'").replace(/[“”]/g,'"').replace(/[‐‑‒–—−]/g,'-');
+}
+export function lookupText(text:string) {
+ return englishPunctuation(text).replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/æ/g,'ae').replace(/Æ/g,'AE').replace(/\s+/g,' ').trim();
+}
+export function spokenEnglish(text:string) {
+ return englishPunctuation(text).replace(/[^\p{Script=Latin}\p{Mark}\x20-\x7E]/gu,' ').replace(/\s+/g,' ').trim();
+}
+export function pronunciationKey(text:string) { return lookupText(spokenEnglish(text)).replace(/[.!?]+$/,'').trim().toLowerCase(); }
+
 export type DictionaryResult = {
     word: string;
     phonetics: {
@@ -25,10 +37,10 @@ export class DictionaryError extends Error {
     constructor(status: number, code: string, message: string) { super(message); this.status = status; this.code = code; this.name = "DictionaryError"; }
 }
 export function validateDictionaryWord(value: string | null) {
-    const word = (value || "").trim().replace(/\s+/g, " ");
+    const word = lookupText(value || "");
     if (!word)
         throw new DictionaryError(400, "empty", "Enter a word to look up.");
-    if (word.length > 120 || !/^[a-zA-Z][a-zA-Z'’ -]*$/.test(word))
+    if (word.length > 120 || !/^[\p{Script=Latin}][\p{Script=Latin}\p{Mark}' -]*$/u.test(word))
         throw new DictionaryError(400, "invalid", "Dictionary lookup supports English words and phrases.");
     return word.toLowerCase();
 }

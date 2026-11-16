@@ -19,6 +19,7 @@ export function PronunciationControl({ text, accent = 'UK', recording, phonetic,
     </button>
     {phonetic && <span className="wb-learning-content">{phonetic}</span>}
     <audio ref={audio} hidden preload="none" src={recording || undefined} />
-    {showErrors && status === 'error' && <small aria-live="polite">{compact ? 'Tap the speaker to try pronunciation again.' : 'Audio unavailable.'}</small>}
+    {(status==='error'||!available)&&<small role="status">{showErrors?'Pronunciation unavailable. Tap the speaker to retry.':'Pronunciation unavailable.'}</small>}
+    {status==='blocked'&&<small role="status">Tap the speaker to enable pronunciation.</small>}
   </span>;
 }

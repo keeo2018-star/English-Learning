@@ -14,7 +14,7 @@ async function speechMock(page: Page, voices: string[] = ['en-US', 'en-GB'], del
       speak: (utterance: SpeechSynthesisUtterance) => {
         log.push({ kind: 'speak', text: utterance.text, lang: utterance.lang,
           voice: utterance.voice?.name, overlap: active });
-        active = true;
+        active = true;queueMicrotask(()=>utterance.onstart?.(new Event('start') as SpeechSynthesisEvent));
       },
       addEventListener: target.addEventListener.bind(target),
       removeEventListener: target.removeEventListener.bind(target),

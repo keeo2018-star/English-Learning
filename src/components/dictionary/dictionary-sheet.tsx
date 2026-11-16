@@ -25,7 +25,7 @@ export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,sa
 }
 function Pronunciation({ word, phonetics, showErrors = true, activeStyle = false }: { word: string; phonetics: DictionaryResult["phonetics"]; showErrors?: boolean; activeStyle?: boolean }) {
     return <div className={styles.pronunciation}>
-        {(phonetics.length ? phonetics : [{ accent: "UK", text: "" }]).map(item => <PronunciationControl key={item.accent + item.audio} text={word}
+        {(phonetics.length ? phonetics : [{ accent: "UK", text: "" },{accent:"US",text:""}]).map(item => <PronunciationControl key={item.accent + item.audio} text={word}
             accent={item.accent === "US" ? "US" : "UK"} recording={item.audio || null}
             phonetic={item.text} showErrors={showErrors} activeStyle={activeStyle} />)}
     </div>;

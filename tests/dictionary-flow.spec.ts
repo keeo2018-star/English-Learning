@@ -49,6 +49,7 @@ test.describe('personal meanings and dictionary reference', () => {
         test('reference layout ' + width, async ({ page }) => { await page.setViewportSize({ width, height: 844 }); await mockCloud(page, r => r.fulfill({ json: [{ ...sampleWord, word: 'meticulous', meaning: '做事特别仔细，一丝不苟' }] })); await page.route('**/api/dictionary?*', r => r.fulfill({ json: result })); await page.goto('/library'); await page.getByRole('button', { name: 'Dictionary for meticulous' }).click(); const sheet = page.getByRole('dialog'); await expect(sheet.getByRole('button', { name: /Play pronunciation/ })).toHaveCount(2); await expect(sheet.locator('audio[controls]')).toHaveCount(0); await expect(sheet.getByRole('heading', { name: 'Examples' })).toBeVisible(); expect(await sheet.evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true); await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeFocused(); if (width === 390)
             await page.screenshot({ path: '/tmp/wordbook-dictionary-reference-mobile.png' }); });
     test('loading, not found, retry, sparse fields and audio failure', async ({ page }) => {
+        await page.addInitScript(()=>{Object.defineProperty(window,'speechSynthesis',{configurable:true,value:undefined});Object.defineProperty(window,'SpeechSynthesisUtterance',{configurable:true,value:undefined});});
         await mockCloud(page, r => r.fulfill({ json: [sampleWord] }));
         let finish: () => void = () => { };
         const gate = new Promise<void>(r => finish = r);
@@ -66,7 +67,7 @@ test.describe('personal meanings and dictionary reference', () => {
         await page.getByRole('button', { name: 'Try again' }).click();
         await expect(page.getByText('No definitions or examples available for this entry.')).toBeVisible();
         await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
-        await expect(page.getByRole('dialog').getByText('Audio unavailable.')).toBeVisible();
+        await expect(page.getByRole('dialog').getByText('Pronunciation unavailable. Tap the speaker to retry.', {exact:true})).toBeVisible();
     });
     test('accent buttons use available audio and support replay', async ({ page }) => {
         await page.addInitScript(() => {
@@ -75,13 +76,13 @@ test.describe('personal meanings and dictionary reference', () => {
                 return Promise.resolve();
             };
         });
-        await mockCloud(page, r => r.fulfill({ json: [sampleWord] }));
+        await mockCloud(page, r => r.fulfill({ json: [{...sampleWord,word:'meticulous'}] }));
         await page.route('**/api/dictionary?*', r => r.fulfill({ json: {
             ...result,
             phonetics: [{ accent: 'UK', text: 'məˈtɪkjələs' }, result.phonetics[1]],
         } }));
         await page.goto('/library');
-        await page.getByRole('button', { name: 'Dictionary for serendipity' }).click();
+        await page.getByRole('button', { name: 'Dictionary for meticulous' }).click();
         const sheet = page.getByRole('dialog');
         const play = sheet.locator('button[data-accent="US"]');
         await expect(sheet.locator('button[data-accent="UK"]')).toBeEnabled();

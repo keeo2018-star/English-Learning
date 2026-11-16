@@ -305,7 +305,7 @@ button[aria-pressed="true"],
 .wb-learning-card > h2.wb-learning-content {
   font-size: var(--wb-learning-word-size);
   line-height: 1.08;
-  letter-spacing: var(--wb-brand-tracking);
+  letter-spacing: normal;
   max-width: 100%;
   margin: 8px 0 0;
   overflow-wrap: anywhere;

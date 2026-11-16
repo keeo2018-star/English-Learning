@@ -19,7 +19,7 @@ async function setup(page: Page, recorded: boolean) {
       speak: (utterance: SpeechSynthesisUtterance) => {
         events.push({ kind: 'speech', text: utterance.text, voice: utterance.voice?.name,
           lang: utterance.lang, rate: utterance.rate, pitch: utterance.pitch, volume: utterance.volume,
-          overlap: !!active }); active = 'speech';
+          overlap: !!active }); active = 'speech';queueMicrotask(()=>utterance.onstart?.(new Event('start') as SpeechSynthesisEvent));
       },
       cancel: () => { if (active === 'speech') active = null; events.push({ kind: 'cancel' }); },
       addEventListener: target.addEventListener.bind(target),

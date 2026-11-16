@@ -178,3 +178,5 @@ The Add editor uses stable adaptive typography, multiline capture, exact-selecti
 Random Review reuses Library deletion with an explicit confirmation, retry-safe error handling, private audio cleanup and unrated session advancement. See [REVIEW_DELETION.md](REVIEW_DELETION.md) for behavior and test scope.
 
 Editable text fields preserve native Chinese IME preedit and guard candidate-confirmation keys from submission. See [IME_INPUT.md](IME_INPUT.md) for field coverage, regression checks and the remaining physical iPhone/PWA verification.
+
+Complete Expression pronunciation verifies the official whole-item recording endpoint even when lookup phonetics are empty, before using browser speech. Vocabulary titles use natural tracking independently of brand headings. See [EXPRESSION_PRONUNCIATION.md](EXPRESSION_PRONUNCIATION.md) for live endpoint findings, computed before/after measurements, fallback behavior and physical-device testing limits.

@@ -755,7 +755,7 @@ summary:focus-visible {
   .wb-word-content h2 {
     font-size: clamp(28px, 8vw, 34px);
     line-height: 1.2;
-    letter-spacing: var(--wb-brand-tracking);
+    letter-spacing: normal;
     word-break: normal;
     text-wrap: pretty;
   }
@@ -1026,3 +1026,5 @@ summary:focus-visible {
 
 /* One contiguous focus treatment for native IME fields; the Add title keeps its divider. */
 [data-ime-field]:focus-visible { outline:2px solid var(--wb-black);outline-offset:0;box-shadow:none;border-color:var(--wb-black); }
+
+.wb-word-content h2.wb-learning-content { letter-spacing:normal; }

@@ -19,7 +19,7 @@
 .header .close { width: 48px; min-width: 48px; height: 48px; padding: 0; flex-shrink: 0; }
 .header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
 .header .close:focus-visible { background: var(--noted-lime); }
-.sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: var(--wb-brand-tracking); overflow-wrap: anywhere; margin: 8px 0 16px; }
+.sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: normal; overflow-wrap: anywhere; margin: 8px 0 16px; }
 .pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .pronunciation:empty { display: none; }
 .sheet > .pronunciation { margin-bottom: 16px; }

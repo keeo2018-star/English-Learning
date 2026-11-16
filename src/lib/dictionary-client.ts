@@ -1,7 +1,7 @@
-import type {DictionaryResult} from './dictionary';
+import {lookupText,type DictionaryResult} from './dictionary';
 const cache=new Map<string,{value:DictionaryResult;at:number}>(),pending=new Map<string,Promise<DictionaryResult>>();
 export function dictionaryReference(word:string):Promise<DictionaryResult>{
- const key=word.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase(),hit=cache.get(key);
+ const key=lookupText(word).toLowerCase(),hit=cache.get(key);
  if(hit&&Date.now()-hit.at<3600000)return Promise.resolve(hit.value);
  const waiting=pending.get(key);if(waiting)return waiting;
  const task=(async()=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{

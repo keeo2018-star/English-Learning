@@ -1,5 +1,5 @@
 "use client";
-import { prepareReviewPronunciation } from "@/lib/pronunciation";
+import { prepareReviewPronunciation,stopPronunciation } from "@/lib/pronunciation";
 import { SelectableLink } from "./selection";
 const entries = [
   { label: "Home", href: "/", icon: "⌂" },
@@ -23,7 +23,7 @@ export function Navigation({
           href={item.href}
           selected={item.label === active}
           className="wb-nav-item"
-          onClick={item.label === "Review" ? () => { prepareReviewPronunciation(); } : undefined}
+          onClick={item.label === "Review" ? () => { if(window.location.pathname!=="/review"||new URLSearchParams(window.location.search).get("mode")==="random"){stopPronunciation();prepareReviewPronunciation(false);}else prepareReviewPronunciation(); } : undefined}
         >
           <span aria-hidden="true">
             {item.icon}

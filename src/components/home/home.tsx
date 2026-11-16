@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { prepareReviewPronunciation } from "@/lib/pronunciation";
+import { prepareReviewPronunciation,stopPronunciation } from "@/lib/pronunciation";
 import { AppShell } from "@/components/ui/app-shell";
 import { ArrowIcon } from "@/components/ui/primitives";
 import styles from "./home.module.css";
@@ -23,7 +23,7 @@ export default function Home() {
         <Link href="/discover" aria-label="Discover" aria-describedby="home-discover-description" className={`${styles.action} ${styles.discover}`}>
           <span className={styles.actionCopy}><span className={styles.label}>Discover</span><span id="home-discover-description" className={styles.description}>Find words worth learning.</span></span><ArrowIcon />
         </Link>
-        <Link href="/review?mode=random" onClick={() => prepareReviewPronunciation()} aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
+        <Link href="/review?mode=random" onClick={() => {stopPronunciation();prepareReviewPronunciation(false);}} aria-label="Random Review" aria-describedby="home-review-description" className={`${styles.action} ${styles.review}`}>
           <span className={styles.actionCopy}>
             <span className={styles.label}>Random Review</span>
             <span id="home-review-description" className={styles.description}>Make it stick.</span>
