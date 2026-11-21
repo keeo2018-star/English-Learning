@@ -1,3 +1,4 @@
+import {dictionaryPayload} from './dictionary-client';
 import { audioSource } from './audio-source';
 import { pauseContextVideos } from './learning-media';
 import { spokenEnglish,pronunciationKey,validateDictionaryWord, type DictionaryResult } from './dictionary';
@@ -122,9 +123,7 @@ export function getPronunciations(text: string): Promise<Phonetics> {
   resolved.delete(key);
   const value = (async () => {
     try {
-      const response = await fetch('/api/dictionary?' + new URLSearchParams({ word: key, pronunciation: '1' }), { signal: AbortSignal.timeout(8000) });
-      if (!response.ok) return [];
-      const data = await response.json();
+      const data = await dictionaryPayload(key,true);
       if (!Array.isArray(data.phonetics)) return [];
       const items = cleanPhonetics(data.phonetics,key);
       return items;

@@ -3,6 +3,9 @@ import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, st
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
 import {imeBlocksSubmit} from './ime';
 import Link from "next/link";
+import {resolveExample} from "./context-examples";
+import {rememberLibrary,offlineLibrary,forgetLibrary} from "./offline-library";
+import {ContextExample} from "@/components/learning/context-example";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
 import type { User } from "@supabase/supabase-js";
@@ -107,7 +110,7 @@ export default function Workspace({
           all.push(...(data || []));
           if (!data || data.length < 1000) break;
         }
-        setWords(all);
+        setWords(all);rememberLibrary(u.id,all);
       } else if (!supabase) {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
         if (!Array.isArray(saved))
@@ -118,9 +121,10 @@ export default function Workspace({
     } catch (error) {
       if (version === loadVersion.current && background) { setSyncError(true); }
       else if (version === loadVersion.current) {
-        setWords([]);
-        setLoadError(true);
-        setMessage(errorMessage(error, "Could not load your library."));
+        const cached = u && !navigator.onLine ? offlineLibrary(u.id) : null;
+        setWords(cached || []);
+        setLoadError(!cached);
+        setMessage(cached ? "Offline — showing your saved Library. Changes need a connection." : errorMessage(error, "Could not load your library."));
       }
     } finally {
       if (version === loadVersion.current) setReady(true);
@@ -151,6 +155,7 @@ export default function Workspace({
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       if (accountId.current !== (session?.user.id || null)) {
         ++loadVersion.current;
+        if(accountId.current)forgetLibrary(accountId.current);
         accountId.current = session?.user.id || null;
         setWords([]);
         setRevealed(null);
@@ -177,15 +182,17 @@ export default function Workspace({
     if (!ready || (supabase && !user)) return;
     const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current && !editing) { void load(user, true); } };
     const visible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("online", refresh);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
     const timer = window.setInterval(refresh, 30000);
     const client = supabase;
     const channel = client && user ? client.channel(`library:${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "words", filter: `user_id=eq.${user.id}` }, refresh).subscribe() : null;
-    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
+    return () => { clearInterval(timer); window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
   }, [ready, user, load, editing]);
   const account = user?.id || "local-demo";
+  useEffect(()=>{if(ready&&!loadError&&user?.id)rememberLibrary(user.id,words);},[ready,loadError,user?.id,words]);
   const persistSession = useCallback((next: ReviewSession) => {
     try { localStorage.setItem(reviewSessionKey(next.account), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
     setSession(next);
@@ -238,6 +245,7 @@ export default function Workspace({
         if (accountId.current !== user.id) return null;
         created=data;setWords((previous) => [data, ...previous.filter(item=>item.id!==data.id)]);
       } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...words]);}
+      if(created&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
       setMessage("Word saved. Ready for your next review.");
       return created;
     } catch (error) {
@@ -736,7 +744,7 @@ export default function Workspace({
                         <p className="wb-learning-content">{w.meaning}</p>
                         {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        {w.example && <blockquote className="wb-learning-content">{w.example}</blockquote>}
+                        <ContextExample item={w} owner={account}/>
                       </div>
                     )}
                     <div className="word-actions">
@@ -808,7 +816,7 @@ export default function Workspace({
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
-                      {card.example && <blockquote className="wb-learning-content">{card.example}</blockquote>}
+                      <ContextExample item={card} owner={account}/>
                       <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}

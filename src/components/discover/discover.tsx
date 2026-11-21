@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import {resolveExample} from '@/lib/context-examples';
+import {ContextExample} from '@/components/learning/context-example';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { AppShell } from '@/components/ui/app-shell';
@@ -35,6 +37,13 @@ export default function Discover() {
    if (action === 'get' && next.profile.assessment_status !== 'pending' && !next.assessment && !next.daily) next = await run('daily');
    if (generation.current !== request || owner.current !== account) return;
    setData(next); pending.current = null;
+   // The existing RPC saves bank examples atomically. Only supplement an empty
+   // saved example; never replace its value or change scheduling/history.
+   if(action==='daily_response'&&payload.response==='save'&&payload.needs_example===true&&typeof payload.word==='string'){
+    void supabase.from('words').select('id,word,meaning,example').eq('user_id',account).eq('word',payload.word).limit(1).maybeSingle().then(({data: saved})=>{
+     if(saved&&!saved.example?.trim()&&owner.current===account)void resolveExample(account,saved);
+    });
+   }
   } catch (caught) {
    if (generation.current !== request || owner.current !== account) return;
    const failure = caught as { code?: string; message?: string };
@@ -90,7 +99,7 @@ export default function Discover() {
   void perform('assessment_answer', { session_id: assessment.id, position: assessment.responses.length, item_id: assessment.question.id, answer_id: id });
  };
  const nextBatch = () => { if (data?.daily) void perform('next_batch', { set_id: data.daily.id }); };
- const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response }); };
+ const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response, word:item.word, needs_example:!item.example?.trim() }); };
  return <AppShell active="Discover"><div className={styles.page}>
   <header className={styles.header}><p className="eyebrow">DISCOVER /</p><h1>Find words worth learning.</h1></header>
   {error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
@@ -119,7 +128,7 @@ export default function Discover() {
     <Card className={`${styles.blue} wb-learning-card`} key={cardKey}>
      <h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{item.word}</h2><PronunciationControl text={item.word} accent="UK" compact />
      {revealed !== cardKey ? <><p>Do you know this word?</p><button type="button" className="wb-control" onClick={() => setRevealed(cardKey)}>Reveal meaning</button></> : <>
-      <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p><blockquote className="wb-learning-content">{item.example}</blockquote>
+      <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p><ContextExample item={{...item,id:`discover:${item.id}`}} owner={user?.id || 'local-demo'} persist={false}/>
       <div className={styles.actions}><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => respond('know')}>I know it</button><button type="button" className="wb-control" disabled={busy} onClick={() => respond('save')}>Save to Library</button></div>
      </>}
     </Card>
