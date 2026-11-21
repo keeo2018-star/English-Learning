@@ -120,6 +120,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         return !!bounds && (x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom);
     };
     const [synonymsOpen, setSynonymsOpen] = useState(false);
+    const [examplesExpanded,setExamplesExpanded]=useState(false);
     const [result, setResult] = useState<DictionaryResult | null>(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
     useEffect(() => {
         const element = dialog.current, previous = document.activeElement;
@@ -147,7 +148,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
         })();
         return () => controller.abort();
     }, [word, attempt]);
-    function resetEntry(){stopPronunciation();setResult(null);setError('');setSynonymsOpen(false);setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
+    function resetEntry(){setExamplesExpanded(false);stopPronunciation();setResult(null);setError('');setSynonymsOpen(false);setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
     function navigate(next:string){if(savingMeaning.current||formIsComposing(dialog.current))return;if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus();return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});close.current?.focus({preventScroll:true});});}
     function back(){if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>{close.current?.focus({preventScroll:true});});}
     return <dialog id={dialogId} ref={dialog} className={styles.sheet} aria-labelledby={id}
@@ -172,7 +173,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
  {result && <div className={styles.reference}>
  {result.chinese.length > 0 && <section><h3>Chinese</h3><ol className={styles.definitions}>{result.chinese.map((s, i) => <li key={i}><p lang="zh" className="wb-learning-content"><HighlightWord text={s} target={word} /></p></li>)}</ol></section>}
  {result.english.length > 0 && <section><h3>English</h3><ol className={styles.definitions}>{result.english.map((s, i) => <li key={i}>{s.partOfSpeech && <Pill className="wb-learning-content">{s.partOfSpeech}</Pill>}<p className="wb-learning-content"><HighlightWord text={s.definition} target={word} /></p></li>)}</ol></section>}
- {result.examples.length > 0 && <section><h3>Examples</h3>{result.examples.map((s, i) => <blockquote key={i} className="wb-learning-content">{s.source && <p><HighlightWord text={s.source} target={word} /></p>}{s.translation && <p lang="zh"><HighlightWord text={s.translation} target={word} /></p>}</blockquote>)}</section>}
+ {result.examples.length > 0 && <section><h3>Examples</h3><div id={id+"-examples"}>{result.examples.slice(0,examplesExpanded?undefined:2).map((s, i) => <blockquote data-dictionary-example key={i} className="wb-learning-content">{s.source && <p><HighlightWord text={s.source} target={word} /></p>}{s.translation && <p lang="zh"><HighlightWord text={s.translation} target={word} /></p>}</blockquote>)}</div>{result.examples.length>2&&<button type="button" className={`text-button ${styles.exampleToggle}`} aria-expanded={examplesExpanded} aria-controls={id+"-examples"} onClick={()=>setExamplesExpanded(value=>!value)}>{examplesExpanded?"Show fewer examples":`Show all ${result.examples.length} examples`}</button>}</section>}
  {result.synonyms.length > 0 && <details onToggle={event => setSynonymsOpen(event.currentTarget.open)}><summary className="wb-control wb-control-outline" data-selected={synonymsOpen || undefined}>Synonyms</summary><p className="wb-learning-content"><HighlightWord text={result.synonyms.join(" · ")} target={word} /></p></details>}
  {!result.chinese.length && !result.english.length && !result.examples.length && <p className="wb-ui-text">No definitions or examples available for this entry.</p>}
  <p className={`${styles.credit} wb-ui-text`}>Reference via UAPI. Your saved meaning stays yours.</p>

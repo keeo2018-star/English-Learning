@@ -32,6 +32,8 @@
   --wb-learning-width: 760px;
   --wb-learning-word-size: clamp(40px, 7vw, 80px);
   --wb-control-height: 48px;
+  --wb-control-gap: var(--wb-space-2);
+  --wb-section-gap: var(--wb-space-5);
   --wb-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
   --wb-radius-card: 32px;
   --wb-radius-pill: 999px;

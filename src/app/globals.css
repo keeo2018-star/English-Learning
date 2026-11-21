@@ -142,7 +142,7 @@ input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--wb-black);
-  outline-offset: 3px;
+  outline-offset: 0;
 }
 .wb-app {
   min-height: 100vh;
@@ -675,10 +675,12 @@ summary:focus-visible {
     padding: var(--wb-card-padding);
   }
   .wb-dialog .actions {
-    flex-direction: column;
+    flex-flow: row wrap;
+    gap: var(--wb-control-gap);
   }
   .wb-dialog .actions button {
-    width: 100%;
+    flex: 1 1 8rem;
+    width: auto;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -770,15 +772,16 @@ summary:focus-visible {
     padding-left: 12px;
   }
   .word-actions {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
-    gap: 10px;
+    display: flex;
+    flex-flow: row wrap;
+    gap: var(--wb-control-gap);
     width: 100%;
     border-top: 1px solid rgb(0 0 0 / 12%);
     padding-top: 16px;
   }
   .word-actions > button {
-    min-width: 0;
+    flex: 1 0 auto;
+    min-width: 44px;
     min-height: 48px;
     padding: 12px 8px;
     font-size: 12px;
