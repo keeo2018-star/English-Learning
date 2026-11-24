@@ -2,7 +2,7 @@
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {formIsComposing,imeBlocksSubmit} from '@/lib/ime';
 import Link from 'next/link';
-import { useEffect, useId, useRef, useState,useMemo } from 'react';
+import { useEffect, useLayoutEffect, useId, useRef, useState,useMemo } from 'react';
 import { Card } from '@/components/ui/primitives';
 import type { Suggestion, MeaningSuggestion } from '@/lib/smart-add';
 import styles from './smart-add.module.css';
@@ -41,6 +41,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
   const overItem=textLength(word.trim())>ITEM_TEXT_LIMIT,overContext=textLength(context)>CONTEXT_TEXT_LIMIT;
   const expression=itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression';
   const extraction=extractExpression(word,selected.start,selected.end);
+  useLayoutEffect(()=>{const el=meaningInput.current;if(!el||formIsComposing(el.form))return;const top=el.scrollTop;el.style.height='0px';const cap=Math.max(80,Math.min(200,(window.visualViewport?.height||innerHeight)*.25));el.style.height=Math.max(48,Math.min(el.scrollHeight+2,cap))+'px';el.style.overflowY=el.scrollHeight>cap?'auto':'hidden';el.scrollTop=top;},[meaning]);
   useEffect(()=>{const el=input.current;if(!el)return;const update=()=>{if(document.activeElement===el&&!formIsComposing(el.form))setSelected(old=>old.start===el.selectionStart&&old.end===el.selectionEnd?old:{start:el.selectionStart,end:el.selectionEnd})};document.addEventListener('selectionchange',update);el.addEventListener('select',update);el.addEventListener('pointerup',update);return()=>{document.removeEventListener('selectionchange',update);el.removeEventListener('select',update);el.removeEventListener('pointerup',update)};},[]);
   function changeWord(next: string) {
     cancel.current();version.current++;
@@ -83,7 +84,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
       }, 250);
       if (!manual.current || explicit) meaningTimer = setTimeout(async () => {
         if (!valid() || manualRevision.current !== edits || (manual.current && !explicit)) return;
-        setStatus('Finding meaning…');
+        setStatus(explicit?'AI isn’t configured · Finding a dictionary meaning…':'Finding meaning…');
         try {
           const response = await fetch('/api/smart-add/meaning', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word: query, type }), signal: abort.signal });
           const data: MeaningSuggestion = await response.json();
@@ -153,16 +154,16 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
     </div>
     <div className={styles.meaningField}>
       <div className={styles.meaningHeader}><label htmlFor={`${id}-meaning`}>Meaning</label><button type="button" className="text-button" disabled={busy || !word.trim()} onClick={() => { if(formIsComposing(input.current?.form))return;explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
-      <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} id={`${id}-meaning`} rows={3} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder="中文解释或你的理解" maxLength={2000} readOnly={busy} />
+      <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} className={styles.meaning} id={`${id}-meaning`} rows={1} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder="中文解释或你的理解" maxLength={2000} readOnly={busy} />
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
     {(expression||context)&&<details className={styles.contextField} open={contextOpen} onToggle={event=>setContextOpen(event.currentTarget.open)}><summary>My Context <span>Optional</span></summary><ImeTextarea aria-label="My Context" name="example" value={context} onValueChange={value=>{setAttemptId('');setContext(value);setSaveError('');setFailed(false)}} placeholder="Your original sentence or a personal example…" rows={3} readOnly={busy}/>{overContext&&<p role="status">My Context is over 3000 characters. Shorten it before saving; nothing has been removed.</p>}</details>}
     {!expression&&!context&&<input type="hidden" name="example" value=""/>}
-    <label>Content type<select name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">Automatic</option><option value="word">Word</option><option value="expression">Expression</option></select></label>
+    <div className={styles.typeControl}><select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"} · Auto</option><option value="word">Word</option><option value="expression">Expression</option></select></div>
     {itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression'&&<details className={voiceStyles.draft} open={voiceOpen} onToggle={event=>setVoiceOpen(event.currentTarget.open)}><summary><Microphone/>Add a voice note</summary>{voiceOpen&&<VoiceDraftBox draft={voice} onDraft={value=>{setVoice(value);if(value)setType('expression');}} onBusy={setVoiceBusy} disabled={busy}/>}</details>}
     {pendingType!==null&&<VoiceConfirm title="Discard this draft recording?" description="Voice Notes are available only for Expressions. Keep Expression to retain this recording." confirmLabel="Discard and change type" busy={false} onCancel={()=>setPendingType(null)} onConfirm={()=>{setVoice(null);setType(pendingType);setPendingType(null);setVoiceOpen(false);}}/>}
     {replaceContext&&<VoiceConfirm title="Replace My Context?" description="Your existing context will be replaced by the complete text currently in the English input. The English text stays unchanged until you confirm." confirmLabel="Use original text as context" busy={busy} onCancel={()=>setReplaceContext(null)} onConfirm={()=>acceptExtraction(replaceContext)}/>}
     {saveError&&!duplicate&&<p role="alert" className={styles.saveError}>Couldn’t save — {saveError}</p>}
-    <div className="form-bottom"><span>Your meaning stays editable. <Link href="/privacy">Suggestion sources</Link></span><button type="submit" disabled={busy||voiceBusy||duplicate||!word.trim()||overItem||overContext}>{busy ? 'Saving…' : failed?'Retry':'Add to my library + '}</button></div>
+    <div className="form-bottom"><button type="submit" disabled={busy||voiceBusy||duplicate||!word.trim()||overItem||overContext}>{busy ? 'Saving…' : failed?'Retry':'Add to my library + '}</button></div>
   </form>;
 }

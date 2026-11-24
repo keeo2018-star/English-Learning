@@ -3,8 +3,8 @@ import {mockCloud,cloudUrl,sampleWord} from './helpers/cloud';
 const terms=['horoscope','constellation','astrology','birth chart','Aries','Taurus','Gemini'];
 async function setup(page:Page,blank=false){const rows=[{...sampleWord,word:'zodiac',meaning:'我自己的星座解释'}];const writes:Record<string,unknown>[]=[];let calls=0;
  await mockCloud(page,route=>{if(route.request().method()==='POST'){const body=route.request().postDataJSON();writes.push(body);const row={...sampleWord,id:'33333333-3333-4333-8333-333333333333',...body};rows.push(row);return route.fulfill({json:row})}return route.fulfill({json:rows})});
- await page.route('**/api/related-words?*',route=>{calls++;const word=new URL(route.request().url()).searchParams.get('word');return route.fulfill({json:{items:(word==='zodiac'?terms:word==='horoscope'?['zodiac']:[]).map(word=>({word})),family:[],source:'Datamuse'}})});
- await page.route('**/api/dictionary?*',route=>{const word=new URL(route.request().url()).searchParams.get('word')||'';return route.fulfill({json:{word,phonetics:[],chinese:word==='zodiac'?['黄道十二宫']:word==='horoscope'?(blank?[]:['星象预测']):['可靠的中文释义'],english:[{partOfSpeech:'n.',definition:`Reference for ${word}`}],examples:[],synonyms:[]}})});
+ await page.route('**/api/related-words?*',route=>{calls++;const word=new URL(route.request().url()).searchParams.get('word');return route.fulfill({json:{items:(word==='zodiac'?terms:word==='horoscope'?['zodiac']:[]).map(word=>({word,...(blank?{relation:'synonym'}:{})})),family:[],source:'Datamuse'}})});
+ await page.route('**/api/dictionary?*',route=>{const word=new URL(route.request().url()).searchParams.get('word')||'';return route.fulfill({json:{word,phonetics:[],chinese:word==='zodiac'?['黄道十二宫']:word==='horoscope'?(blank?[]:['星象预测']):['星座相关释义'],english:[{partOfSpeech:'n.',definition:`Reference for ${word}`}],examples:[],synonyms:[]}})});
  await page.goto('/library');await page.getByRole('button',{name:'Dictionary for zodiac',exact:true}).click();return {writes,calls:()=>calls};
 }
 test.describe('Dictionary vocabulary connections',()=>{test.skip(!cloudUrl,'Isolated account fixtures');

@@ -1,4 +1,4 @@
-.section { border-top: 1px solid #d5d5cc; margin: var(--wb-section-gap) 0 0; padding-top: var(--wb-section-gap); min-width: 0; }
+.section { isolation:isolate;position:relative;z-index:0; border-top: 1px solid #d5d5cc; margin: var(--wb-section-gap) 0 0; padding-top: var(--wb-section-gap); min-width: 0; }
 .section h3 { font-size: 18px; letter-spacing: -.02em; margin: 0 0 8px; }
 .section p { font-size: 15px; line-height: 1.65; margin: 0 0 16px; overflow-wrap: anywhere; }
 .card { border: 1px solid #d5d5cc; border-radius: var(--wb-radius-small); min-width: 0; background: var(--wb-grey); }

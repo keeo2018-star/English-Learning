@@ -163,7 +163,7 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
  {!trail.length&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">My meaning</h3>{onSaveMeaning && !editingMeaning && <button ref={editButton} type="button" className="text-button" aria-label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}>Edit</button>}</div>
  {editingMeaning ? <form onSubmit={saveMeaning} aria-label="Edit my meaning">
- <label>My meaning<ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy} /></label>
+ <label><ImeTextarea aria-label="My meaning" lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy} /></label>
  {meaningError && <p role="alert" className="wb-ui-text">{meaningError}</p>}
  <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy ? "Saving…" : "Save meaning"}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={() => { setEditingMeaning(false); setMeaningError(""); requestAnimationFrame(() => editButton.current?.focus({ preventScroll: true })); }}>Cancel</button></div>
  </form> : <><p className="wb-learning-content">{meaning}</p>{meaningSaved && <span role="status" className={`${styles.savedNote} wb-ui-text`}>Meaning saved.</span>}</>}
@@ -179,6 +179,6 @@ function DictionarySheet({ dialogId, word:rootWord, meaning:rootMeaning, onSaveM
  <p className={`${styles.credit} wb-ui-text`}>Reference via UAPI. Your saved meaning stays yours.</p>
  </div>}
  <VideoContextSection key={"video:"+word} word={word} />
- <RelatedWords referenceReady={!!result||!!error} key={"related:"+word} word={word} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/>
+ <RelatedWords referenceReady={!!result||!!error} key={"related:"+word} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/>
  </dialog>;
 }

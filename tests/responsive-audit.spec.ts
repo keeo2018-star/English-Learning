@@ -46,7 +46,7 @@ test('IPA wraps only when needed; large text and related cards remain usable',as
  await expect(sheet.getByText('/teɪk stɒk əv/')).toBeVisible();
  await page.addStyleTag({content:'html{font-size:24px} [class*=sheet] button{font-size:21px} [class*=sheet] p,[class*=relatedTerm] span{font-size:24px}'});
  const related=sheet.getByRole('region',{name:'Related Words'});await related.scrollIntoViewIfNeeded();
- await expect(related.getByRole('button',{name:'comprehensive evaluation',exact:true})).toBeVisible();
+ await expect(related.getByRole('button',{name:/^comprehensive evaluation/})).toBeVisible();
  expect(await sheet.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  const sizes=await related.locator('button').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));expect(sizes.every(w=>w>=44)).toBe(true);
  await page.screenshot({path:'/tmp/noted-layout-related-large-text.png'});
