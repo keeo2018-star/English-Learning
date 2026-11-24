@@ -27,10 +27,12 @@ export async function lookupRelated(value:string,fetcher:typeof fetch=fetch):Pro
 export function relatedSenseMatches(meaning:string,chinese:string[],english:string[],relation?:string){
  if(relation==='antonym')return true; // Explicit lexical opposition, labelled in the UI.
  const han=(s:string)=>s.replace(/[^\p{Script=Han}]/gu,'').replace(/[的了是在和或与一个这那很地得以对为及并等某种]/g,'');
- const target=han(meaning.split(/[：:。]/)[0].replace(/我自己的|解释|意思|理解/g,'')),translated=han(chinese.join(' '));
+ const rawTarget=han(meaning.split(/[：:。]/)[0].replace(/我自己的|解释|意思|理解/g,''));
+ const core=rawTarget.replace(/全面|整体|通常|一般|某种|一种|进行|当前|情况/g,'');
+ const target=core.length>=2?core:rawTarget,translated=han(chinese.join(' '));
  if(target.length>=2&&translated.length){
   const overlap=[...new Set(target)].filter(char=>translated.includes(char));
-  return overlap.length>=2||overlap.some(char=>!'评全整体目意情况资源知事度量行定中人物用性化点'.includes(char));
+  return overlap.length>=2||overlap.some(char=>!'评全面整体目意情况资源知事度量行定中人物用性化点'.includes(char));
  }
  if(target.length>=2)return relation==='synonym';
  const tokens=(s:string)=>s.toLowerCase().match(/[a-z]{3,}/g)?.filter(x=>!['the','and','for','with','that','this','from','into','something','someone','being','having'].includes(x))||[];

@@ -11,6 +11,7 @@ test('saved expression meaning filters inventory/finance/weapon senses; does not
  assert(relatedSenseMatches(meaning,['评估，评价'],[]));
  assert(relatedSenseMatches(meaning,['反思、回顾并评估'],[]));
  for(const unrelated of ['证券、股票','弹药，军需资源','评级，额定功率','秒，证券交易委员会'])assert(!relatedSenseMatches(meaning,[unrelated],[]));
+ assert(!relatedSenseMatches(meaning,['朝……（里面）看，向……看'],[]));
  assert(!relatedSenseMatches('河岸',['银行，金融机构'],[]));
  assert(relatedSenseMatches('创造',['破坏'],[],'antonym'));
  assert(!relatedSenseMatches('评估',[],[]));
