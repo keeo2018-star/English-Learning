@@ -5,7 +5,7 @@ test('live whole-expression recommendations remain grounded in the saved sense',
  test.skip(!cloudUrl||process.env.NOTED_LIVE_LEXICAL!=='1','Opt-in live public dictionary/Datamuse check');test.setTimeout(60000);
  await mockCloud(page,route=>route.fulfill({json:[{...sampleWord,word:'take stock of',meaning:'全面盘点，整体评估',example:'We need to take stock of the situation.'}]}));
  await page.unroute('**/api/related-words?*');
- await page.goto('/library');await page.getByRole('button',{name:'Dictionary for take stock of',exact:true}).click();const region=page.getByRole('region',{name:'Related Words'});await region.scrollIntoViewIfNeeded();
+ await page.goto('/library');await page.getByRole('button',{name:'Dictionary for take stock of',exact:true}).click();await expect(page.getByRole('dialog').getByRole('heading',{name:'Chinese',exact:true})).toBeVisible({timeout:20000});const region=page.getByRole('region',{name:'Related Words'});await region.scrollIntoViewIfNeeded();
  await expect(region.getByRole('button',{name:/^Save (assess|evaluate)$/} ).first()).toBeVisible({timeout:45000});
  for(const term of ['stocks','securities','ammunition','ratings','sec'])await expect(region.getByRole('button',{name:`Save ${term}`,exact:true})).toHaveCount(0);
  await page.screenshot({path:'/tmp/noted-live-semantic-related.png'});
