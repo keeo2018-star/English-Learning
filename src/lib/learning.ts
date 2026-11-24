@@ -5,6 +5,7 @@ export type LearningItem = {
   word: string;
   meaning: string;
   example: string;
+  example_source?:"ai"|"dictionary"|"personal"|null;
   due_at: string;
   interval_days: number;
   created_at?: string;

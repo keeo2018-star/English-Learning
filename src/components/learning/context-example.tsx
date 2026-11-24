@@ -23,5 +23,5 @@ export function ContextExample({item, owner, persist = true}: {item: ExampleItem
     return ()=>{active=false;observer?.disconnect();window.removeEventListener('online',load);};
   },[identity,owner,item.id,item.word,item.meaning,item.example,persist]);
   const text = item.example?.trim() ? item.example : resolved?.key === identity ? resolved.text : '';
-  return <><span ref={anchor} aria-hidden="true" />{text&&<blockquote className="wb-learning-content" data-context-example><HighlightWord text={text} target={item.word}/></blockquote>}</>;
+  return <><span ref={anchor} aria-hidden="true" />{text&&<blockquote className="wb-learning-content" data-context-example>{item.example_source==='ai'&&<small className="ai-label">AI-generated example</small>}<HighlightWord text={text} target={item.word}/></blockquote>}</>;
 }

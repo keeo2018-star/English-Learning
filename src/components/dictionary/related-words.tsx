@@ -5,7 +5,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {vocabularyKey,componentOnly,relatedQuery,relatedSenseMatches,relatedMeaning,relatedPreview,type RelatedTerm} from '@/lib/related-words';
 import {dictionaryReference} from '@/lib/dictionary-client';
 import styles from './dictionary.module.css';
-export type RelatedInput={word:string;meaning:string;example:string;item_type:'word'|'expression'};
+export type RelatedInput={request_id?:string;word:string;meaning:string;example:string;item_type:'word'|'expression';example_source?:'ai'|'dictionary'|'personal'|null};
 type Info={meaning:string;example:string;chinese:string[];english:string[]};
 const cache=new Map<string,{items:RelatedTerm[];at:number}>(),meanings=new Map<string,Info>();
 async function information(term:string){

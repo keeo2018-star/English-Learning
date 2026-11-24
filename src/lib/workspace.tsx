@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, st
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
 import {imeBlocksSubmit} from './ime';
 import Link from "next/link";
+import {afterSaveAi} from "./ai-client";
 import {resolveExample} from "./context-examples";
 import {rememberLibrary,offlineLibrary,forgetLibrary} from "./offline-library";
 import {ContextExample} from "@/components/learning/context-example";
@@ -22,7 +23,7 @@ import { SelectableLink, SelectableButton, SelectableToggle } from "@/components
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
-import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { DictionarySearchButton, DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
@@ -34,7 +35,7 @@ import {clearItemVoice,voiceFiles,removeVoiceFiles,uploadVoice,voiceError,type V
 import {VoiceManager} from '@/components/voice-notes/voice-manager';
 import {VoiceConfirm} from '@/components/voice-notes/voice-confirm';
 import {ExpressionReviewAudio} from '@/components/voice-notes/review-audio';
-type NewLearningItem = { word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
+type NewLearningItem = { request_id?:string;example_source?:"ai"|"dictionary"|"personal"|null; word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = Word | null;
 function errorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error && "code" in error && error.code === "PGRST204" && "message" in error && String(error.message).includes("item_type"))
@@ -245,6 +246,7 @@ export default function Workspace({
         if (accountId.current !== user.id) return null;
         created=data;setWords((previous) => [data, ...previous.filter(item=>item.id!==data.id)]);
       } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...words]);}
+      if(created&&user)void afterSaveAi(user.id,created.word);
       if(created&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
       setMessage("Word saved. Ready for your next review.");
       return created;
@@ -257,11 +259,12 @@ export default function Workspace({
       saving.current = false;
     }
   }
-  async function saveRelated(input:NewLearningItem){
+  async function saveRelated(request:NewLearningItem){
+    const {request_id,...input}=request;
     const key=(s:string)=>s.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
     if(words.some(w=>key(w.word)===key(input.word)))return;
-    try{const result=await saveEntry(input,true);if(!result)throw new Error('Could not save right now. Please try again.');}
-    catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return;}throw error instanceof Error?error:new Error((error as {message?:string}).message||'Could not save. Please try again.');}
+    try{const result=await saveEntry(input,true,request_id);if(!result)throw new Error('Could not save right now. Please try again.');}
+    catch(error){if((error as {code?:string}).code==='23505'&&/This item is already in your Library/i.test((error as {message?:string}).message||'')){void load(user,true);return;}throw error instanceof Error?error:new Error((error as {message?:string}).message||'Could not save. Please try again.');}
   }
   async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string):Promise<AddOutcome> {
     event.preventDefault();const form=event.currentTarget,values=new FormData(form);
@@ -338,6 +341,7 @@ export default function Workspace({
       word: String(form.get("word")).trim(),
       meaning: String(form.get("meaning")).trim(),
       example: String(form.get("example")).trim(),
+      ...('example_source' in word && String(form.get('example')).trim()!==word.example ? {example_source:String(form.get('example')).trim()?'personal' as const:null}:{}),
       ...(word.item_type !== undefined || String(form.get("item_type")) !== itemType(word)
         ? { item_type: String(form.get("item_type")) as "word" | "expression" } : {}),
     };
@@ -442,20 +446,7 @@ export default function Workspace({
       setBusy(false);
     }
   }
-  async function signOut() {
-    if (!supabase) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setWords([]);
-    } catch (error) {
-      setMessage(errorMessage(error, "Could not sign out. Please try again."));
-    } finally {
-      setBusy(false);
-    }
-  }
+
   const due = useMemo(() => words.filter((w) => new Date(w.due_at).getTime() <= now), [words, now]);
   const randomQueue = session?.queue ?? null;
   const randomPosition = session ? session.queue.findIndex(entry => !session.completed.includes(entry.eventId) && words.some(word => word.id === entry.id)) : 0;
@@ -547,29 +538,7 @@ export default function Workspace({
       active={
         page === "review" || page === "library" ? "Review" : page === "add" ? "Add" : null
       }
-      account={
-        user ? (
-          <button
-            className="text-button"
-            data-rating-lock={pendingRating !== null || undefined}
-            disabled={busy}
-            onClick={() => void signOut()}
-          >
-            Sign out
-          </button>
-        ) : (
-          <Link className="wb-control wb-control-outline" href="/auth">
-            Sign in <ArrowIcon />
-          </Link>
-        )
-      }
     >
-      <div className="wb-workspace-meta">
-        <Pill>
-          {supabase ? user?.email || "Account required" : "LOCAL DEMO"}
-        </Pill>
-
-      </div>
       {!supabase && (
         <div className="notice">
           Demo mode · Words stay in this browser.{" "}
@@ -578,21 +547,19 @@ export default function Workspace({
         </div>
       )}
       <div className="page-title">
-        <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>
+        {page === "review" && <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>}
         <h1>
           {page === "add"
-            ? "Find your next word."
+            ? "Add a word."
             : page === "review"
               ? "Let’s make it stick."
               : "Your growing vocabulary."}
         </h1>
-        <p>
-          {page === "add"
-            ? "Your words. Your meaning. Make it yours."
-            : page === "review"
+        {page !== "add" && <p>
+          {page === "review"
               ? "Take a moment to revisit the words you’re learning."
               : "Every word is another way to express yourself."}
-        </p>
+        </p>}
       </div>
       {page !== "add" && (
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
@@ -617,13 +584,13 @@ export default function Workspace({
       {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
       {page === "add" ? (
-        <AddWordFlow
+        <><DictionarySearchButton key={account} onSave={ready&&(!supabase||user)?saveRelated:undefined} savedWords={dictionarySavedWords}/><AddWordFlow
           busy={busy}
           canSave={ready && (!supabase || !!user)}
           checkingAccount={!ready}
           library={words}
           onManualSubmit={add}
-        />
+        /></>
       ) : !ready ? (
         <LoadingState />
       ) : supabase && !user ? (

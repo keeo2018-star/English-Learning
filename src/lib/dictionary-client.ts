@@ -21,3 +21,5 @@ export async function dictionaryReference(word:string):Promise<DictionaryResult>
  if(typeof data.word!=='string'||!Array.isArray(data.phonetics)||!Array.isArray(data.chinese)||!Array.isArray(data.english)||!Array.isArray(data.examples)||!Array.isArray(data.synonyms))throw new Error('The dictionary returned an unreadable response.');
  return data;
 }
+
+export function rememberDictionaryReference(word:string,value:DictionaryResult){const key=lookupText(word).replace(/[.!?]+$/,'').trim().toLowerCase();if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{value,at:Date.now()});}

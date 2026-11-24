@@ -114,7 +114,7 @@ test.describe('Discover',()=>{
   try{await mockDiscover(a,f);await mockDiscover(b,f);await a.goto('/discover');await a.getByRole('button',{name:'Discover 10 more'}).click();await expect(a.getByRole('heading',{name:'Your next 10.'})).toBeVisible();const current=f.state.daily!.id;expect(current).not.toBe(previous);await b.goto('/discover');await expect(b.getByRole('heading',{name:f.state.daily!.items[0].word,exact:true})).toBeVisible();expect(f.state.daily!.id).toBe(current);expect(f.history.size).toBe(2);}finally{await a.close();await b.close();}
  });
  test('an unupgraded database preserves the old batch and explains the required update',async({page})=>{
-  const f=discoverFixture();f.ready();f.state.discover_version=1;for(const item of f.state.daily!.items)f.state.daily!.responses[String(item.id)]={action:'know',library_id:null,added:false};await mockDiscover(page,f);await page.goto('/discover');await expect(page.getByText(/one-time database update/)).toBeVisible();await expect(page.getByRole('button',{name:'Discover 10 more'})).toHaveCount(0);
+  const f=discoverFixture();f.ready();f.state.discover_version=1;for(const item of f.state.daily!.items)f.state.daily!.responses[String(item.id)]={action:'know',library_id:null,added:false};await mockDiscover(page,f);await page.goto('/discover');await expect(page.getByText(/More words aren’t available right now/)).toBeVisible();await expect(page.getByRole('button',{name:'Discover 10 more'})).toHaveCount(0);
  });
 
  test('a fully exhausted collection never offers a silent repeat',async({page})=>{

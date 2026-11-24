@@ -4,6 +4,7 @@ import {ImeInput} from '@/components/ui/ime-field';
 import {imeBlocksSubmit} from '@/lib/ime';
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import {AiSettings} from "@/components/dictionary/ai-settings";
 import { LearningCalendar } from "@/components/learning/learning-calendar";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -103,14 +104,14 @@ function AuthForm() {
     }
   }
   if (checkingAccount) return <AppShell active="Profile" compact><LoadingState label="Checking your account…" /></AppShell>;
-  if (user) return <AppShell active="Profile" compact account={<button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button>}>
+  if (user) return <AppShell active="Profile" compact>
     <div className="profile-header wb-ui-text">
-      <Pill>YOUR NOTEBOOK</Pill>
       <h1>Profile.</h1>
-      <p className="profile-email">{user.email}</p>
+      <section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>
     </div>
     {message && <Feedback>{message}</Feedback>}
     <LearningCalendar key={user.id} account={user.id} initiallyOpen />
+    <AiSettings key={"ai:"+user.id} user={user}/>
   </AppShell>;
   return (
     <AppShell active="Profile" compact>

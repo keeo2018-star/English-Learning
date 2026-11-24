@@ -31,7 +31,7 @@ test.describe('review controls stay stable during grading', () => {
     await expect(due).toBeDisabled(); // Prevent changing modes before the save commits.
     await expect(due).toHaveCSS('opacity', '1');
     await expect(page.getByRole('button', { name: 'Random review', exact: true })).toHaveCSS('opacity', '1');
-    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toHaveCSS('opacity', '1');
+    await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toHaveCount(0);
     release();
     await expect(page.locator('.review-card h2')).toHaveText('world');
     await expect(due).toBeEnabled();

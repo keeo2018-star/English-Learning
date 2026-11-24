@@ -1,4 +1,5 @@
 "use client";
+import {AiMeaningSuggestion} from './ai-explanation';
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {formIsComposing,imeBlocksSubmit} from '@/lib/ime';
 import Link from 'next/link';
@@ -84,7 +85,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
       }, 250);
       if (!manual.current || explicit) meaningTimer = setTimeout(async () => {
         if (!valid() || manualRevision.current !== edits || (manual.current && !explicit)) return;
-        setStatus(explicit?'AI isn’t configured · Finding a dictionary meaning…':'Finding meaning…');
+        setStatus('Finding meaning…');
         try {
           const response = await fetch('/api/smart-add/meaning', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word: query, type }), signal: abort.signal });
           const data: MeaningSuggestion = await response.json();
@@ -155,6 +156,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
     <div className={styles.meaningField}>
       <div className={styles.meaningHeader}><label htmlFor={`${id}-meaning`}>Meaning</label><button type="button" className="text-button" disabled={busy || !word.trim()} onClick={() => { if(formIsComposing(input.current?.form))return;explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
       <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} className={styles.meaning} id={`${id}-meaning`} rows={1} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder="中文解释或你的理解" maxLength={2000} readOnly={busy} />
+      <AiMeaningSuggestion word={word} onAccept={value=>{if(formIsComposing(input.current?.form))return;manual.current=true;manualRevision.current++;setMeaning(value);setStatus('AI suggestion · Editable');}}/>
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
     {(expression||context)&&<details className={styles.contextField} open={contextOpen} onToggle={event=>setContextOpen(event.currentTarget.open)}><summary>My Context <span>Optional</span></summary><ImeTextarea aria-label="My Context" name="example" value={context} onValueChange={value=>{setAttemptId('');setContext(value);setSaveError('');setFailed(false)}} placeholder="Your original sentence or a personal example…" rows={3} readOnly={busy}/>{overContext&&<p role="status">My Context is over 3000 characters. Shorten it before saving; nothing has been removed.</p>}</details>}

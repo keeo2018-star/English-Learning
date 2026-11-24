@@ -1,0 +1,3 @@
+import {bilingualLookup} from '@/lib/bilingual';
+export const maxDuration=25;
+export async function POST(request:Request){try{if(Number(request.headers.get('content-length'))>4096)return Response.json({message:'Search text is too long.'},{status:413});const body=await request.json();if(!['auto','en','zh'].includes(body.direction))return Response.json({message:'Choose a language direction.'},{status:400});const result=await bilingualLookup(body.query,body.direction);return Response.json(result,{headers:{'Cache-Control':'no-store'}});}catch(error){return Response.json({message:error instanceof Error?error.message:'Search is unavailable. Please try again.'},{status:400,headers:{'Cache-Control':'no-store'}});}}

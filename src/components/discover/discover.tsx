@@ -101,7 +101,7 @@ export default function Discover() {
  const nextBatch = () => { if (data?.daily) void perform('next_batch', { set_id: data.daily.id }); };
  const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response, word:item.word, needs_example:!item.example?.trim() }); };
  return <AppShell active="Discover"><div className={styles.page}>
-  <header className={styles.header}><p className="eyebrow">DISCOVER /</p><h1>Find words worth learning.</h1></header>
+  <header className={styles.header}><h1>Find words worth learning.</h1></header>
   {error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
   {data && !continuous && progress?.current && <Feedback>Continuous Discover needs a one-time database update. Your existing batch remains available.</Feedback>}
   {user === undefined ? <LoadingState label="Opening Discover…" /> : !user ? <Card className={styles.blue}>
@@ -136,7 +136,7 @@ export default function Discover() {
     <h2 ref={wordHeading} tabIndex={-1}>{data.daily.items.length ? 'Nice work.' : data.daily.remaining_count ? 'More words are available.' : 'No new words left.'}</h2>
     {data.daily.items.length > 0 && <><p>You’ve explored {progress?.completed || 0} {(progress?.completed || 0) === 1 ? 'word' : 'words'}.</p>
      <dl className={styles.summary}><div><dt>Saved</dt><dd>{progress?.saved || 0}</dd></div><div><dt>Already known</dt><dd>{(progress?.completed || 0) - (progress?.saved || 0)}</dd></div></dl></>}
-    {!continuous ? <p className={styles.note}>Continuous Discover needs a one-time database update. Your existing progress is safe.</p> : data.daily.remaining_count === 0 ? <p>No new words are available in this collection. Your history is kept; no words will be repeated.</p> : <button type="button" className="wb-control" disabled={busy} onClick={nextBatch}>Discover 10 more</button>}
+    {!continuous ? <div><p className={styles.note}>More words aren’t available right now. Your progress is saved.</p><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={()=>void perform("get")}>Retry</button></div> : data.daily.remaining_count === 0 ? <p>No new words are available in this collection. Your history is kept; no words will be repeated.</p> : <button type="button" className="wb-control" disabled={busy} onClick={nextBatch}>Discover 10 more</button>}
     <Link className="wb-control wb-control-outline" href="/library">Open Library</Link>
    </Card>}
    {data.profile.assessment_status !== 'pending' && !assessment && <details className={styles.options}><summary>Discover options</summary><div className={styles.actions}><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => start(true)}>{data.profile.assessment_status === 'completed' ? 'Retake vocabulary check' : 'Take vocabulary check'}</button><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => void perform('get')}>Sync progress</button></div></details>}

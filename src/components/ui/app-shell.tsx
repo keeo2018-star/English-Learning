@@ -1,13 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Navigation, type NavigationSection } from "./navigation";
-import { ArrowIcon } from "./primitives";
 export function AppShell({
   children,
   active = "Home",
-  account,
   compact = false,
-  hideAddAction = false,
 }: {
   children: ReactNode;
   active?: NavigationSection | null;
@@ -25,27 +22,6 @@ export function AppShell({
           <Link href="/" className="wb-wordmark" aria-label="Noted home">
             Noted
           </Link>
-          <span className="wb-edition">
-            YOUR WORDS.
-            <br />
-            YOUR OWN WAY.
-          </span>
-          <div className="wb-masthead-actions">
-            {account}
-            {!hideAddAction && (
-              <Link
-                href="/add"
-                className="wb-control wb-control-outline"
-                aria-label="Add a word"
-              >
-                <span className="wb-add-long">Add a word</span>
-                <span className="wb-add-short" aria-hidden="true">
-                  Add
-                </span>
-                <ArrowIcon />
-              </Link>
-            )}
-          </div>
         </header>
         <main
           id="app-content"

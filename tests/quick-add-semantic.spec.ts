@@ -53,7 +53,7 @@ test('optional suggestion pending/failure never delays saving a manual meaning',
  test.skip(before);const state=await setup(page);let release=()=>{};const gate=new Promise<void>(resolve=>release=resolve);
  await page.route('**/api/smart-add/meaning',async route=>{await gate;await route.fulfill({status:503,json:{meaning:'',source:null}});});
  await page.goto('/add');await page.getByRole('combobox',{name:'Word or phrase'}).fill('assess');await page.getByLabel('Meaning',{exact:true}).fill('我的评估解释');await page.getByRole('button',{name:'Suggest meaning',exact:true}).click();
- await expect(page.getByRole('status').filter({hasText:'AI isn’t configured'})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'Finding meaning…'})).toBeVisible();
  await page.getByRole('button',{name:'Add to my library +',exact:true}).click();await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();expect(state.writes[0].meaning).toBe('我的评估解释');release();
 });
 
