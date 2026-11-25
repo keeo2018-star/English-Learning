@@ -204,7 +204,7 @@ test('older schemas keep the complete unsaved draft when note storage is unavail
  await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('个人词汇');
  await page.getByRole('textbox',{name:'My Context'}).fill('Keep this draft');
  await page.getByRole('button',{name:/Add to my library/}).click();
- await expect(page.getByRole('alert')).toContainText('Learning details storage is not ready');
+ await expect(page.getByRole('alert').filter({hasText:'Learning details storage is not ready'})).toBeVisible();
  await expect(input(page)).toHaveValue('personal vocabulary');
  await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Keep this draft');
  expect(fixture.inserts).toHaveLength(0);
