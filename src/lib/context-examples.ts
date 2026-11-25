@@ -1,7 +1,8 @@
 import { dictionaryReference } from './dictionary-client';
 import { selectExample } from './example-quality';
 import { supabase } from './supabase';
-export type ExampleItem = { example_source?:'ai'|'dictionary'|'personal'|null; id: string; word: string; meaning: string; example?: string | null };
+import type { LearningItem } from './learning';
+export type ExampleItem = Pick<LearningItem, 'personal_note'|'learning_details'> & { example_source?:'ai'|'dictionary'|'personal'|null; id: string; word: string; meaning: string; example?: string | null };
 type Cached = { text: string; at: number };
 const pending = new Map<string, Promise<string>>(), misses = new Map<string, number>();
 let running = 0;

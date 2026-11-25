@@ -1,4 +1,5 @@
 "use client";
+import {vocabularyDetails, type VocabularyDetails} from './vocabulary-details';
 import {Select} from '@/components/ui/select';
 import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
@@ -41,7 +42,7 @@ import {clearItemVoice,voiceFiles,removeVoiceFiles,uploadVoice,voiceError,type V
 import {VoiceManager} from '@/components/voice-notes/voice-manager';
 import {VoiceConfirm} from '@/components/voice-notes/voice-confirm';
 import {ExpressionReviewAudio} from '@/components/voice-notes/review-audio';
-type NewLearningItem = { request_id?:string;collection_id?:string;example_source?:"ai"|"dictionary"|"personal"|null; word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
+type NewLearningItem = { personal_note?:string|null; learning_details?:VocabularyDetails|null; request_id?:string;collection_id?:string;example_source?:"ai"|"dictionary"|"personal"|null; word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = Word | null;
 function errorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error && "code" in error && error.code === "PGRST204" && "message" in error && String(error.message).includes("item_type"))
@@ -293,7 +294,7 @@ export default function Workspace({
           .single();
         if(error?.code==='23505'&&requestId){
           const previous=await supabase.from('words').select('*').eq('id',requestId).eq('user_id',user.id).maybeSingle();
-          if(previous.data&&previous.data.word===entry.word&&previous.data.meaning===entry.meaning&&previous.data.example===entry.example&&(!entry.collection_id||previous.data.collection_id===entry.collection_id)){data=previous.data;error=null;}
+          if(previous.data&&previous.data.word===entry.word&&previous.data.meaning===entry.meaning&&previous.data.example===entry.example&&(previous.data.personal_note||'')===(entry.personal_note||'')&&(!entry.collection_id||previous.data.collection_id===entry.collection_id)){data=previous.data;error=null;}
         }
         if (error && !entry.meaning && error.code === '23514') throw new Error('Add a meaning before saving. Your text is kept.');
         if (error) throw error;
@@ -301,8 +302,8 @@ export default function Workspace({
         created=data;setWords((previous) => [data, ...previous.filter(item=>item.id!==data.id)]);
       } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...allWords]);}
       const savedContext=learning.collections.find(c=>c.id===created?.collection_id)||collection;
-      if(created&&user&&isOriginalEnglish(savedContext))void afterSaveAi(user.id,created.word);
-      if(created&&isOriginalEnglish(savedContext)&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
+      if(created&&user&&!created.example?.trim()&&created.learning_details?.source!=='ai'&&isOriginalEnglish(savedContext))void afterSaveAi(user.id,created.word);
+      if(created&&!created.learning_details&&isOriginalEnglish(savedContext)&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
       setMessage("Word saved. Ready for your next review.");
       return created;
     } catch (error) {
@@ -324,14 +325,21 @@ export default function Workspace({
   async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string):Promise<AddOutcome> {
     event.preventDefault();const form=event.currentTarget,values=new FormData(form);
     const content={word:String(values.get('word')||''),meaning:String(values.get('meaning')||''),example:String(values.get('example')||''),item_type:values.get('item_type')==='auto'?itemType({word:String(values.get('word')||'')}):String(values.get('item_type')) as 'word'|'expression'};
+    const personalNote=String(values.get('personal_note')||'');
+    let details: VocabularyDetails|undefined;
+    try{
+      const raw=JSON.parse(String(values.get('learning_details')||'null'));
+      details=vocabularyDetails(raw,content.example,collection?.target_language||'en');
+    }catch{return {saved:false,message:'Learning details could not be read. Your draft is kept.'};}
+    if(textLength(personalNote)>CONTEXT_TEXT_LIMIT)return {saved:false,message:'Shorten your personal note before saving.'};
     if(textLength(content.word.trim())>ITEM_TEXT_LIMIT||textLength(content.example)>CONTEXT_TEXT_LIMIT)return {saved:false,message:'Extract or shorten the item/context before saving. Your text has been kept.'};
     if(words.some(item=>item.id!==requestId&&captureKey(item.word)===captureKey(content.word)))return {saved:false,duplicate:true,message:'Already in your Library'};
     try{
-      const result=await saveEntry({...content,...(values.get('example_source')==='ai'?{example_source:'ai' as const}:{})},true,requestId);if(!result)return {saved:false,message:'Another save is in progress. Please retry.'};
+      const result=await saveEntry({...content,...(personalNote?{personal_note:personalNote}:{}),...(details?{learning_details:details}:{})},true,requestId);if(!result)return {saved:false,message:'Another save is in progress. Please retry.'};
       setMessage('Added to Library');
       if(voice){setBusy(true);try{await uploadVoice(result.id,voice);if(accountId.current===user?.id)setMessage('Expression and voice note saved.');}catch(error){if(accountId.current===user?.id){setVoiceUploads(previous=>[...previous,{owner:user?.id||'local-demo',item:result,draft:voice,error:voiceError(error)}]);setMessage('Expression saved. Voice note upload needs retry.');}}finally{setBusy(false);}}
       form.reset();return {saved:true};
-    }catch(error){if((error as {code?:string}).code==='23505'){void load(user,true);return {saved:false,duplicate:true,message:'Already in your Library'};}const message=errorMessage(error,'Could not save. Check your connection and retry.');setMessage('');return {saved:false,message};}
+    }catch(error){if(['PGRST204','42703'].includes((error as {code?:string}).code||'')&&(details||personalNote))return {saved:false,message:'Learning details storage is not ready. Nothing was saved. Your draft is kept.'};if((error as {code?:string}).code==='23505'){void load(user,true);return {saved:false,duplicate:true,message:'Already in your Library'};}const message=errorMessage(error,'Could not save. Check your connection and retry.');setMessage('');return {saved:false,message};}
   }
   async function requestDelete(word:Word){
     if(busy||ratingInFlight.current||deletionInFlight.current)return;
@@ -767,7 +775,7 @@ export default function Workspace({
                         <p className="wb-learning-content">{w.meaning}</p>
                         {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        <ContextExample item={w} owner={account} lookup={isOriginalEnglish(entryCollection(w))}/>
+                        <ContextExample item={w} owner={account} language={entryCollection(w)?.target_language} lookup={isOriginalEnglish(entryCollection(w))}/>
                       </div>
                     )}
                     <div className="word-actions">
@@ -839,7 +847,7 @@ export default function Workspace({
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
-                      <ContextExample item={card} owner={account} lookup={isOriginalEnglish(collection)}/>
+                      <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)}/>
                       <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}

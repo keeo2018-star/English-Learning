@@ -76,3 +76,47 @@ test('only matching translation-memory evidence changes the fallback spelling', 
   assert.deepEqual(memoryVariants('纽约', 'New York', []), ['New York']);
   assert.deepEqual(memoryVariants('手机', 'iPhone', []), ['iPhone']);
 });
+
+test('AI casing corrections require a common-word classification and a matching lemma', () => {
+  const candidate = (expression, lemma, casing, expressionType = 'word') =>
+    entry(expression, '中文解释', '', '', { lemma, casing, expressionType });
+  const result = parseTranslation({ recommendedCandidateId: 'absent', candidates: [
+    candidate('CHRYSANTHEMUM', 'chrysanthemum', 'common'),
+    candidate('NASA', 'NASA', 'acronym'),
+    candidate('New York', 'New York', 'proper', 'phrase'),
+    candidate('iPhone', 'iPhone', 'brand'),
+    { expression: 'invalid', meaning: null },
+  ] }, input);
+  assert.equal(result.recommendedCandidateId, 'chrysanthemum');
+  assert.deepEqual(result.candidates.map(item => item.english), ['chrysanthemum', 'NASA', 'New York', 'iPhone']);
+  assert.throws(() => parseTranslation({ candidates: [{ expression: 'test', meaning: null }] }, input));
+});
+
+test('structured Gemini requests carry only the intended translation input for each scenario', async () => {
+  const aiStub = 'data:text/javascript,' + encodeURIComponent("export const AI_MODEL='fixture-model';export const aiConfigured=()=>true;");
+  const parser = await compile('../../src/lib/translation-candidates.ts', {
+    './collections': collections, './highlight': highlight,
+  });
+  const { generateTranslation } = await import(await compile('../../src/lib/translation-provider.ts', {
+    './ai-provider': aiStub, './translation-candidates': parser,
+  }));
+  const cases = [
+    ['打包', 'Ordering takeaway food', 'to go'],
+    ['打包', 'Packing luggage', 'pack'],
+    ['打包', 'Compressing files', 'archive'],
+    ['拍子', 'Playing badminton', 'racket'],
+    ['拍子', 'Describing musical rhythm', 'beat'],
+  ];
+  for (const [query, context, expression] of cases) {
+    const inputWithContext = { ...input, query, context, level: 'B1' };
+    const entryResult = await generateTranslation(inputWithContext, async (_url, init) => {
+      const request = JSON.parse(init.body);
+      assert.deepEqual(JSON.parse(request.contents[0].parts[0].text), inputWithContext);
+      assert.equal(request.generationConfig.responseSchema.properties.candidates.maxItems, 5);
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+        ambiguous: false, candidates: [entry(expression, '中文释义')],
+      }) }] } }] });
+    });
+    assert.equal(entryResult.candidates[0].english, expression);
+  }
+});

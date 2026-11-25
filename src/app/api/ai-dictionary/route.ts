@@ -31,9 +31,12 @@ async function translate(request: Request, body: Record<string, unknown>) {
       source: inputLanguage(query, target as Language, source as Language | 'auto'),
       level: typeof body.level === 'string' && /^(A[12]|B[12]|C[12]|beginner|intermediate|advanced)$/.test(body.level) ? body.level : 'unspecified' };
     c = await client(request);
-    hash = createHash('sha256').update('noted-translation-v1:' + JSON.stringify(input)).digest('hex');
+    hash = createHash('sha256').update('noted-translation-v2:' + JSON.stringify(input)).digest('hex');
     const reserved = await c.rpc('noted_ai_reserve', { p_hash: hash });
-    if (reserved.error) throw Error('AI translation is unavailable.');
+    if (reserved.error) {
+      console.warn('[noted.ai.translation] quota_rpc_unavailable');
+      throw Error('AI translation is unavailable.');
+    }
     const state = reserved.data;
     if (state.status === 'cached') return Response.json({ result: parseTranslation(state.payload, input) }, { headers });
     if (state.status !== 'reserved') return Response.json({ message: state.status === 'pending'

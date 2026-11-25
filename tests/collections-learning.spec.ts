@@ -115,6 +115,7 @@ for(const cached of [false,true])test(`unverified legacy activation cannot enabl
 
 test('AI candidates update all learning content without replacing notes or issuing another request', async ({page}) => {
  test.skip(!cloudUrl);
+ await page.setViewportSize({width:390,height:844});
  const fixture=await setup(page);
  let calls=0;
  await page.route('**/api/ai-dictionary',async route=>{
@@ -129,26 +130,39 @@ test('AI candidates update all learning content without replacing notes or issui
   ]}}});
  });
  await page.goto('/add');
+ await page.screenshot({path:'/tmp/noted-round02-shots/add-empty.png'});
  await input(page).fill('荷花');
  await page.getByText('Translation context',{exact:false}).first().click();
  await page.getByRole('textbox',{name:'Translation context'}).fill('Pond plants');
+ await page.screenshot({path:'/tmp/noted-round02-shots/add-translation-context.png'});
  await page.getByRole('button',{name:'Translate with AI',exact:true}).click();
  await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
  await expect(page.locator('mark')).toHaveText('lotuses');
- await page.getByText('Personal notes',{exact:false}).first().click();
+ await page.screenshot({path:'/tmp/noted-round02-shots/add-candidates.png'});
  await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
- await page.getByText('Alternative translations (1)',{exact:true}).click();
  await page.getByRole('button',{name:/lotus flower/}).click();
  await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('莲花的花朵');
  await expect(page.locator('mark')).toHaveText('lotus flower');
  await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
+ await page.getByText('她拍下了一朵莲花。').scrollIntoViewIfNeeded();
+ await page.screenshot({path:'/tmp/noted-round02-shots/add-selected-example.png'});
  await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Private note');
- await page.getByRole('button',{name:/lotus 荷花/}).click();
+ await page.getByRole('button',{name:/^lotus Best match/}).click();
  await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
  await page.getByRole('button',{name:/lotus flower/}).click();
  await page.getByRole('button',{name:/Add to my library/}).click();
  await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();
- expect(fixture.inserts[0]).toMatchObject({word:'lotus flower',meaning:'莲花的花朵',example:'Private note',collection_id:en.id});
+ expect(fixture.inserts[0]).toMatchObject({word:'lotus flower',meaning:'莲花的花朵',example:'She photographed a lotus flower.',personal_note:'Private note',collection_id:en.id,learning_details:{exampleTranslation:'她拍下了一朵莲花。',highlight:'lotus flower',translationContext:'Pond plants'}});
+ await page.goto('/library?q=lotus');
+ await page.reload();
+ await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
+ await expect(page.getByText('Private note', {exact:false})).toBeVisible();
+ await expect(page.locator('.word-row mark')).toHaveText('lotus flower');
+ fixture.rows.splice(0,3);
+ await page.goto('/review?mode=random');
+ await page.getByRole('button',{name:'Reveal answer'}).click();
+ await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
+ await expect(page.getByText('Private note', {exact:false})).toBeVisible();
  expect(calls).toBe(1);
 });
 
@@ -162,17 +176,36 @@ test('the shared scrollport keeps Home navigation and the end of Profile clear a
  await expect.poll(async()=>Math.round((await navigation.boundingBox())!.y+(await navigation.boundingBox())!.height)).toBe(568);
  await navigation.getByRole('link',{name:'Profile'}).click();
  await expect(page.getByRole('heading',{name:'Profile.'})).toBeVisible();
+ await page.screenshot({path:'/tmp/noted-round02-shots/profile-languages.png'});
  const legal=page.getByRole('link',{name:'Privacy & terms'});
  await legal.scrollIntoViewIfNeeded();
  await expect(legal).toBeInViewport();
  const calendar=page.locator('.calendar-grid');
  await calendar.getByRole('button').last().scrollIntoViewIfNeeded();
+ await page.screenshot({path:'/tmp/noted-round02-shots/profile-calendar.png'});
  const day=(await calendar.getByRole('button').last().boundingBox())!;
  expect(day.y+day.height).toBeLessThanOrEqual((await navigation.boundingBox())!.y);
  await page.getByRole('button',{name:'Add a language'}).click();
  const sheet=page.getByRole('dialog',{name:'Add a language'});
  await expect(sheet).toBeVisible();
  await expect(sheet.getByRole('combobox')).toHaveCount(3);
+ await page.screenshot({path:'/tmp/noted-round02-shots/add-language.png'});
  await page.keyboard.press('Escape');
  await expect(sheet).toHaveCount(0);
+});
+
+test('older schemas keep the complete unsaved draft when note storage is unavailable', async ({page}) => {
+ test.skip(!cloudUrl);
+ const fixture=await setup(page);
+ await page.route(cloudOrigin+'/rest/v1/words*',route=>route.request().method()==='POST'
+   ? route.fulfill({status:400,json:{code:'PGRST204',message:'Missing fixture column'}}) : route.fallback());
+ await page.goto('/add');
+ await input(page).fill('personal vocabulary');
+ await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('个人词汇');
+ await page.getByRole('textbox',{name:'My Context'}).fill('Keep this draft');
+ await page.getByRole('button',{name:/Add to my library/}).click();
+ await expect(page.getByRole('alert')).toContainText('Learning details storage is not ready');
+ await expect(input(page)).toHaveValue('personal vocabulary');
+ await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Keep this draft');
+ expect(fixture.inserts).toHaveLength(0);
 });

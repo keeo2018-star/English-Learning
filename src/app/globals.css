@@ -1157,3 +1157,9 @@ summary:focus-visible {
 .language-sheet-fields { gap: 16px; }
 
 .word-form .wb-select { margin: 0; padding: 8px 32px 8px 12px; min-height: 44px; }
+
+.saved-learning-note { display: block; margin: 8px 0 0; overflow-wrap: anywhere; font-size: .875rem; }
+.learning-calendar-content { padding-block: 8px 12px; }
+.calendar-metrics { margin-block: 8px; gap: 4px; }
+.calendar-metrics button { min-height: 44px; padding: 8px 14px; }
+.calendar-month { margin-block: 8px 12px; }

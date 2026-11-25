@@ -22,7 +22,16 @@ export async function collectionLookup(input:string,target:TargetLanguage,explan
    if(data.responseStatus!==200||data.quotaFinished||typeof result!=='string'||!result.trim()||/[<>\x00-\x08]/.test(result)||result.length>2000)throw Error('Translation is unavailable. Your draft is kept.');
    return translationText(result).trim();
   };
-  const title=await translate(query,language,target);if(!targetText(title,target))throw Error('No usable result in the selected learning language was returned.');
+  let title=await translate(query,language,target);
+  // Translation memory can contain orphaned fragments from longer texts. For a
+  // damaged Chinese headword result, translate an exact dictionary gloss instead.
+  const unmatchedParentheses=(value:string)=>(value.match(/\(/g)?.length||0)!==(value.match(/\)/g)?.length||0);
+  if(unmatchedParentheses(title)&&language==='zh-CN'&&(target==='fr'||target==='es')){
+   const known=await import('./cedict').then(module=>module.cedictLookup(query)).catch(()=>[]);
+   if(known[0])title=await translate(known[0].english,'en',target);
+  }
+  if(unmatchedParentheses(title))throw Error('No reliable translation was returned. Your draft is kept.');
+  if(!targetText(title,target))throw Error('No usable result in the selected learning language was returned.');
   const meaning=language===explanation?query:await translate(title,target,explanation);
   if(!targetText(meaning,explanation))throw Error('No reliable meaning in the explanation language was returned. You can enter your own.');
   return [{english:title,meaning,usage:'',example:'',exampleTranslation:'',source:'translation' as const}];

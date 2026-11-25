@@ -1,3 +1,4 @@
+import type { VocabularyDetails } from './vocabulary-details';
 import type { ReviewState } from "./review";
 export type LearningItem = {
   id: string;
@@ -6,6 +7,8 @@ export type LearningItem = {
   word: string;
   meaning: string;
   example: string;
+  personal_note?: string | null;
+  learning_details?: VocabularyDetails | null;
   example_source?:"ai"|"dictionary"|"personal"|null;
   due_at: string;
   interval_days: number;

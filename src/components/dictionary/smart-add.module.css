@@ -87,3 +87,17 @@ form.unified { padding:0;gap:20px;background:transparent; }
 
 .sourceChoice select,.typeControl select { width:auto; max-width:100%; margin:0; }
 .preview { gap:12px; }
+
+.translationList { min-width: 0; display: grid; gap: 8px; }
+.translationList h2 { margin: 0; font-size: 1rem; letter-spacing: normal; }
+.translationList .candidates button { border-radius: var(--wb-radius-small); min-height: 44px; padding: 8px 12px; }
+.translationList .candidates button[aria-pressed="true"] { background: var(--wb-lavender); color: var(--wb-black); }
+.translationList .candidates button[aria-pressed="true"] strong::after { content: " ✓"; }
+.titleRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.titleRow .previewTitle { font-size: clamp(1.9rem, 7.5vw, 3rem); }
+.editExpression { flex: 0 0 44px; min-height: 44px; padding: 0; display: grid; place-items: center; background: transparent; color: inherit; }
+.personalNote { display: block; font-weight: 600; }
+.personalNote span { font-weight: 400; }
+.personalNote textarea { min-height: 56px; margin-top: 6px; background: var(--wb-offwhite); }
+.previewExample::before, .previewExample::after { content: none; }
+.personalNote textarea { font-weight: 400; }

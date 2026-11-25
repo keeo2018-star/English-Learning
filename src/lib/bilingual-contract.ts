@@ -1,5 +1,5 @@
 export type Direction='auto'|'en'|'zh';
-export type SearchItem={english:string;meaning:string;usage:string;example:string;exampleTranslation:string;source:'dictionary'|'translation'|'ai'};
+export type SearchItem={reference?:'cc-cedict';english:string;meaning:string;usage:string;example:string;exampleTranslation:string;source:'dictionary'|'translation'|'ai'};
 export type AiEntry={explanation:string;alternatives:SearchItem[];related:{english:string;meaning:string}[]};
 export function searchLanguage(query:string,direction:Direction='auto'):'en'|'zh'{return direction==='auto'?/[\p{Script=Han}]/u.test(query)?'zh':'en':direction;}
 export function searchText(value:unknown){if(typeof value!=='string')throw Error('Enter English or Chinese text.');const q=value.normalize('NFKC').trim().replace(/\s+/g,' ');if(!q||Array.from(q).length>500||/[\x00-\x08<>]/.test(q))throw Error('Search supports up to 500 characters of plain text.');return q;}
@@ -30,7 +30,10 @@ export function memoryVariants(query: string, translated: string, matches: unkno
   // Suppress casing variants only if this same source has attested lowercase evidence.
   const exactLowercase = titleStyle && variants.find(item => item.text === primary.toLowerCase());
   const primaryScore = variants.find(item => item.text === primary)?.score;
-  const better = primaryScore !== undefined && variants.find(item => item.score > primaryScore);
+  const occurrences = new Map<string, number>();
+  for (const item of variants) occurrences.set(item.text, (occurrences.get(item.text)||0)+1);
+  const better = primaryScore !== undefined && variants.find(item => item.score > primaryScore ||
+    (item.score === primaryScore && (occurrences.get(item.text)||0) > (occurrences.get(primary)||0)));
   const preferred = exactLowercase ? exactLowercase.text : better ? better.text : primary;
   const titleRemainder = titleStyle && better && /^[\p{Ll}]+$/u.test(better.text) &&
     primary.toLowerCase().startsWith(better.text + ' ');
