@@ -43,8 +43,17 @@ test('Library scopes duplicates and All browsing never changes Add or Review lan
  test.skip(!cloudUrl);await setup(page);await page.goto('/library');await choose(page,'French');await expect(page.getByText('猫',{exact:true})).toBeVisible();await expect(page.getByText('闲聊',{exact:true})).toHaveCount(0);await page.getByLabel('Library browsing scope',{exact:true}).selectOption('all');await expect(page.getByText('闲聊',{exact:true})).toBeVisible();await expect(page.getByText('猫',{exact:true})).toBeVisible();await page.goto('/add');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');await input(page).fill('chat');await expect(page.getByText('Already in your Library',{exact:true})).toBeVisible();await choose(page,'Spanish');await input(page).fill('chat');await expect(page.getByText('Already in your Library',{exact:true})).toHaveCount(0);
 });
 
-test('Chinese resolves to French, manual meanings survive stale lookup, and unsupported references never hit English providers',async({page})=>{
- test.skip(!cloudUrl);const f=await setup(page);await page.goto('/add');await choose(page,'French');await input(page).fill('充分利用这个机会');await page.getByRole('button',{name:'Translate',exact:true}).click();await expect(page.getByRole('heading',{name:'profiter de cette occasion',exact:true})).toBeVisible();await page.getByLabel('Meaning',{exact:true}).fill('把握这个机会');await page.getByRole('button',{name:'Add to my library +',exact:true}).click();await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();expect(f.inserts[0].word).toBe('profiter de cette occasion');expect(f.inserts[0].meaning).toBe('把握这个机会');await page.goto('/library');const before=f.dictionaryCalls();await page.getByRole('button',{name:'Dictionary for profiter de cette occasion',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Dictionary references for this language are not available yet.');expect(f.dictionaryCalls()).toBe(before);expect(f.lookups.some(request=>request.target==='fr')).toBe(true);
+test('Chinese resolves to French, manual meanings survive stale lookup, and French references never hit English providers',async({page})=>{
+ test.skip(!cloudUrl);const f=await setup(page);await page.goto('/add');await choose(page,'French');await input(page).fill('充分利用这个机会');await page.getByRole('button',{name:'Translate',exact:true}).click();await expect(page.getByRole('heading',{name:'profiter de cette occasion',exact:true})).toBeVisible();await page.getByLabel('Meaning',{exact:true}).fill('把握这个机会');await page.getByRole('button',{name:'Add to my library +',exact:true}).click();await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();expect(f.inserts[0].word).toBe('profiter de cette occasion');expect(f.inserts[0].meaning).toBe('把握这个机会');await page.goto('/library');const before=f.dictionaryCalls();await page.route('**/api/collection-reference?*',async route=>{
+  const params=new URL(route.request().url()).searchParams;
+  expect(params.get('word')).toBe('profiter de cette occasion');
+  expect(params.get('language')).toBe('fr');
+  await route.fulfill({json:{sections:[{partOfSpeech:'Verb',definitions:['Take <b>advantage</b> of this opportunity.']}],source:'https://en.wiktionary.org/wiki/profiter'}});
+ });await page.getByRole('button',{name:'Dictionary for profiter de cette occasion',exact:true}).click();
+ const reference=page.getByRole('dialog');
+ await expect(reference).toContainText('把握这个机会');
+ await expect(reference).toContainText('Take advantage of this opportunity.');
+ await expect(reference.getByRole('link',{name:'Wiktionary contributors'})).toBeVisible();expect(f.dictionaryCalls()).toBe(before);expect(f.lookups.some(request=>request.target==='fr')).toBe(true);
 });
 
 test('English 17/30 resumes after a French session; offline ratings retain both Collections',async({page,context})=>{
