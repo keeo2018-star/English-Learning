@@ -119,10 +119,11 @@ function AuthForm() {
     <MyLanguages key={"languages:"+user.id} owner={user.id}/>
     <LearningCalendar key={user.id} account={user.id} initiallyOpen />
     <AiSettings key={"ai:"+user.id} user={user}/>
+    <p><Link href="/privacy">Privacy &amp; terms</Link></p>
     {collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}
   </AppShell>;
   return (
-    <AppShell active="Profile" compact showBranding>
+    <AppShell active="Profile" compact showBranding legalFooter>
       <Card className="panel wb-auth-panel">
         <Pill>YOUR WORDS, WHEREVER YOU GO</Pill>
         <h1>

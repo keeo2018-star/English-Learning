@@ -1,3 +1,4 @@
+import { KeyboardViewport } from './keyboard-viewport';
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Navigation, type NavigationSection } from "./navigation";
@@ -5,12 +6,14 @@ export function AppShell({
   children,
   active = "Home",
   compact = false,
+  legalFooter = false,
   showBranding = active === "Home",
 }: {
   children: ReactNode;
   active?: NavigationSection | null;
   account?: ReactNode;
   compact?: boolean;
+  legalFooter?: boolean;
   hideAddAction?: boolean;
   showBranding?:boolean;
 }) {
@@ -26,15 +29,16 @@ export function AppShell({
           </Link>
         </header>}
         <main
-          id="app-content"
+          id="app-content" tabIndex={-1}
           className={compact ? "wb-auth-content" : "wb-page-content"}
         >
           {children}
         </main>
-        <footer className="wb-app-footer">
+        {legalFooter&&<footer className="wb-app-footer">
           <Link href="/privacy">Privacy & terms</Link>
-        </footer>
+        </footer>}
       </div>
+      <KeyboardViewport />
       <Navigation active={active} />
     </div>
   );

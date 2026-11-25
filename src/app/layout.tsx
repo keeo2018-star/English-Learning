@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   description: "Collect words. Build a daily practice.",
 };
 export const viewport: Viewport = {
-  width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#f5f4ef",
+  width: "device-width", initialScale: 1, viewportFit: "cover", interactiveWidget: "resizes-content", themeColor: "#f5f4ef",
 };
 export default function RootLayout({
   children,

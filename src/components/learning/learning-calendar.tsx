@@ -1,4 +1,5 @@
 "use client";
+import {Select} from '@/components/ui/select';
 import { useEffect, useState } from 'react';
 import {useCollections} from '@/lib/use-collections';
 import {learningLanguages} from '@/lib/collections';
@@ -92,7 +93,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
   return <details data-metric={metric} className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>Learning calendar</summary>
     {open && month && <div className="learning-calendar-content">
-      {learning.enabled&&learning.collections.length>1&&<label className="calendar-language">Languages<select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label} · {row.explanation_language==='en'?'English':'Chinese'} explanations</option>)}</select></label>}
+      {learning.enabled&&learning.collections.length>1&&<label className="calendar-language"><Select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label}{learning.collections.some(other=>other.id!==row.id&&other.target_language===row.target_language)?(row.explanation_language==='en'?' · EN':' · 中文'):''}</option>)}</Select></label>}
       <div className="calendar-metrics" role="group" aria-label="Calendar activity">
         <SelectableButton className="secondary" selected={metric === 'reviewed'} onClick={() => setMetric('reviewed')}>Reviewed</SelectableButton>
         <SelectableButton className="secondary" selected={metric === 'added'} onClick={() => setMetric('added')}>Added</SelectableButton>

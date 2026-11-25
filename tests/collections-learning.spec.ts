@@ -64,7 +64,7 @@ test('English 17/30 resumes after a French session; offline ratings retain both 
 });
 
 test('Profile creates a context, edits independent levels, reorders and Calendar filters without changing active language',async({page})=>{
- test.skip(!cloudUrl);const f=await setup(page,{one:true});await page.goto('/add');await expect(switcher(page)).toHaveCount(0);await page.goto('/auth');await page.getByRole('button',{name:'Add a language',exact:true}).click();await page.getByLabel('Language to learn',{exact:true}).selectOption('fr');await page.getByLabel('Approximate level',{exact:true}).selectOption('A1');await page.getByRole('button',{name:'Create',exact:true}).click();const french=page.locator('.language-settings').filter({hasText:'French — A1'});await expect(french).toBeVisible();await french.locator('summary').click();await page.getByLabel('Level for French',{exact:true}).selectOption('B1');await expect(page.locator('.language-settings summary').filter({hasText:'French — B1'})).toBeVisible();expect(f.collections.find(c=>c.target_language==='en')!.proficiency_level).toBe('unspecified');await page.getByRole('button',{name:'Move French up',exact:true}).click();await expect(page.locator('.language-settings summary').first()).toContainText('French');await page.getByLabel('Calendar language',{exact:true}).selectOption(en.id);await expect.poll(()=>f.calendars.length).toBeGreaterThan(0);expect(f.calendars.at(-1)?.p_collection).toBe(en.id);await page.goto('/add');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');
+ test.skip(!cloudUrl);const f=await setup(page,{one:true});await page.goto('/add');await expect(switcher(page)).toHaveCount(0);await page.goto('/auth');await page.getByRole('button',{name:'Add a language',exact:true}).click();await page.getByLabel('Language to learn',{exact:true}).selectOption('fr');await page.getByLabel('Approximate level',{exact:true}).selectOption('A1');await page.getByRole('button',{name:'Add French',exact:true}).click();const french=page.locator('.language-settings').filter({hasText:/French.*A1/});await expect(french).toBeVisible();await french.locator('summary').click();await page.getByLabel('Level for French',{exact:true}).selectOption('B1');await expect(page.locator('.language-settings summary').filter({hasText:/French.*B1/})).toBeVisible();expect(f.collections.find(c=>c.target_language==='en')!.proficiency_level).toBe('unspecified');await page.getByRole('button',{name:'Move French up',exact:true}).click();await expect(page.locator('.language-settings summary').first()).toContainText('French');await page.getByLabel('Calendar language',{exact:true}).selectOption(en.id);await expect.poll(()=>f.calendars.length).toBeGreaterThan(0);expect(f.calendars.at(-1)?.p_collection).toBe(en.id);await page.goto('/add');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');
 });
 
 test('Discover gates unsupported languages before requesting English progress',async({page})=>{test.skip(!cloudUrl);const f=await setup(page);await page.goto('/add');await choose(page,'French');await page.goto('/discover');await expect(page.getByText('Discover for French isn’t available yet.',{exact:false})).toBeVisible();expect(f.discoverCalls()).toBe(0);});
@@ -111,4 +111,68 @@ for(const cached of [false,true])test(`unverified legacy activation cannot enabl
  await page.route(cloudOrigin+'/rest/v1/rpc/noted_collections_snapshot',r=>cached?r.fulfill({status:503,json:{message:'Unavailable'}}):r.fulfill({json:legacy}));
  await page.goto('/add');await expect(page.getByRole('heading',{name:'Add a word.',exact:true})).toBeVisible();await expect(languageTrigger(page)).toHaveCount(0);
  await page.goto('/auth');await expect(page.getByRole('button',{name:/Add.*language/i})).toHaveCount(0);
+});
+
+test('AI candidates update all learning content without replacing notes or issuing another request', async ({page}) => {
+ test.skip(!cloudUrl);
+ const fixture=await setup(page);
+ let calls=0;
+ await page.route('**/api/ai-dictionary',async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{available:true}});
+  calls++;
+  const body=route.request().postDataJSON();
+  expect(body).toMatchObject({q:'荷花',target:'en',explanation:'zh-CN',context:'Pond plants'});
+  expect(JSON.stringify(body)).not.toContain('Private note');
+  return route.fulfill({json:{result:{ambiguous:false,candidates:[
+   {id:'lotus',english:'lotus',meaning:'荷花',usage:'常用表达',example:'Pink lotuses bloom every summer.',exampleTranslation:'粉色荷花每年夏天盛开。',highlight:'lotuses',partOfSpeech:'名词',source:'ai'},
+   {id:'lotus-flower',english:'lotus flower',meaning:'莲花的花朵',usage:'专指花朵',example:'She photographed a lotus flower.',exampleTranslation:'她拍下了一朵莲花。',highlight:'lotus flower',partOfSpeech:'名词短语',source:'ai'},
+  ]}}});
+ });
+ await page.goto('/add');
+ await input(page).fill('荷花');
+ await page.getByText('Translation context',{exact:false}).first().click();
+ await page.getByRole('textbox',{name:'Translation context'}).fill('Pond plants');
+ await page.getByRole('button',{name:'Translate with AI',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
+ await expect(page.locator('mark')).toHaveText('lotuses');
+ await page.getByText('Personal notes',{exact:false}).first().click();
+ await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
+ await page.getByText('Alternative translations (1)',{exact:true}).click();
+ await page.getByRole('button',{name:/lotus flower/}).click();
+ await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('莲花的花朵');
+ await expect(page.locator('mark')).toHaveText('lotus flower');
+ await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Private note');
+ await page.getByRole('button',{name:/lotus 荷花/}).click();
+ await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:/lotus flower/}).click();
+ await page.getByRole('button',{name:/Add to my library/}).click();
+ await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();
+ expect(fixture.inserts[0]).toMatchObject({word:'lotus flower',meaning:'莲花的花朵',example:'Private note',collection_id:en.id});
+ expect(calls).toBe(1);
+});
+
+test('the shared scrollport keeps Home navigation and the end of Profile clear at 320px', async ({page}) => {
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width:320,height:568});
+ await setup(page,{many:true});
+ await page.goto('/');
+ const navigation=page.getByRole('navigation',{name:'Main navigation'});
+ await expect(navigation.getByRole('link',{name:'Home'})).toHaveAttribute('aria-current','page');
+ await expect.poll(async()=>Math.round((await navigation.boundingBox())!.y+(await navigation.boundingBox())!.height)).toBe(568);
+ await navigation.getByRole('link',{name:'Profile'}).click();
+ await expect(page.getByRole('heading',{name:'Profile.'})).toBeVisible();
+ const legal=page.getByRole('link',{name:'Privacy & terms'});
+ await legal.scrollIntoViewIfNeeded();
+ await expect(legal).toBeInViewport();
+ const calendar=page.locator('.calendar-grid');
+ await calendar.getByRole('button').last().scrollIntoViewIfNeeded();
+ const day=(await calendar.getByRole('button').last().boundingBox())!;
+ expect(day.y+day.height).toBeLessThanOrEqual((await navigation.boundingBox())!.y);
+ await page.getByRole('button',{name:'Add a language'}).click();
+ const sheet=page.getByRole('dialog',{name:'Add a language'});
+ await expect(sheet).toBeVisible();
+ await expect(sheet.getByRole('combobox')).toHaveCount(3);
+ await page.keyboard.press('Escape');
+ await expect(sheet).toHaveCount(0);
 });

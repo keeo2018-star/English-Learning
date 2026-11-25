@@ -1,4 +1,5 @@
 "use client";
+import {Select} from '@/components/ui/select';
 import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
 import {useCollections} from './use-collections';
@@ -696,7 +697,7 @@ export default function Workspace({
                   onValueChange={(value) => { startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
                 />
               </div>
-              {learning.enabled&&learning.collections.length>1&&<label className="library-scope">Browse<select aria-label="Library browsing scope" value={allLanguages?'all':'current'} onChange={event=>{setAllLanguages(event.target.value==='all');setLibraryPage(0);}}><option value="current">Current language</option><option value="all">All languages</option></select></label>}
+              {learning.enabled&&learning.collections.length>1&&<label className="library-scope">Browse<Select aria-label="Library browsing scope" value={allLanguages?'all':'current'} onChange={event=>{setAllLanguages(event.target.value==='all');setLibraryPage(0);}}><option value="current">Current language</option><option value="all">All languages</option></Select></label>}
               <div className="library-metadata wb-ui-text">
                 <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
                 <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
@@ -729,7 +730,7 @@ export default function Workspace({
                           />
                         </label>
                         <label>Content type
-                          <select name="item_type" defaultValue={itemType(w)}><option value="word">Word</option><option value="expression">Expression</option></select>
+                          <Select name="item_type" defaultValue={itemType(w)}><option value="word">Word</option><option value="expression">Expression</option></Select>
                         </label>
                         <label>
                           Meaning

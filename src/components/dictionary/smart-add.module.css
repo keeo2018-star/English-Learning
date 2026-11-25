@@ -45,9 +45,6 @@
 .meaningHeader label { margin:0;font-size:12px; }
 .typeControl { display:flex;align-items:center;flex-wrap:wrap;gap:var(--wb-control-gap); }
 .typeControl label { margin:0;font-size:12px;color:#45453f; }
-.typeControl select { width:auto;max-width:100%;margin:0;min-height:44px;padding:8px 30px 8px 12px;border:1px solid rgb(0 0 0 / 24%);border-radius:var(--wb-radius-pill);background:transparent;font-size:12px; }
-.typeControl select { appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23161616' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center; }
-.typeControl select:focus-visible { outline:none;box-shadow:none;border-color:var(--wb-black);background-color:rgb(0 0 0 / 6%); }
 /* One bilingual query, followed by the editable card that is actually saved. */
 form.unified { padding:0;gap:20px;background:transparent; }
 .queryArea { display:grid;gap:10px;min-width:0; }
@@ -86,6 +83,7 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .field textarea.queryInput[data-has-value="false"] { padding-right:16px; }
 .field textarea.queryInput[data-has-value="false"]:focus { padding-right:15px; }
 
-.sourceChoice select { width:auto;max-width:100%;min-height:44px;padding:8px 12px;font-size:12px;border:1px solid currentColor;border-radius:var(--wb-radius-pill);background:transparent; }
 
-.sourceChoice select:focus-visible { outline:2px solid var(--wb-black);outline-offset:-2px; }
+
+.sourceChoice select,.typeControl select { width:auto; max-width:100%; margin:0; }
+.preview { gap:12px; }

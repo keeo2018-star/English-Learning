@@ -109,11 +109,8 @@
   transform: rotate(12deg);
 }
 .wb-navigation {
-  position: fixed;
-  z-index: 20;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  justify-self: center;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -150,7 +147,6 @@
 }
 @media (min-width: 700px) {
   .wb-navigation {
-    bottom: 20px;
     padding: 8px;
     gap: 6px;
     max-width: 680px;

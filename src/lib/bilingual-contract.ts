@@ -14,3 +14,28 @@ export function parseAiEntry(value:unknown):AiEntry{
 }
 
 export function translationText(value:string){return value.replace(/&(?:amp|quot|apos|lt|gt|nbsp);|&#(?:39|34|x27|x22);/gi,entity=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&lt;':'<','&gt;':'>','&nbsp;':' ','&#39;':"'",'&#34;':'"','&#x27;':"'",'&#x22;':'"'}[entity.toLowerCase()]||entity));}
+
+type MemoryMatch = { segment?: unknown; translation?: unknown; match?: unknown };
+export function memoryVariants(query: string, translated: string, matches: unknown): string[] {
+  const clean = (input: string) => translationText(input).normalize('NFC').trim().replace(/\s+/g, ' ');
+  const primary = clean(translated), source = clean(query);
+  const variants = Array.isArray(matches) ? matches.slice(0, 20).flatMap((match: MemoryMatch | null) =>
+    match && typeof match.segment === 'string' && clean(match.segment) === source &&
+    typeof match.match === 'number' && match.match >= 0.99 && typeof match.translation === 'string'
+      ? [{ text: clean(match.translation), score: match.match }] : []
+  ).filter(item => item.text.length > 0 && item.text.length <= 120 && !/[<>\x00-\x1f]/.test(item.text))
+    .sort((a, b) => b.score - a.score) : [];
+  const titleStyle = /^[\p{Lu}][\p{Ll}]+(?: [\p{Lu}][\p{Ll}]+)+$/u.test(primary);
+  // A higher-rated exact match may be more useful than the provider's default.
+  // Suppress casing variants only if this same source has attested lowercase evidence.
+  const exactLowercase = titleStyle && variants.find(item => item.text === primary.toLowerCase());
+  const primaryScore = variants.find(item => item.text === primary)?.score;
+  const better = primaryScore !== undefined && variants.find(item => item.score > primaryScore);
+  const preferred = exactLowercase ? exactLowercase.text : better ? better.text : primary;
+  const titleRemainder = titleStyle && better && /^[\p{Ll}]+$/u.test(better.text) &&
+    primary.toLowerCase().startsWith(better.text + ' ');
+  return [...new Set([preferred, primary, ...variants.map(item => item.text)])].filter(value =>
+    value.length > 0 && value.length <= 120 && !/[<>\x00-\x1f]/.test(value) &&
+    (value === preferred || !(value === primary && titleRemainder) && value.toLowerCase() !== preferred.toLowerCase())
+  ).slice(0, 5);
+}

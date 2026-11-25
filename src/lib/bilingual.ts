@@ -1,5 +1,5 @@
 import {lookupDictionary,type DictionaryResult} from './dictionary';
-import {searchLanguage,searchText,translationText,englishResult,type Direction,type SearchItem} from './bilingual-contract';
+import {searchLanguage,searchText,translationText,memoryVariants,englishResult,type Direction,type SearchItem} from './bilingual-contract';
 export type BilingualResult={query:string;language:'en'|'zh';items:SearchItem[];reference?:DictionaryResult;message?:string};
 const cache=new Map<string,{value:BilingualResult;expires:number}>(),pending=new Map<string,Promise<BilingualResult>>();
 export async function bilingualLookup(input:string,direction:Direction='auto',fetcher:typeof fetch=fetch):Promise<BilingualResult>{
@@ -11,6 +11,6 @@ export async function bilingualLookup(input:string,direction:Direction='auto',fe
   const data=await response.json(),translated=typeof data?.responseData?.translatedText==='string'?translationText(data.responseData.translatedText):'';if(data.responseStatus!==200||data.quotaFinished||typeof translated!=='string'||translated.includes('<')||translated.length>2000)throw Error('Translation is unavailable. You can try a shorter phrase.');
   if(language==='zh'&&!englishResult(translated,2000))throw Error('No reliable English translation was returned.');
   if(language==='en'&&!/[\p{Script=Han}]/u.test(translated))throw Error('No Chinese meaning was returned.');
-  return{query,language,items:[{english:language==='zh'?translated:query,meaning:language==='zh'?query:translated,usage:'',example:'',exampleTranslation:'',source:'translation' as const}],message:'Translation via MyMemory. Context can change the best wording.'};
+  return{query,language,items:language==='zh'?memoryVariants(query,translated,data.matches).filter(item=>englishResult(item,120)).map(english=>({english,meaning:query,usage:'',example:'',exampleTranslation:'',source:'translation' as const})):[{english:query,meaning:translated,usage:'',example:'',exampleTranslation:'',source:'translation' as const}],message:'Translation via MyMemory. Context can change the best wording.'};
  })().then(value=>{if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{value,expires:Date.now()+3600000});return value;}).finally(()=>pending.delete(key));pending.set(key,task);return task;
 }
