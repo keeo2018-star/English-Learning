@@ -24,14 +24,14 @@ test.describe('Smart Add', () => {
     await expect(word).toHaveValue('subtle'); await expect(page.getByRole('listbox')).toHaveCount(0);
     await expect(page.getByLabel('Meaning', { exact: true })).toHaveValue('微妙的');
     await expect(page.getByText('Auto-filled · Editable', { exact: true })).toBeVisible(); expect(writes).toHaveLength(0);
-    await word.press('Enter'); await expect(page.getByText('Added to Library')).toBeVisible();
+    await word.press('Control+Enter'); await expect(page.getByText('Added to Library')).toBeVisible();
     expect(writes[0]).toMatchObject({ word: 'subtle', meaning: '微妙的' }); await expect(word).toHaveValue('');
   });
-  test('Enter without an active suggestion quick-saves English only', async ({ page }) => {
+  test('Ctrl Enter without an active suggestion quick-saves English only', async ({ page }) => {
     const writes = await setup(page);
     await page.route('**/api/smart-add/meaning', async route => { await new Promise(resolve => setTimeout(resolve, 1500)); await route.fulfill({ json: { meaning: '迟到的结果', source: 'dictionary' } }); });
     const word = page.getByLabel('Word or phrase'); await word.fill('subt'); await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(3);
-    await expect(page.getByText('Finding meaning…')).toBeVisible(); await word.press('Enter');
+    await expect(page.getByText('Finding meaning…')).toBeVisible(); await word.press('Control+Enter');
     await expect(page.getByText('Added to Library')).toBeVisible();
     expect(writes).toHaveLength(1); expect(writes[0]).toMatchObject({ word: 'subt', meaning: '' });
     await page.waitForTimeout(1700); await expect(page.getByLabel('Meaning', { exact: true })).toHaveValue(''); expect(writes).toHaveLength(1);
@@ -70,7 +70,7 @@ test.describe('Smart Add', () => {
     const writes = await setup(page); const requests: { word: string; type: string }[] = [];
     await page.route('**/api/smart-add/meaning', route => { requests.push(route.request().postDataJSON()); return route.fulfill({ json: { meaning: '我不会这么说。', source: 'translation' } }); });
     const sentence = "I wouldn't put it that way.";
-    await page.getByLabel('Content type').selectOption('expression'); await page.getByLabel('Word or phrase').fill(sentence);
+    await page.getByLabel('Word or phrase').fill(sentence);await page.getByLabel('Content type').selectOption('expression');
     await expect(page.getByLabel('Meaning', { exact: true })).toHaveValue('我不会这么说。');
     expect(requests.at(-1)).toEqual({ word: sentence, type: 'expression' });
     await expect(page.getByText('Auto-filled · Editable · Translation')).toBeVisible();
@@ -132,7 +132,7 @@ test.describe('Smart Add', () => {
       return body.meaning ? route.fulfill({ json: { ...sampleWord, ...body } }) : route.fulfill({ status: 400, json: { code: '23514', message: 'new row violates words_meaning_check' } });
     });
     await page.getByLabel('Word or phrase').fill('subtle');
-    await page.getByLabel('Word or phrase').press('Enter');
+    await page.getByLabel('Word or phrase').press('Control+Enter');
     await expect(page.getByText('Add a meaning before saving. Your text is kept.')).toBeVisible();
     await expect(page.getByLabel('Word or phrase')).toHaveValue('subtle');
     await page.getByLabel('Meaning', { exact: true }).fill('自定义');

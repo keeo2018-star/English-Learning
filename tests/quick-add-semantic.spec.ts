@@ -15,7 +15,7 @@ for(const width of [320,375,390,430,768,1440])test(`compact Quick Add at ${width
  await expect(english).toBeVisible();await page.screenshot({path:`/tmp/noted-quick-${before?'before':'after'}-${width}.png`,fullPage:true});
  if(before)return;
  const bounds=await english.boundingBox();expect(bounds!.height).toBeLessThan(90);
- await expect(meaning).toHaveCSS('background-color','rgba(0, 0, 0, 0)');expect((await meaning.boundingBox())!.height).toBeLessThanOrEqual(56);
+ await expect(meaning).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(meaning).not.toBeVisible();
  await expect(page.getByText('Your meaning stays editable.')).toHaveCount(0);
  await english.fill('I wouldn’t put it that way, even if you asked me directly.');await meaning.fill('这不是我会采用的说法。'.repeat(16));
  expect((await meaning.boundingBox())!.height).toBeLessThanOrEqual(202);await expect(meaning).toHaveValue('这不是我会采用的说法。'.repeat(16));

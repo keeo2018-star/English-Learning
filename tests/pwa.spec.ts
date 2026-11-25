@@ -38,44 +38,8 @@ test('PWA manifest, icons, Apple metadata and viewport are valid on mobile', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('service worker caches only public assets and sessions survive reopening and offline recovery', async ({ page, context }) => {
-  test.skip(!cloudUrl, 'Requires mocked cloud configuration');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await mockCloud(page, route => route.fulfill({ json: [sampleWord] }));
-  await page.route('**/api/dictionary?*', route => route.fulfill({ status: 404, json: {} }));
-  await page.goto('/library');
-  await expect(page.getByRole('heading', { name: sampleWord.word, exact: true })).toBeVisible();
-  const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
-  expect(new URL(scope).pathname).toBe('/');
-  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
-  const cached = await page.evaluate(async () => {
-    const names = (await caches.keys()).filter(name => name.startsWith('noted-install-'));
-    const requests = (await Promise.all(names.map(async name => (await caches.open(name)).keys()))).flat();
-    return requests.map(request => new URL(request.url).pathname).sort();
-  });
-  expect(cached).toEqual(['/icons/apple-touch-icon.png', '/icons/icon-192.png', '/icons/icon-512.png', '/interaction-policy.css', '/offline.html']);
-  const headers = await page.evaluate(async () => {
-    const response = await fetch('/sw.js');
-    return { cache: response.headers.get('cache-control'), scope: response.headers.get('service-worker-allowed') };
-  });
-  expect(headers.cache).toContain('no-store');
-  expect(headers.scope).toBe('/');
-  await page.close();
-  const reopened = await context.newPage();
-  await reopened.setViewportSize({ width: 390, height: 844 });
-  // Do not seed a session in this page: use the existing browser storage.
-  await mockCloud(reopened, route => route.fulfill({ json: [sampleWord] }), false);
-  await reopened.route('**/api/dictionary?*', route => route.fulfill({ status: 404, json: {} }));
-  await reopened.goto('/library');
-  await expect(reopened.getByRole('heading', { name: sampleWord.word, exact: true })).toBeVisible();
-  await reopened.goto('/add');
-  await expect(reopened.getByLabel('Word or phrase')).toBeVisible();
-  await reopened.goto('/review');
-  await expect(reopened.getByRole('button', { name: 'Reveal answer', exact: true })).toBeVisible();
-  await context.setOffline(true);
-  await reopened.goto('/library');
-  await expect(reopened.getByRole('heading', { name: 'You’re offline.' })).toBeVisible();
-  await context.setOffline(false);
-  await reopened.getByRole('button', { name: 'Try again', exact: true }).click();
-  await expect(reopened.getByRole('heading', { name: sampleWord.word, exact: true })).toBeVisible();
+test('public app shells and assets reopen the prepared Library with networking disabled',async({page,context})=>{
+ test.skip(!cloudUrl);await mockCloud(page,r=>r.fulfill({json:[sampleWord]}));await page.goto('/library');await expect(page.getByRole('heading',{name:sampleWord.word,exact:true})).toBeVisible();await page.evaluate(async()=>{await navigator.serviceWorker.ready});await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);
+ const paths=await page.evaluate(async()=>{const result=[];for(const key of await caches.keys()){const cache=await caches.open(key);for(const request of await cache.keys())result.push(new URL(request.url).pathname);}return result;});expect(paths).toContain('/review');expect(paths).toContain('/library');expect(paths.some(path=>path.startsWith('/_next/static/'))).toBe(true);expect(paths.every(path=>!path.startsWith('/api/')&&!path.includes('/rest/v1/')&&!path.includes('/auth/callback'))).toBe(true);
+ const headers=await page.evaluate(async()=>{const response=await fetch('/sw.js');return{cache:response.headers.get('cache-control'),scope:response.headers.get('service-worker-allowed')}});expect(headers.cache).toContain('no-store');expect(headers.scope).toBe('/');await page.close();await context.setOffline(true);const reopened=await context.newPage();await mockCloud(reopened,r=>r.fulfill({json:[sampleWord]}),false);await reopened.goto('/library');await expect(reopened.getByRole('heading',{name:sampleWord.word,exact:true})).toBeVisible();await reopened.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Review',exact:true}).click();await expect(reopened.getByRole('button',{name:'Reveal answer',exact:true})).toBeVisible();
 });

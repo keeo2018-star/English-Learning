@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import {OfflineReviewSync} from '@/components/learning/offline-review-sync';
 import { PwaRegistration } from "@/components/ui/pwa-registration";
 import { KnockoutControls } from "@/components/ui/knockout-controls";
 import "./globals.css";
@@ -38,8 +39,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={roboto.variable}>
-      <body>{children}<KnockoutControls /><PwaRegistration /></body>
+    <html lang="en" className={roboto.variable} data-app-build={process.env.VERCEL_GIT_COMMIT_SHA||'local-v6'}>
+      <body>{children}<KnockoutControls /><PwaRegistration /><OfflineReviewSync /></body>
     </html>
   );
 }

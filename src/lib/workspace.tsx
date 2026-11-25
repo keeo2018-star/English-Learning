@@ -5,7 +5,9 @@ import {imeBlocksSubmit} from './ime';
 import Link from "next/link";
 import {afterSaveAi} from "./ai-client";
 import {resolveExample} from "./context-examples";
-import {rememberLibrary,offlineLibrary,forgetLibrary} from "./offline-library";
+import {storedLibrary,pendingReviews,enqueueReview,storeReviewSession,storedReviewSession} from './offline-store';
+import {syncOfflineReviews} from './offline-sync';
+import {rememberLibrary,offlineLibrary,forgetLibrary,offlineIdentity,prepareOfflineIdentity} from "./offline-library";
 import {ContextExample} from "@/components/learning/context-example";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -27,7 +29,7 @@ import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dic
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
-import { completeSessionCard, newReviewSession, readReviewSession, removeSessionItem, reviewSessionKey, type ReviewSession } from "./review-session";
+import { mergeReviewSessions, completeSessionCard, newReviewSession, readReviewSession, removeSessionItem, reviewSessionKey, type ReviewSession } from "./review-session";
 import { DEMO_EVENTS_KEY } from "@/components/learning/learning-calendar";
 import { indexLibrary, normalizeLibraryQuery, LIBRARY_PAGE_SIZE } from "./library-search";
 import {useVoiceNotes} from './use-voice-notes';
@@ -81,6 +83,7 @@ export default function Workspace({
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
+  const [offlineNotice,setOfflineNotice]=useState('');
   const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
   const [deleteHasRecording,setDeleteHasRecording]=useState(false);
   const [deleteError,setDeleteError]=useState('');
@@ -102,6 +105,10 @@ export default function Workspace({
     if (!background) { setMessage(""); setLoadError(false); }
     try {
       if (supabase && u) {
+        const cached=await storedLibrary(u.id).catch(()=>null)||offlineLibrary(u.id);
+        if(!navigator.onLine){if(!cached)throw Error('No offline Library is prepared on this device. Connect once to load it.');setWords(cached);setLoadError(false);setOfflineNotice('Offline · Reviews save on this device and sync when you reconnect.');return;}
+        try{await syncOfflineReviews(u.id);setOfflineNotice('');}catch(error){setOfflineNotice(error instanceof Error?error.message:'Your reviews are saved on this device.');}
+        if(version!==loadVersion.current||accountId.current!==u.id)return;
         const all: Word[] = [];
         for (let offset = 0; ; offset += 1000) {
           const { data, error } = await supabase.from("words").select("*").eq("user_id", u.id)
@@ -111,21 +118,24 @@ export default function Workspace({
           all.push(...(data || []));
           if (!data || data.length < 1000) break;
         }
-        setWords(all);rememberLibrary(u.id,all);
+        const queued=await pendingReviews(u.id).catch(()=>[]),local=await storedLibrary(u.id).catch(()=>null)||offlineLibrary(u.id)||cached;
+        if(version!==loadVersion.current||accountId.current!==u.id)return;
+        const pendingIds=new Set(queued.map(e=>e.itemId)),localById=new Map(local?.map(row=>[row.id,row])||[]);const merged=all.map(row=>pendingIds.has(row.id)?localById.get(row.id)||row:row);
+        setWords(merged);rememberLibrary(u.id,merged);prepareOfflineIdentity(u.id);
       } else if (!supabase) {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
         if (!Array.isArray(saved))
           throw new Error("Your local library could not be read.");
         setWords(saved);
-      } else setWords([]);
+      } else {setWords([]);if(!navigator.onLine)setMessage('No offline Library is prepared on this device. Connect once and load your Library to prepare it.');}
       if (version === loadVersion.current) { setSyncError(false); setLoadError(false); }
     } catch (error) {
       if (version === loadVersion.current && background) { setSyncError(true); }
       else if (version === loadVersion.current) {
-        const cached = u && !navigator.onLine ? offlineLibrary(u.id) : null;
+        const cached = u ? offlineLibrary(u.id)||await storedLibrary(u.id).catch(()=>null) : null;
         setWords(cached || []);
         setLoadError(!cached);
-        setMessage(cached ? "Offline — showing your saved Library. Changes need a connection." : errorMessage(error, "Could not load your library."));
+        setMessage(cached ? "Offline · Your saved Library is available. Reviews save on this device." : errorMessage(error, "Could not load your library."));
       }
     } finally {
       if (version === loadVersion.current) setReady(true);
@@ -142,9 +152,14 @@ export default function Workspace({
         clearInterval(timer);
         clearTimeout(initial);
       };
-    const client = supabase;
+    const client = supabase;let active=true,authRevision=0;
+    const prepared=offlineIdentity();
+    if(prepared){const local=offlineLibrary(prepared.id);accountId.current=prepared.id;setUser(prepared);if(local){setWords(local);setReady(true);if(!navigator.onLine)setOfflineNotice('Offline · Reviews save on this device and sync when you reconnect.');}const restoreVersion=loadVersion.current;void storedLibrary(prepared.id).then(rows=>{if(rows&&accountId.current===prepared.id&&loadVersion.current===restoreVersion){setWords(rows);setReady(true);}}).catch(()=>{});}
     void client.auth.getSession().then(({ data, error }) => {
+      if(!active||authRevision)return;
+      if(!data.session&&prepared&&!navigator.onLine)return;
       if (error) {
+        if(prepared&&accountId.current===prepared.id){void load(prepared);return;}
         setMessage(error.message);
         setReady(true);
         return;
@@ -154,6 +169,8 @@ export default function Workspace({
       void load(data.session?.user || null);
     });
     const { data } = client.auth.onAuthStateChange((_event, session) => {
+      if(!active)return;authRevision++;
+      if(_event==='INITIAL_SESSION'&&!session&&prepared&&!navigator.onLine)return;
       if (accountId.current !== (session?.user.id || null)) {
         ++loadVersion.current;
         if(accountId.current)forgetLibrary(accountId.current);
@@ -167,14 +184,14 @@ export default function Workspace({
         setDeleting(null);
         setVoiceTypeEdit(null);setVoiceUploads([]);
         setLibraryPage(0);
-        setSyncError(false);
+        setSyncError(false);setOfflineNotice('');
         setReady(false);
       }
       setUser(session?.user || null);
       setTimeout(() => void load(session?.user || null), 0);
     });
     return () => {
-      data.subscription.unsubscribe();
+      active=false;data.subscription.unsubscribe();
       clearInterval(timer);
       clearTimeout(initial);
     };
@@ -184,23 +201,24 @@ export default function Workspace({
     const refresh = () => { if (document.visibilityState === "visible" && !ratingInFlight.current && !saving.current && !editing) { void load(user, true); } };
     const visible = () => { if (document.visibilityState === "visible") refresh(); };
     window.addEventListener("online", refresh);
+    window.addEventListener("noted-reviews-synced",refresh);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", visible);
     const timer = window.setInterval(refresh, 30000);
     const client = supabase;
     const channel = client && user ? client.channel(`library:${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "words", filter: `user_id=eq.${user.id}` }, refresh).subscribe() : null;
-    return () => { clearInterval(timer); window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
+    return () => { clearInterval(timer); window.removeEventListener("online", refresh);window.removeEventListener("noted-reviews-synced",refresh); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
   }, [ready, user, load, editing]);
   const account = user?.id || "local-demo";
   useEffect(()=>{if(ready&&!loadError&&user?.id)rememberLibrary(user.id,words);},[ready,loadError,user?.id,words]);
   const persistSession = useCallback((next: ReviewSession) => {
     try { localStorage.setItem(reviewSessionKey(next.account), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
-    setSession(next);
+    void storeReviewSession(next).catch(()=>{});setSession(next);
   }, []);
   useEffect(() => {
     const sync = (event: StorageEvent) => {
-      if (event.key === reviewSessionKey(account)) setSession(readReviewSession(event.newValue, account));
+      if(event.key===reviewSessionKey(account)){const incoming=readReviewSession(event.newValue,account);if(incoming)setSession(previous=>mergeReviewSessions(incoming,previous));}
       if (!supabase && event.key === storageKey) void load(null);
     };
     window.addEventListener("storage", sync);
@@ -384,7 +402,7 @@ export default function Workspace({
   }
   async function grade(word: Word, rating: RecallRating) {
     if (ratingInFlight.current) return;
-    ratingInFlight.current = true;
+    ratingInFlight.current = true;++loadVersion.current;
     setPendingRating(rating);
     const owner = accountId.current;
     setNow(Date.now());
@@ -403,6 +421,9 @@ export default function Workspace({
     try {
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
+        const localReview=async()=>{const local=await enqueueReview(user.id,word,rating,eventId!,words,Date.now(),currentSession);if(accountId.current!==owner)return;updated=local.event.updated;rememberLibrary(user.id,local.items,false);setWords(local.items);setOfflineNotice('Review saved on this device · Waiting to sync.');};
+        if(!navigator.onLine||(await pendingReviews(user.id).catch(()=>[])).length){await localReview();}
+        else {
         let { data, error } = await supabase.rpc("record_learning_review", {
           p_event_id: eventId, p_item_id: word.id, p_rating: rating === "sure" ? "sure" : "not_sure",
           p_expected_count: reviewState(word)?.review_count ?? 0,
@@ -417,11 +438,16 @@ export default function Workspace({
           data = legacy.data; error = legacy.error;
           if (!error && accountId.current === owner) setMessage("Review saved. Activity tracking isn’t available yet.");
         }
+        if(error&&(!error.code&&/fetch|network|load failed|connection/i.test(error.message)||!navigator.onLine)){await localReview();}
+        else {
         if (error) throw error;
         if (accountId.current !== owner) return;
         updated = data as Word;
         if (!updated?.id || updated.id !== word.id) throw new Error("Could not confirm the saved review. Please retry.");
         setWords(previous => previous.map(w => w.id === word.id ? updated : w));
+        }
+        }
+        if(accountId.current!==owner)return;
       } else {
         const events = JSON.parse(localStorage.getItem(DEMO_EVENTS_KEY) || "[]");
         if (!events.some((e: { id: string }) => e.id === eventId)) {
@@ -485,7 +511,9 @@ export default function Workspace({
       requestedRandom.current = true;
       let restored: ReviewSession | null = null;
       try { restored = readReviewSession(localStorage.getItem(reviewSessionKey(account)), account); } catch { /* Restricted storage. */ }
-      if (restored) setSession(restored); else persistSession(newReviewSession(account, createReviewQueue(words)));
+      let cancelled=false,finished=false;const local=restored;
+      void storedReviewSession(account).catch(()=>null).then(stored=>{if(cancelled)return;finished=true;const best=local?mergeReviewSessions(local,stored):stored;persistSession(best||newReviewSession(account,createReviewQueue(words)));});
+      return()=>{cancelled=true;if(!finished)requestedRandom.current=false;};
     }
   }, [randomMode, ready, user, loadError, words, account, persistSession]);
   useEffect(() => {
@@ -547,7 +575,6 @@ export default function Workspace({
         </div>
       )}
       <div className="page-title">
-        {page === "review" && <div className="eyebrow">MAKE A LITTLE PROGRESS TODAY</div>}
         <h1>
           {page === "add"
             ? "Add a word."
@@ -555,11 +582,7 @@ export default function Workspace({
               ? "Let’s make it stick."
               : "Your growing vocabulary."}
         </h1>
-        {page !== "add" && <p>
-          {page === "review"
-              ? "Take a moment to revisit the words you’re learning."
-              : "Every word is another way to express yourself."}
-        </p>}
+
       </div>
       {page !== "add" && (
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
@@ -580,6 +603,7 @@ export default function Workspace({
             aria-disabled={busy || undefined} onClick={event => { if (busy) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
         </nav>
       )}
+      {offlineNotice&&<Feedback>{offlineNotice}</Feedback>}
       {message && <Feedback>{message}</Feedback>}
       {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}

@@ -31,9 +31,10 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
     if (!open) return;
     const refresh = () => { if (document.visibilityState === 'visible') setRetry(value => value + 1); };
     window.addEventListener('focus', refresh);
+    window.addEventListener('noted-reviews-synced',refresh);
     document.addEventListener('visibilitychange', refresh);
     const timer = window.setInterval(refresh, 30000);
-    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+    return () => { clearInterval(timer); window.removeEventListener('focus', refresh);window.removeEventListener('noted-reviews-synced',refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [open, account]);
   const requestKey = `${account}/${month}/${timezone}/${revision}/${retry}`;
   useEffect(() => {

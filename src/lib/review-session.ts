@@ -29,3 +29,10 @@ export function completeSessionCard(session: ReviewSession, eventId: string): Re
 export function removeSessionItem(session:ReviewSession,id:string):ReviewSession {
  return {...session,queue:session.queue.filter(card=>card.id!==id||session.completed.includes(card.eventId))};
 }
+
+// Durable/local copies can race across tabs. Never drop an acknowledged card.
+export function mergeReviewSessions(next:ReviewSession,previous:ReviewSession|null):ReviewSession {
+ if(!previous||previous.account!==next.account)return next;
+ if(previous.id!==next.id)return Date.parse(previous.startedAt)>Date.parse(next.startedAt)?previous:next;
+ const allowed=new Set(next.queue.map(card=>card.eventId));return {...next,completed:[...new Set([...next.completed,...previous.completed])].filter(id=>allowed.has(id))};
+}

@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import {AiSettings} from "@/components/dictionary/ai-settings";
 import { LearningCalendar } from "@/components/learning/learning-calendar";
 import { useRouter, useSearchParams } from "next/navigation";
+import {forgetLibrary,offlineIdentity} from '@/lib/offline-library';
 import { supabase } from "@/lib/supabase";
 import { AppShell } from "@/components/ui/app-shell";
 import { SelectableButton } from "@/components/ui/selection";
@@ -26,14 +27,16 @@ function AuthForm() {
     [checkingAccount, setCheckingAccount] = useState(!!supabase);
   useEffect(() => {
     if (!supabase) return;
-    let mounted = true, revision = 0;
+    let mounted = true, revision = 0;const prepared=offlineIdentity();if(prepared)queueMicrotask(()=>{if(mounted){setUser(prepared);setCheckingAccount(false);}});
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted || revision) return;
+      if(prepared&&!navigator.onLine&&!data.session){setCheckingAccount(false);return;}
       setUser(data.session?.user || null);
       if (error) setMessage(error.message);
       setCheckingAccount(false);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if(_event==='INITIAL_SESSION'&&!session&&prepared&&!navigator.onLine)return;
       revision++;
       if (!mounted) return;
       setUser(session?.user || null);
@@ -47,6 +50,7 @@ function AuthForm() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      if(user)forgetLibrary(user.id);
       setUser(null); setMode("signin");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not sign out. Please try again."); }
     finally { setBusy(false); }

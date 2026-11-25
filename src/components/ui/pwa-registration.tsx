@@ -6,7 +6,7 @@ export function PwaRegistration() {
     let active = true;
     let registration: ServiceWorkerRegistration | undefined;
     const update = () => { if (active && navigator.onLine) void registration?.update().catch(() => {}); };
-    void navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(value => {
+    void navigator.serviceWorker.register('/sw.js?build='+encodeURIComponent(document.documentElement.dataset.appBuild||'local-v6'), { scope: '/', updateViaCache: 'none' }).then(value => {
       if (active) registration = value;
     }).catch(() => { /* Installation must never block the app or authentication. */ });
     window.addEventListener('online', update);

@@ -31,11 +31,12 @@ async function setup(page: Page, state = store(4)) {
       return route.fulfill({ json: state.items.find(item => item.id === id) });
     }
     if (request.method() === 'DELETE') { state.items = state.items.filter(item => item.id !== id); return route.fulfill({ json: { id } }); }
+    if(id)return route.fulfill({json:state.items.find(item=>item.id===id)});
     const offset = Number(url.searchParams.get('offset') || 0), limit = Number(url.searchParams.get('limit') || 1000);
     return route.fulfill({ json: state.items.slice(offset, offset + limit) });
   }, true, auth);
   await page.route('**/api/dictionary?*', route => route.fulfill({ status: 404, json: {} }));
-  await page.route(cloudOrigin + '/rest/v1/rpc/record_learning_review', async route => {
+  await page.route(/\/rest\/v1\/rpc\/record_(?:offline_)?learning_review$/, async route => {
     state.calls++;
     if (state.reviewGate) await state.reviewGate;
     const p = route.request().postDataJSON();
@@ -105,14 +106,12 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await page.goto('/review?mode=random');
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Sure', exact: true })).toBeEnabled();
-    expect(state.events.size).toBe(1);
-    await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('0 / 2');
-    await page.reload();
-    await page.getByRole('button', { name: 'Reveal answer' }).click();
-    await page.getByRole('button', { name: 'Sure', exact: true }).click();
     await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('1 / 2');
-    expect(state.events.size).toBe(1); expect(state.calls).toBe(2);
+    expect(state.events.size).toBe(1);
+    await page.reload();
+    await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('1 / 2');
+    await expect.poll(()=>state.calls).toBe(2);
+    expect(state.events.size).toBe(1);
     expect(state.items[0].review_state?.review_count).toBe(1);
   });
   test('two tabs saving the same session card cannot duplicate its review event', async ({ page, context }) => {

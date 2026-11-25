@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {mergeReviewSessions,newReviewSession,completeSessionCard} from '../../src/lib/review-session.ts';
+test('offline session copies merge completed events without resurrecting deleted cards or mixing accounts',()=>{
+ const first=newReviewSession('owner-a',[{id:'one',direction:'forward'},{id:'two',direction:'forward'}]);const [a,b]=first.queue;const left=completeSessionCard(first,a.eventId),right=completeSessionCard(first,b.eventId);assert.equal(mergeReviewSessions(left,right).completed.length,2);assert.deepEqual(mergeReviewSessions(left,left),left);assert.equal(mergeReviewSessions({...left,queue:[a]},right).completed.length,1);assert.deepEqual(mergeReviewSessions(left,{...right,account:'owner-b'}),left);const newer={...first,id:'new',startedAt:new Date(Date.parse(first.startedAt)+1000).toISOString()};assert.equal(mergeReviewSessions(left,newer).id,'new');
+});

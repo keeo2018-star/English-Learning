@@ -1070,3 +1070,10 @@ summary:focus-visible {
 .ai-meaning:empty { display:none; }
 .ai-meaning button { min-height:44px;padding:8px 12px;font-size:12px; }
 @media(max-width:359px){.search-actions select { flex-basis:100%; }}
+/* Navigation is a quiet utility, with one clear active label rather than a card. */
+.wb-navigation .wb-nav-item.wb-selectable { background:transparent;color:var(--wb-black);border:0;box-shadow:none;min-height:56px;gap:6px; }
+.wb-navigation .wb-nav-item.wb-selectable[data-selected="true"] { background:transparent;color:var(--wb-black); }
+.wb-navigation .wb-nav-item > span:first-child { display:flex;align-items:center;justify-content:center;height:22px;font-size:22px; }
+.wb-navigation .wb-nav-item[data-selected="true"] svg { stroke-width:2.2; }
+.wb-navigation .wb-nav-item[data-selected="true"] > span:last-child { text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1.5px; }
+.wb-navigation .wb-nav-item:focus-visible { outline:2px solid var(--wb-black);outline-offset:2px; }

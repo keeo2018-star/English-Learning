@@ -63,3 +63,25 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .previewTitle { margin:0;padding-bottom:16px;border-bottom:1px solid rgb(0 0 0 / 24%);font-size:clamp(2.25rem,9vw,3.25rem);font-weight:var(--wb-bold);line-height:1.16;letter-spacing:normal;overflow-wrap:anywhere;white-space:pre-wrap; }
 .previewExample { margin:0;font-size:1rem;line-height:1.65;overflow-wrap:anywhere; }
 .previewExample small { display:block;margin-top:8px;font-size:12px; }
+/* A visible single-boundary capture field; secondary meaning stays on the card. */
+.field textarea.queryInput,.field textarea.queryInput[data-scale] { background:#fff;border:1px solid var(--wb-black);border-radius:18px;padding:12px 104px 12px 16px;caret-color:var(--wb-black); }
+.field textarea.queryInput:focus,.field textarea.queryInput:focus-visible { border:2px solid var(--wb-black);padding:11px 103px 11px 15px;outline:none;box-shadow:none; }
+.field .clear { right:52px;top:8px; }
+.field .searchAction { position:absolute;right:8px;top:8px;width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--wb-black); }
+.field .searchAction:focus-visible { outline:1px solid var(--wb-black);outline-offset:-4px; }
+.previewTitle { padding:0;border:0; }
+.preview :global(.form-bottom) { border-top:0;padding-top:8px; }
+.resolveActions small { font-size:12px;align-self:center; }
+/* Focused Add refinement: retain the palette and typography, remove separators. */
+.field textarea.queryInput,.field textarea.queryInput[data-scale] { border-width:2px;padding:12px 56px 12px 16px; }
+.field textarea.queryInput:focus,.field textarea.queryInput:focus-visible { border-width:3px;padding:11px 55px 11px 15px; }
+.field .clear { right:8px; }
+.meaningField textarea.meaning { border:0;padding:4px 0; }
+.meaningField textarea.meaning:focus,.meaningField textarea.meaning:focus-visible { border:0;outline:1px solid var(--wb-black);outline-offset:4px;box-shadow:none; }
+.previewSettings { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;min-width:0; }
+.previewSettings > button { min-height:44px;padding:8px 0;font-size:12px;border:0; }
+.preview details { border:0;padding-top:0; }
+.preview[data-empty="true"] { padding-block:16px; }
+.preview[data-empty="true"] .meaningField,.preview[data-empty="true"] .previewSettings { display:none; }
+.field textarea.queryInput[data-has-value="false"] { padding-right:16px; }
+.field textarea.queryInput[data-has-value="false"]:focus { padding-right:15px; }

@@ -83,7 +83,7 @@ export function KnockoutControls() {
     function update() {
       frame = 0;
       if (disposed) return;
-      const selected = new Set(document.querySelectorAll<HTMLElement>(selectedControlSelector));
+      const selected = new Set([...document.querySelectorAll<HTMLElement>(selectedControlSelector)].filter(element=>!element.classList.contains('wb-nav-item')));
       for (const element of observed) {
         if (selected.has(element)) continue;
         element.classList.remove('wb-knockout');

@@ -168,13 +168,14 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
           if(event.key==='Escape'){event.preventDefault();dismissed.current=word;setOpen(false);setActive(-1);}
           else if((event.key==='ArrowDown'||event.key==='ArrowUp')&&items.length&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey){event.preventDefault();setOpen(true);setActive(index=>event.key==='ArrowDown'?(index+1)%items.length:(index<=0?items.length-1:index-1));}
           else if(event.key==='Enter'&&open&&active>=0&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey){event.preventDefault();choose(items[active]);}
-          else if(event.key==='Enter'&&(event.metaKey||event.ctrlKey||(!expression&&!word.includes('\n')&&!event.shiftKey))){event.preventDefault();if(chinese)void resolveQuery();else event.currentTarget.form?.requestSubmit();}
+          else if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();if(!word.trim())void resolveQuery();else event.currentTarget.form?.requestSubmit();}
+          else if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void resolveQuery();}
 
   }
   return <form className={`word-form ${styles.unified}`} aria-label="Add learning item" aria-busy={busy} onSubmit={submit} onReset={reset}>
-    <div className={styles.queryArea}><label htmlFor={`${id}-word`}>English or Chinese</label><div className={styles.field}>
-      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder="Type in English or Chinese…" required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
-        role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?`${id}-list`:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} aria-describedby={`${id}-help`} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+    <div className={styles.queryArea}><div className={styles.field}>
+      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder="Type in English or Chinese…" required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-has-value={!!query} data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
+        role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?`${id}-list`:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} aria-describedby={`${id}-help`} enterKeyHint="search" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
         onFocus={()=>{focused.current=true;if(items.length&&dismissed.current!==word)setOpen(true)}} onBlur={()=>{focused.current=false;setOpen(false)}}
         onPaste={()=>{setPasted(true);setExtracting(false)}}
         onSelect={event=>{if(!formIsComposing(event.currentTarget.form))setSelected({start:event.currentTarget.selectionStart,end:event.currentTarget.selectionEnd})}}
@@ -183,34 +184,35 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
       <div ref={mirror} className={styles.mirror} aria-hidden="true"/>
       <span ref={probe} className={styles.probe} data-scale="0" aria-hidden="true">&#8203;</span>
       {query&&<button type="button" className={styles.clear} aria-label="Clear input" disabled={busy} onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();input.current?.focus({preventScroll:true});}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>}
+
       {open&&<div className={styles.list} data-above={placement.above||undefined} style={{maxHeight:placement.height}} role="listbox" id={`${id}-list`} aria-label="English suggestions">{items.map((item,index)=><button key={item.word} id={`${id}-${index}`} role="option" aria-selected={active===index} tabIndex={-1} type="button" className={styles.option}
         onPointerDown={event=>beginOption(event,item)} onPointerUp={event=>finishOption(event,item)} onPointerCancel={()=>{touch.current=null}}
         onPointerMove={event=>{const start=touch.current;if(start&&Math.hypot(event.clientX-start.x,event.clientY-start.y)>=12)touch.current=null}}
         onClick={event=>{if(ignoreClick.current&&event.detail!==0){ignoreClick.current=false;return;}choose(item)}}><span>{item.word}</span>{item.meaning&&<small>{item.meaning}</small>}</button>)}</div>}
     </div>
-    <div className={styles.resolveActions}><button type="button" className="secondary" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}>{resolving?'Resolving…':chinese?'Translate':'Look up'}</button>{aiAvailable&&<button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery(true)}>AI alternatives</button>}</div>
-    <p className={styles.meaningStatus}>Lookup sends only this query to dictionary / translation services.{aiAvailable?' AI alternatives use Gemini on request.':''}</p>
+    <div className={styles.resolveActions}><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}>{resolving?'Resolving…':chinese?'Translate':'Look up'}</button>{aiAvailable&&<><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery(true)}>AI alternatives</button><small>Only this query is sent to Gemini.</small></>}</div>
     {resolveError&&<p role="alert" className={styles.saveError}>{resolveError}</p>}
-    {chinese&&<p className={styles.meaningStatus}>Need a different sense? Refine the Chinese query with a little context, then translate again.</p>}
+    {chinese&&(resolveError||candidates.length>1)&&<p className={styles.meaningStatus}>Need a different sense? Refine the Chinese query with a little context, then translate again.</p>}
     {candidates.length>1&&<div role="group" aria-label="English translations" className={styles.candidates}>{candidates.map(item=><button type="button" key={item.english} aria-pressed={word===item.english} onClick={()=>selectCandidate(item)} disabled={busy}><strong>{item.english}</strong>{item.usage&&<small>{item.usage}</small>}</button>)}</div>}
     </div>
-    <section className={`panel ${styles.preview}`} aria-label="Vocabulary card preview">
+    <section className={`panel ${styles.preview}`} aria-label="Vocabulary card preview" data-empty={!query.trim()&&!meaning&&!context&&!voice||undefined}>
     <input type="hidden" name="word" value={word}/>
-    <h2 className={styles.previewTitle}>{word||'Your next word.'}</h2>
-    <div className={styles.typeControl}><select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"} · Auto</option><option value="word">Word</option><option value="expression">Expression</option></select></div>
+    {word&&<h2 className={styles.previewTitle}>{word}</h2>}
+
     {chinese&&!word&&<p className={styles.meaningStatus}>Translate to choose the English entry.</p>}
     <div id={`${id}-help`} className={styles.captureHelp}>
-      {overItem?<span>Keep the learning item within 120 characters. {chinese?'Refine your query or choose a shorter English candidate; your original text is preserved.':/\s/u.test(word.trim())?'Extract a phrase below; your pasted text is preserved.':'Shorten it before saving; your text is preserved.'}</span>:!chinese&&expression?<span>Enter for a new line · Ctrl/⌘ Enter to save</span>:null}
+      {overItem?<span>Keep the learning item within 120 characters. {chinese?'Refine your query or choose a shorter English candidate; your original text is preserved.':/\s/u.test(word.trim())?'Extract a phrase below; your pasted text is preserved.':'Shorten it before saving; your text is preserved.'}</span>:null}
       {!chinese&&(pasted||overItem)&&/\s/u.test(word.trim())&&!extracting&&<button type="button" className="text-button" onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;setExtracting(true);input.current?.focus({preventScroll:true});}}>Extract an expression</button>}
       {extracting&&<div className={styles.extraction}><p>Select a phrase in the English text, then confirm. The full text will become My Context.</p><div className={styles.inlineActions}><button type="button" disabled={!extraction||busy} onPointerDown={event=>event.preventDefault()} onClick={()=>{if(extraction&&!formIsComposing(input.current?.form)){if(context.trim()&&context!==extraction.context)setReplaceContext(extraction);else acceptExtraction(extraction)}}}>Confirm expression</button><button type="button" className="text-button" onClick={()=>setExtracting(false)}>Cancel extraction</button></div></div>}
       {duplicate&&<div role="status" className={styles.duplicate}><strong>Already in your Library</strong><Link className="wb-control wb-control-outline" href={'/library?q='+encodeURIComponent(existing?.word||word.trim())}>View existing item</Link></div>}
     </div>
     <div className={styles.meaningField}>
-      <div className={styles.meaningHeader}><label htmlFor={`${id}-meaning`}>My Meaning</label><button type="button" className="text-button" disabled={busy || !word.trim() || chinese} onClick={() => { if(formIsComposing(input.current?.form))return;explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
+
       <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} className={styles.meaning} id={`${id}-meaning`} rows={1} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder="中文解释或你的理解" maxLength={2000} readOnly={busy} />
 
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
+    <div className={styles.previewSettings}><div className={styles.typeControl}><select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"} · Auto</option><option value="word">Word</option><option value="expression">Expression</option></select></div><button type="button" className="text-button" disabled={busy || !word.trim() || chinese} onClick={() => { if(formIsComposing(input.current?.form))return;explicitLookup.current = word; immediate.current = true; setRevision(value => value + 1); }}>Suggest meaning</button></div>
     {(context||suggestedExample)&&<blockquote className={styles.previewExample}><HighlightWord text={context||suggestedExample} target={word}/>{!context&&exampleSource==='ai'&&<small>AI-generated example</small>}</blockquote>}
     {(expression||context)&&<details className={styles.contextField} open={contextOpen} onToggle={event=>setContextOpen(event.currentTarget.open)}><summary>My Context <span>Optional</span></summary><ImeTextarea aria-label="My Context" value={context} onValueChange={value=>{setAttemptId('');setContext(value);setSaveError('');setFailed(false)}} placeholder="Your original sentence or a personal example…" rows={3} readOnly={busy}/>{overContext&&<p role="status">My Context is over 3000 characters. Shorten it before saving; nothing has been removed.</p>}</details>}
     <input type="hidden" name="example" value={context||suggestedExample}/>
