@@ -1,5 +1,6 @@
 "use client";
 import {isOriginalEnglish,type LearningCollection,type TargetLanguage} from '@/lib/collections';
+import {CollectionReference} from './collection-reference';
 import {PronunciationControl} from './pronunciation-control';
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {imeBlocksSubmit,formIsComposing} from '@/lib/ime';
@@ -174,7 +175,7 @@ function DictionarySheet({searchOnly=false, dialogId, word:rootWord, meaning:roo
  <VideoContextSection key={"video:"+word} word={word} />
  {isOriginalEnglish(collection)&&<RelatedWords referenceReady={!!result||!!error} key={"related:"+word} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/>}</>}
  {!englishReference&&example&&<blockquote className="wb-learning-content">{example}</blockquote>}
- {!englishReference&&<p className="wb-ui-text">Your saved meaning and examples are available. Dictionary references for this language are not available yet.</p>}
+ {collection&&!englishReference&&<CollectionReference key={collection.target_language + ":" + word} word={word} language={collection.target_language}/>}
  </>}
  </dialog>;
 }
