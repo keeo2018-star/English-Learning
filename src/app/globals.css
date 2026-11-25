@@ -1077,3 +1077,9 @@ summary:focus-visible {
 .wb-navigation .wb-nav-item[data-selected="true"] svg { stroke-width:2.2; }
 .wb-navigation .wb-nav-item[data-selected="true"] > span:last-child { text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1.5px; }
 .wb-navigation .wb-nav-item:focus-visible { outline:2px solid var(--wb-black);outline-offset:2px; }
+.wb-app-unbranded .wb-page-content,.wb-app-unbranded .wb-auth-content { padding-top:max(16px,env(safe-area-inset-top,0px));margin-top:0; }
+.collection-switcher { display:flex;gap:8px;overflow-x:auto;white-space:nowrap;padding-block:4px;scrollbar-width:thin; }
+.collection-switcher button { flex:0 0 auto;min-height:44px;padding:8px 16px; }
+.my-languages { margin-block:24px; }
+.my-languages h2 { font-size:24px;letter-spacing:normal; }
+.my-languages p { font-size:14px;line-height:1.6;overflow-wrap:anywhere; }

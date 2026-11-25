@@ -101,7 +101,7 @@ export default function Discover() {
  const nextBatch = () => { if (data?.daily) void perform('next_batch', { set_id: data.daily.id }); };
  const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response, word:item.word, needs_example:!item.example?.trim() }); };
  return <AppShell active="Discover"><div className={styles.page}>
-  <header className={styles.header}><h1>Find words worth learning.</h1></header>
+  <header className={styles.header}><h1>Discover.</h1></header>
   {error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
   {data && !continuous && progress?.current && <Feedback>Continuous Discover needs a one-time database update. Your existing batch remains available.</Feedback>}
   {user === undefined ? <LoadingState label="Opening Discover…" /> : !user ? <Card className={styles.blue}>

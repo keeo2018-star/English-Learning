@@ -5,24 +5,26 @@ export function AppShell({
   children,
   active = "Home",
   compact = false,
+  showBranding = active === "Home",
 }: {
   children: ReactNode;
   active?: NavigationSection | null;
   account?: ReactNode;
   compact?: boolean;
   hideAddAction?: boolean;
+  showBranding?:boolean;
 }) {
   return (
-    <div className={`wb-app ${compact ? "wb-app-compact" : ""}`}>
+    <div className={`wb-app ${!showBranding?"wb-app-unbranded":""} ${compact ? "wb-app-compact" : ""}`}>
       <a className="wb-skip" href="#app-content">
         Skip to content
       </a>
       <div className="wb-app-frame">
-        <header className="wb-masthead">
+        {showBranding&&<header className="wb-masthead">
           <Link href="/" className="wb-wordmark" aria-label="Noted home">
             Noted
           </Link>
-        </header>
+        </header>}
         <main
           id="app-content"
           className={compact ? "wb-auth-content" : "wb-page-content"}

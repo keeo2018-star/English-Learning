@@ -580,7 +580,7 @@ export default function Workspace({
             ? "Add a word."
             : page === "review"
               ? "Let’s make it stick."
-              : "Your growing vocabulary."}
+              : "Library."}
         </h1>
 
       </div>

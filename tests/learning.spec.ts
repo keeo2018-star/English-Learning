@@ -88,6 +88,6 @@ test("mobile navigation and form fit the viewport", async ({ page }) => {
   ).toBe(true);
   await page.getByRole("link", { name: "03 Library" }).click();
   await expect(
-    page.getByRole("heading", { name: "Your growing vocabulary." }),
+    page.getByRole("heading", { name: "Library." }),
   ).toBeVisible();
 });
