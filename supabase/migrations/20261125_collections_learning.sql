@@ -1,10 +1,48 @@
--- Phase 2 activation. Run ONLY after the compatible Collection-aware frontend is deployed.
--- Prerequisite: verified collections_foundation migration and matching before/after data audits.
+-- Phase 2 INSTALL ONLY. Replaces the f996b43 version of this file.
+-- Run ONLY after collections_learning_preflight.sql has been reviewed and approved.
+-- Capture collections_learning_fingerprint.sql immediately before and after.
+-- Multilingual stays OFF. Separate activation requires verified results and approval.
 -- No vocabulary, history, recordings, users, schedules or primary keys are rewritten.
 begin;
 set local lock_timeout='3s';
 set local statement_timeout='60s';
 do $$ declare r record;begin
+ for r in select * from (values
+ ('words','id','uuid'),
+ ('words','user_id','uuid'),
+ ('words','word','text'),
+ ('words','collection_id','uuid'),
+ ('review_events','reviewed_at','timestamp with time zone'),
+ ('review_events','learning_item_id','uuid'),
+ ('learning_add_events','created_at','timestamp with time zone'),
+ ('learning_collections','id','uuid'),
+ ('learning_collections','user_id','uuid'),
+ ('learning_collections','target_language','text'),
+ ('learning_collections','explanation_language','text'),
+ ('learning_collections','proficiency_level','text'),
+ ('learning_collections','display_order','integer'),
+ ('learning_collections','preferences','jsonb'),
+ ('learning_collections','created_at','timestamp with time zone'),
+ ('learning_collections','updated_at','timestamp with time zone'),
+ ('discover_profiles','recommendation_level','numeric'),
+ ('review_events','user_id','uuid'),
+ ('learning_add_events','user_id','uuid'),
+ ('discover_profiles','user_id','uuid'),
+ ('discover_assessments','user_id','uuid'),
+ ('discover_daily_sets','user_id','uuid'),
+ ('discover_batches','user_id','uuid'),
+ ('discover_known','user_id','uuid'),
+ ('expression_voice_files','user_id','uuid'),
+ ('review_events','collection_id','uuid'),
+ ('learning_add_events','collection_id','uuid'),
+ ('discover_profiles','collection_id','uuid'),
+ ('discover_assessments','collection_id','uuid'),
+ ('discover_daily_sets','collection_id','uuid'),
+ ('discover_batches','collection_id','uuid'),
+ ('discover_known','collection_id','uuid'),
+ ('expression_voice_files','collection_id','uuid')) v(rel,col,typ) loop
+  if not exists(select 1 from pg_attribute where attrelid=to_regclass('public.'||r.rel) and attname=r.col and atttypid=to_regtype(r.typ) and not attisdropped) then raise exception 'Unexpected Phase 2 prerequisite %.% (expected %). Nothing committed.',r.rel,r.col,r.typ;end if;
+ end loop;
  if obj_description(to_regclass('public.learning_collections'),'pg_class') is distinct from 'noted-collections-v1' then raise exception 'Verify the Collections foundation first.';end if;
  if coalesce(obj_description(to_regprocedure('public.noted_collections_snapshot()'),'pg_proc'),'') not in ('noted-collections-v1','noted-collections-learning-v1') then raise exception 'Unknown snapshot function.';end if;
  for r in select p.oid,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('learning_collection_calendar','noted_reorder_collections','noted_collection_level_changed','noted_collection_capture_key') loop
@@ -13,6 +51,23 @@ do $$ declare r record;begin
  if obj_description(to_regprocedure('public.learning_calendar(date,text)'),'pg_proc') is distinct from 'noted-learning-activity-v1' then raise exception 'Unknown activity function.';end if;
  if exists(select 1 from pg_class where oid in ('public.words'::regclass,'public.review_events'::regclass,'public.learning_add_events'::regclass,'public.learning_collections'::regclass) and not relrowsecurity) then raise exception 'Owner RLS must remain enabled.';end if;
  if coalesce(obj_description(to_regprocedure('public.noted_guard_duplicate_word()'),'pg_proc'),'') not in ('noted-collections-v1','noted-collections-learning-v1') then raise exception 'Unknown duplicate guard.';end if;
+end $$;
+-- Reject same-name index/trigger collisions instead of silently accepting them.
+do $$begin
+ if to_regclass('public.words_collection_capture_lookup') is not null and not exists(
+  select 1 from pg_index i where i.indexrelid=to_regclass('public.words_collection_capture_lookup')
+  and i.indrelid='public.words'::regclass and i.indisvalid and not i.indisunique and i.indnkeyatts=3
+  and replace(pg_get_indexdef(i.indexrelid),'public.','') like '%USING btree (user_id, collection_id, noted_collection_capture_key(word))'
+  and i.indpred is null
+ ) then raise exception 'Unexpected words_collection_capture_lookup index. Nothing committed.';end if;
+ if exists(select 1 from pg_trigger where tgrelid='public.words'::regclass and tgname='noted_collection_duplicate_edit'
+  and (tgfoid is distinct from to_regprocedure('public.noted_guard_duplicate_word()') or tgtype<>19 or tgenabled<>'O'
+   or tgattr::text is distinct from (select attnum::text from pg_attribute where attrelid='public.words'::regclass and attname='word') or tgqual is not null))
+ then raise exception 'Unexpected duplicate edit trigger. Nothing committed.';end if;
+ if exists(select 1 from pg_trigger where tgrelid='public.learning_collections'::regclass and tgname='noted_collection_level_changed'
+  and (tgfoid is distinct from to_regprocedure('public.noted_collection_level_changed()') or tgtype<>17 or tgenabled<>'O'
+   or tgattr::text is distinct from (select attnum::text from pg_attribute where attrelid='public.learning_collections'::regclass and attname='proficiency_level') or tgqual is not null))
+ then raise exception 'Unexpected Collection level trigger. Nothing committed.';end if;
 end $$;
 -- Match the existing Add normalisation, including typographic apostrophes/quotes.
 create or replace function public.noted_collection_capture_key(p_text text) returns text language sql immutable strict set search_path='' as $body$
@@ -90,7 +145,7 @@ create or replace function public.noted_collections_snapshot() returns jsonb lan
 declare actor uuid:=auth.uid();begin
  if actor is null then raise exception 'Sign in first.' using errcode='42501';end if;
  perform public.noted_default_collection(actor);
- return jsonb_build_object('version',1,'multilingual_enabled',true,'collections',(select coalesce(jsonb_agg(to_jsonb(c) order by c.display_order,c.created_at,c.id),'[]') from public.learning_collections c where c.user_id=actor));
+ return jsonb_build_object('version',1,'multilingual_enabled',false,'learning_ready',false,'collections',(select coalesce(jsonb_agg(to_jsonb(c) order by c.display_order,c.created_at,c.id),'[]') from public.learning_collections c where c.user_id=actor));
 end $$;
 comment on function public.learning_collection_calendar(date,text,uuid) is 'noted-collections-learning-v1';
 comment on function public.noted_reorder_collections(uuid[]) is 'noted-collections-learning-v1';
@@ -98,7 +153,7 @@ comment on function public.noted_collection_level_changed() is 'noted-collection
 comment on function public.noted_collections_snapshot() is 'noted-collections-learning-v1';
 revoke all on function public.learning_collection_calendar(date,text,uuid),public.noted_reorder_collections(uuid[]),public.noted_collection_level_changed(),public.noted_collections_snapshot() from public,anon,authenticated;
 grant execute on function public.learning_collection_calendar(date,text,uuid),public.noted_reorder_collections(uuid[]),public.noted_collections_snapshot() to authenticated;
--- Activation commits only if new RPC permissions and existing owner isolation pass.
+-- Installation commits only if RPC permissions and existing owner isolation pass.
 do $$begin
  if has_function_privilege('anon','public.learning_collection_calendar(date,text,uuid)','execute') or not has_function_privilege('authenticated','public.learning_collection_calendar(date,text,uuid)','execute') or has_function_privilege('anon','public.noted_reorder_collections(uuid[])','execute') or not has_function_privilege('authenticated','public.noted_reorder_collections(uuid[])','execute') then raise exception 'Unexpected Collection RPC permissions. Nothing committed.';end if;
  if exists(select 1 from public.words w left join public.learning_collections c on c.id=w.collection_id where c.id is null or c.user_id<>w.user_id) then raise exception 'Vocabulary Collection ownership must be verified first. Nothing committed.';end if;

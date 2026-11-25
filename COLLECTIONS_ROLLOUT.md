@@ -44,7 +44,7 @@ level explicitly updates recommendation difficulty, without resetting history.
 Missing language metadata blocks context-sensitive Review rather than guessing
 that mixed-language records are English. Clients without the foundation retain
 legacy English behavior. New controls and compact headers remain gated by the
-server snapshot until the second-stage migration is installed and commits.
+server snapshot until Phase 2 installation is verified and its separate activation is approved. Both `multilingual_enabled` and `learning_ready` must be true; the old single-flag snapshot/cache cannot enable it.
 
 ## Providers and deliberately unavailable capabilities
 
@@ -75,34 +75,78 @@ so another language cannot contaminate it. Other contexts show an unavailable
 message. Curated recommendations/history for other languages remain a later
 phase, not arbitrary generated recommendations.
 
-## Required second-stage SQL, after the compatible client deployment is Ready
+## Phase 2 operator runbook — revised after f996b43
 
-1. Run `supabase/collections_data_audit.sql` and save a fresh before result. Use a
-   short window without normal additions, edits or reviews for comparison.
-2. Run `supabase/migrations/20261125_collections_learning.sql` in full. Do not
-   rerun the foundation, original schema or Discover seed.
-3. Repeat the data audit. Counts and original-field hashes should match.
-4. Run `supabase/collections_learning_verify.sql`; return its complete JSON and
-   the two fresh audits. Expected marker/snapshot_marker are
-   `noted-collections-learning-v1`, enabled_in_snapshot/discover_scoped/
-   calendar_owner_check/authenticated access true, and both anonymous access
-   fields false.
-5. Reload the installed PWA/browser to load the new client and metadata.
+Production Phase 1 is verified. Production Phase 2 is **not established** by the
+Phase 1 results, an empty SQL success message or a Vercel deployment. No production
+SQL is executed by this repository's tests or deployment. Do not rerun Phase 1,
+`schema.sql`, old Discover seed scripts or the f996b43 copy of Phase 2 SQL.
 
-This migration adds calendar/reordering functions and an update duplicate guard,
-adds a non-unique normalised lookup index, updates known duplicate/Discover
-functions, and enables the snapshot. It does not rewrite learning data, change
-primary keys or create fictional history. Read-only calendar filtering uses local
-date boundaries and distinct reviewed item IDs. The duplicate normaliser reads
-no tables; authenticated writers need execute permission for its index expression.
-All privileged helpers remain private. Permissions/owner checks must pass before
-the activation transaction commits.
+The old `20261125_collections_learning.sql` enabled the feature during installation.
+**Replace that old copy with the current file of the same name.** This revision
+installs with both feature flags false, even if an older version was previously
+installed. It never resets saved learning data. Activation is now a separate,
+manual, guarded SQL file. There are no additional foundation migrations, paid API
+requirements or Storage bucket/path changes in Phase 2.
 
-On incompatibility/lock timeout, retain the exact error. The transaction rolls
-back; do not reset records or drop new columns. The second-stage SQL is idempotent.
-An older foundation migration intentionally refuses to overwrite newer function
-markers. Do not use it as a rollback. Production functionality is not reported as
-fully active until the second-stage verification and audits are received.
+### Step 1 — read-only checks; run these first and return the results
+
+1. Run `supabase/collections_learning_preflight.sql` in the existing production
+   Supabase project's SQL Editor. Send the entire
+   `noted_collections_learning_preflight` JSON. It reads schema catalogs and
+   permissions without calling application RPCs or changing data. All column
+   checks/patch anchors must be compatible; unknown existing objects require review.
+2. Run `supabase/collections_learning_fingerprint.sql`. Export all **15 rows**
+   (`relation`, `rows`, `full_data_hash`) and send them as the pre-migration baseline.
+   Unlike the Phase 1 audit, this includes `collection_id`, Collection records,
+   users, activity tracking start and Storage metadata. It emits no raw personal
+   content. It is an integrity comparison, not a database backup.
+3. Wait for review of those actual results and explicit approval of installation.
+   Do not infer production compatibility from the local PostgreSQL fixtures.
+
+### Step 2 — installation, only after the preflight is reviewed and approved
+
+1. Confirm the compatible two-flag frontend deployment is Ready. Pause normal Add,
+   edit, Review, Discover and recording activity on all devices for this short
+   comparison window. Capture a **fresh** fingerprint immediately before installing;
+   an earlier baseline can become stale through ordinary use or account login.
+2. Run **the complete current**
+   `supabase/migrations/20261125_collections_learning.sql` in one SQL Editor query.
+   It installs the non-unique lookup index, Unicode-aware duplicate guard (including
+   edits), scoped English Discover functions, Collection calendar/reordering and
+   proficiency-level trigger. Known function markers and source anchors, required
+   column types, existing index/trigger identity, RLS and RPC ACLs are checked.
+3. Run `supabase/collections_learning_fingerprint.sql` again immediately.
+   Every row count and full-row hash must match the fresh before result exactly.
+   A mismatch can be legitimate concurrent use, but is **not automatically accepted**.
+4. Run `supabase/collections_learning_verify.sql` and send the full
+   `noted_collections_learning_verification` JSON, plus both fresh fingerprints.
+   Expected: `dependencies_ready: true`; every entry under `checks` true;
+   `marker` and `snapshot_marker`: `noted-collections-learning-v1`;
+   **`enabled_in_snapshot: false`, `learning_ready_in_snapshot: false`**.
+5. Wait for verification and separate approval to activate. Existing English learning
+   stays available. Do not run the activation query in the same batch as installation.
+
+### Step 3 — explicit activation after verified installation
+
+1. Only after approval, run `supabase/collections_learning_activate.sql`. It rechecks
+   function markers, owner links, RLS, private helper and RPC permissions, security
+   mode/search paths, Discover/calendar scoping, index and trigger definitions.
+   On success, only the snapshot function's two feature flags change to true.
+   No learning, Collection, authentication or Storage rows are changed.
+2. Run `supabase/collections_learning_verify.sql` again. Expected:
+   `dependencies_ready`, `enabled_in_snapshot`, `learning_ready_in_snapshot` all true,
+   with every `checks` value true. Send the full result.
+3. Reload the installed PWA/browser so it receives the compatible frontend and
+   fresh snapshot, then verify language creation/switching, per-language Add,
+   Library, Due/Random Review and unchanged original English/Discover/Voice Notes.
+   Local/fixture tests cannot establish production authenticated end-to-end success.
+
+Installation and activation are separately repeatable. Rerunning installation
+intentionally disables both flags until another approved activation. On an error
+or lock timeout, send the exact error; the transaction rolls back. Do not drop
+columns, reset data or rerun an older migration as a rollback. Supabase's generic
+query warning is not proof of compatibility; use these exact reviewed files.
 
 ## Validation limits
 
@@ -116,11 +160,17 @@ composition, API failure and offline flows. Physical iPhone hardware and its
 microphone/keyboard remain unverified. Production browser checks use isolated
 fixtures; they do not write test entries into the owner's real Library.
 
-Release checks: lint, typecheck and production build passed; 144 unit tests passed.
+Previous f996b43 checks: lint, typecheck and production build passed; 144 unit tests passed.
 The final browser checks cover six widths, fast keyboard menu interaction,
 keyboard-sized Add/Save/caret layout, per-Collection drafts/audio and 17/30 session
 recovery. Expression/Voice Notes regressions passed 44 checks; one existing native
 MP3 test was skipped for the Chromium environment. All 14 WebKit PWA offline
 checks passed. A direct public MyMemory probe returned a French translation with
-status 200 and no exhausted quota; the production server route still needs its
-post-deployment probe. No real device testing is claimed.
+status 200 and no exhausted quota; the f996b43 production server route also returned a valid French translation. No real device testing is claimed.
+
+Phase 2 safety release checks: lint, typecheck and production build passed; 145 unit
+tests passed, including actual PostgreSQL migration fixtures. Final SQL regression
+checks also verify same-name index collisions and disabled triggers abort safely.
+All 32 Collection/legacy-fallback browser tests passed in Chromium and all 32 passed
+in iPhone-configured WebKit, including unverified server/cache gate rejection.
+Physical iPhone testing and production Phase 2 database verification remain pending.

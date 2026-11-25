@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from './supabase';
-import {chooseActiveCollection,parseCollections,type LearningCollection} from './collections';
+import {chooseActiveCollection,collectionLearningEnabled,parseCollections,type LearningCollection} from './collections';
 const cacheKey=(owner:string)=>`noted-collections-v1:${owner}`;
 const activeKey=(owner:string)=>`noted-active-collection-v1:${owner}`;
 type Snapshot={owner:string;rows:LearningCollection[];enabled:boolean;ready:boolean};
@@ -12,7 +12,7 @@ function request(owner:string){
  pending.set(owner,result);return result;
 }
 function local(owner:string):Snapshot {
- try{const raw=JSON.parse(localStorage.getItem(cacheKey(owner))||'null');return {owner,rows:parseCollections(raw,owner),enabled:raw?.multilingual_enabled===true,ready:raw?.version===1||!navigator.onLine};}
+ try{const raw=JSON.parse(localStorage.getItem(cacheKey(owner))||'null');return {owner,rows:parseCollections(raw,owner),enabled:collectionLearningEnabled(raw),ready:raw?.version===1||!navigator.onLine};}
  catch{return {owner,rows:[],enabled:false,ready:!navigator.onLine};}
 }
 function savedActive(owner:string){try{return localStorage.getItem(activeKey(owner));}catch{return null;}}
@@ -27,9 +27,9 @@ export function useCollections(owner:string|null|undefined){
    if(!navigator.onLine)return;
    try{
     const {data,error}=await request(owner);if(!alive)return;if(error){failed();return;}
-    const rows=parseCollections(data,owner),enabled=!!data&&typeof data==='object'&&'multilingual_enabled' in data&&data.multilingual_enabled===true;
+    const rows=parseCollections(data,owner),enabled=collectionLearningEnabled(data);
     setSnapshot({owner,rows,enabled,ready:true});
-    try{const raw=JSON.stringify({version:1,multilingual_enabled:enabled,collections:rows});if(localStorage.getItem(cacheKey(owner))!==raw){localStorage.setItem(cacheKey(owner),raw);window.dispatchEvent(new CustomEvent('noted-collections-updated',{detail:{owner}}));}}catch{}
+    try{const raw=JSON.stringify({version:1,multilingual_enabled:enabled,learning_ready:enabled,collections:rows});if(localStorage.getItem(cacheKey(owner))!==raw){localStorage.setItem(cacheKey(owner),raw);window.dispatchEvent(new CustomEvent('noted-collections-updated',{detail:{owner}}));}}catch{}
    }catch{failed();}
   };
   const changed=(event:Event)=>{

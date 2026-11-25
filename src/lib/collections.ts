@@ -17,6 +17,15 @@ export type LearningCollection = {
   created_at: string;
 };
 
+// Installation and activation are separate administrator-reviewed steps.
+// Older cached snapshots and the original auto-activating SQL cannot opt in.
+export function collectionLearningEnabled(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const snapshot = value as Record<string, unknown>;
+  return snapshot.version === 1 && snapshot.multilingual_enabled === true &&
+    snapshot.learning_ready === true;
+}
+
 export const collectionKey = (
   owner: string,
   id: string,

@@ -7,3 +7,9 @@ test('Collection filtering never mixes legacy English, French and another contex
 test('review sessions preserve the legacy key and isolate Collection queues/completions',()=>{const queue=[{id:'one',direction:'forward'}],en=newReviewSession('owner',queue),fr=newReviewSession('owner',queue,'fr');assert.equal(reviewSessionKey('owner'),'noted-review-session-v1:owner');assert.notEqual(reviewSessionKey('owner','fr'),reviewSessionKey('owner'));assert.equal(readReviewSession(JSON.stringify(fr),'owner'),null);assert.equal(readReviewSession(JSON.stringify(fr),'owner','es'),null);assert.equal(readReviewSession(JSON.stringify(fr),'owner','fr').id,fr.id);assert.deepEqual(mergeReviewSessions(fr,completeSessionCard(en,en.queue[0].eventId)),fr);});
 
 test('clear Latin phrase markers assist detection without reinterpreting ambiguous single words',()=>{assert.equal(inputLanguage('make the most of this opportunity','fr'),'en');assert.equal(inputLanguage('profiter de cette occasion','en'),'fr');assert.equal(inputLanguage('hola para usted','en'),'es');assert.equal(inputLanguage('chat','fr'),'fr');assert.equal(inputLanguage('hors d’oeuvre','en'),'en');});
+
+import {collectionLearningEnabled} from '../../src/lib/collections.ts';
+test('multilingual requires both explicit activation and verified Phase 2, including cached snapshots',()=>{
+ for(const value of [null,{}, {version:1,multilingual_enabled:true}, {version:1,multilingual_enabled:false,learning_ready:true}, {version:1,multilingual_enabled:true,learning_ready:false}, {version:2,multilingual_enabled:true,learning_ready:true}]) assert.equal(collectionLearningEnabled(value),false);
+ assert.equal(collectionLearningEnabled({version:1,multilingual_enabled:true,learning_ready:true}),true);
+});

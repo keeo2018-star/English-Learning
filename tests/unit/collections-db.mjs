@@ -113,14 +113,49 @@ test('Collections additive migration preserves English vocabulary/history and en
       assert.equal((await db.query("select discover_action('get','{}','Europe/London') data")).rows[0].data.discover_version, 2);
       await assert.rejects(db.query(`insert into learning_collections(user_id,target_language,explanation_language,proficiency_level) values($1,'zh-CN','en','A1')`, [A]), /Choose Beginner/);
     });
-    await t.test('Phase 2 activation is idempotent, scopes English Discover and keeps all old rows', async () => {
+    await t.test('Phase 2 installation stays disabled until separately approved activation; full fingerprints match', async () => {
       await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
-      const beforeActivation=await audit();
+      const fingerprint = async () => (await db.exec(await read('supabase/collections_learning_fingerprint.sql'))).find(r=>r.rows?.length).rows;
+      const preflight = (await db.exec(await read('supabase/collections_learning_preflight.sql'))).find(r=>r.rows?.length).rows[0].noted_collections_learning_preflight;
+      assert.equal(preflight.foundation_marker,'noted-collections-v1');
+      assert.ok(preflight.column_checks.every(c=>c.compatible));
+      assert.ok(Object.values(preflight.patch_anchors).every(Boolean));
+      assert.equal(preflight.enabled_in_snapshot,false);
+      // Attempting activation without installation is rejected atomically.
+      const activation=await read('supabase/collections_learning_activate.sql');
+      await assert.rejects(db.exec(activation), /Phase 2 dependencies failed/);
+      await db.exec('rollback');
+      const beforeActivation=await audit(),fullBefore=await fingerprint();
       const upgrade=await read('supabase/migrations/20261125_collections_learning.sql');
+      await db.exec('create index words_collection_capture_lookup on words(word)');
+      await assert.rejects(db.exec(upgrade),/Unexpected words_collection_capture_lookup index/);await db.exec('rollback');
+      assert.deepEqual(await fingerprint(),fullBefore);
+      await db.exec('drop index words_collection_capture_lookup');
       await db.exec(upgrade);await db.exec(upgrade);
       assert.deepEqual(await audit(),beforeActivation);
+      assert.deepEqual(await fingerprint(),fullBefore);
       const verified=(await db.exec(await read('supabase/collections_learning_verify.sql'))).find(r=>r.rows?.length).rows[0].noted_collections_learning_verification;
-      assert.equal(verified.marker,'noted-collections-learning-v1');assert.equal(verified.enabled_in_snapshot,true);assert.equal(verified.discover_scoped,true);assert.equal(verified.anonymous_calendar_access,false);assert.equal(verified.authenticated_calendar_access,true);assert.equal(verified.anonymous_reorder_access,false);assert.equal(verified.authenticated_reorder_access,true);
+      assert.equal(verified.marker,'noted-collections-learning-v1');
+      assert.equal(verified.dependencies_ready,true,JSON.stringify(verified));
+      assert.equal(verified.enabled_in_snapshot,false);
+      assert.equal(verified.learning_ready_in_snapshot,false);
+      await asUser(A);
+      assert.equal((await db.query('select noted_collections_snapshot() data')).rows[0].data.multilingual_enabled,false);
+      await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+      // A broken ACL must block activation rather than exposing a partial rollout.
+      await db.exec('grant execute on function learning_collection_calendar(date,text,uuid) to anon');
+      await assert.rejects(db.exec(activation),/Phase 2 dependencies failed/);await db.exec('rollback');
+      assert.equal((await db.exec(await read('supabase/collections_learning_verify.sql'))).find(r=>r.rows?.length).rows[0].noted_collections_learning_verification.enabled_in_snapshot,false);
+      await db.exec('revoke execute on function learning_collection_calendar(date,text,uuid) from anon');
+      await db.exec('alter table words disable trigger noted_collection_duplicate_edit');
+      await assert.rejects(db.exec(activation),/Phase 2 dependencies failed/);await db.exec('rollback');
+      await assert.rejects(db.exec(upgrade),/Unexpected duplicate edit trigger/);await db.exec('rollback');
+      await db.exec('alter table words enable trigger noted_collection_duplicate_edit');
+      // Local fixture approval only: no production database is contacted by this test.
+      await db.exec(activation);await db.exec(activation);
+      assert.deepEqual(await fingerprint(),fullBefore);
+      const active=(await db.exec(await read('supabase/collections_learning_verify.sql'))).find(r=>r.rows?.length).rows[0].noted_collections_learning_verification;
+      assert.equal(active.dependencies_ready,true);assert.equal(active.enabled_in_snapshot,true);assert.equal(active.learning_ready_in_snapshot,true);
       await asUser(A);
       assert.equal((await db.query('select noted_collections_snapshot() data')).rows[0].data.multilingual_enabled,true);
       const state=(await db.query("select discover_action('get','{}','Europe/London') data")).rows[0].data;
