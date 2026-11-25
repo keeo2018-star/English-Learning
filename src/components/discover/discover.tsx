@@ -1,4 +1,7 @@
 "use client";
+import {LearningHeader} from '@/components/collections/learning-header';
+import {useCollections} from '@/lib/use-collections';
+import {learningLanguages} from '@/lib/collections';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {resolveExample} from '@/lib/context-examples';
@@ -16,13 +19,16 @@ import styles from './discover.module.css';
 type Action = { action: string; payload: Record<string, unknown> };
 export default function Discover() {
  const [user, setUser] = useState<User | null | undefined>(() => supabase ? undefined : null);
+ const learning=useCollections(user?.id);
+ const original=learning.collections.find(c=>c.target_language==='en'&&c.explanation_language==='zh-CN');
+ const supported=!learning.enabled||!!original&&learning.active?.id===original.id;
  const [data, setData] = useState<DiscoverState | null>(null), [busy, setBusy] = useState(false);
  const [error, setError] = useState(''), [setup, setSetup] = useState(false), [revealed, setRevealed] = useState('');
  const [choice, setChoice] = useState<{ key: string; id: number } | null>(null);
  const owner = useRef<string | null>(null), generation = useRef(0), working = useRef(false), pending = useRef<Action | null>(null);
  const wordHeading = useRef<HTMLHeadingElement>(null), meaningParagraph = useRef<HTMLParagraphElement>(null), previousCard = useRef('');
  const perform = useCallback(async (action: string, payload: Record<string, unknown> = {}) => {
-  if (!supabase || !owner.current || working.current) return;
+  if (!supabase || !owner.current || working.current||!learning.ready||!supported) return;
   const account = owner.current, request = ++generation.current;
   working.current = true; setBusy(true); setError(''); setSetup(false); pending.current = { action, payload };
   try {
@@ -51,7 +57,7 @@ export default function Discover() {
    setSetup(missing);
    setError(missing ? 'Discover needs a one-time setup before it can save your progress. Your Library and Review are unchanged.' : failure.message || 'Could not sync Discover. Your last confirmed progress is kept. Try again.');
   } finally { if (generation.current === request) { working.current = false; setBusy(false); } }
- }, []);
+ }, [learning.ready,supported]);
  useEffect(() => {
   if (!supabase) return;
   const requestVersion = generation;
@@ -68,7 +74,7 @@ export default function Discover() {
   void supabase.auth.getSession().then(({ data: session }) => { if (!observed) apply(session.session?.user || null); });
   return () => { active = false; requestVersion.current++; listener.subscription.unsubscribe(); stopPronunciation(); };
  }, []);
- useEffect(() => { let cancelled = false; queueMicrotask(() => { if (!cancelled && user?.id) void perform('get'); }); return () => { cancelled = true; }; }, [user?.id, perform]);
+ useEffect(() => { let cancelled = false; queueMicrotask(() => { if (!cancelled && user?.id&&learning.ready&&supported) void perform('get'); }); return () => { cancelled = true; }; }, [user?.id,perform,learning.ready,supported]);
  useEffect(() => {
   const sync = () => { if (document.visibilityState === 'visible' && owner.current && !working.current && !pending.current) void perform('get'); };
   window.addEventListener('focus', sync); document.addEventListener('visibilitychange', sync);
@@ -101,10 +107,10 @@ export default function Discover() {
  const nextBatch = () => { if (data?.daily) void perform('next_batch', { set_id: data.daily.id }); };
  const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response, word:item.word, needs_example:!item.example?.trim() }); };
  return <AppShell active="Discover"><div className={styles.page}>
-  <header className={styles.header}><h1>Discover.</h1></header>
-  {error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
-  {data && !continuous && progress?.current && <Feedback>Continuous Discover needs a one-time database update. Your existing batch remains available.</Feedback>}
-  {user === undefined ? <LoadingState label="Opening Discover…" /> : !user ? <Card className={styles.blue}>
+  <LearningHeader title="Discover." enabled={learning.enabled} collections={learning.collections} active={learning.active} disabled={busy} onSelect={id=>{if(id===learning.active?.id)return;generation.current++;working.current=false;pending.current=null;setData(null);setError('');stopPronunciation();learning.select(id);}}/>
+  {supported&&error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
+  {supported&&data && !continuous && progress?.current && <Feedback>Continuous Discover needs a one-time database update. Your existing batch remains available.</Feedback>}
+  {user&&learning.ready&&!supported?<Card><h2>More languages, soon.</h2><p>Discover for {learning.active?learningLanguages[learning.active.target_language].label:'this Collection'} isn’t available yet. You can add your own vocabulary and review it.</p><Link href="/add" className="wb-control">Add vocabulary</Link></Card>:user === undefined||!learning.ready ? <LoadingState label="Opening Discover…" /> : !user ? <Card className={styles.blue}>
    <h2>Your next words are waiting.</h2><p>Sign in to keep your vocabulary check and Discover progress in sync.</p><Link className="wb-control" href="/auth">Sign in</Link>
   </Card> : !data ? !error && <LoadingState label="Finding your place…" /> : <>
    {assessment?.status === 'in_progress' && assessment.question ? <section aria-label="Vocabulary check">

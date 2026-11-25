@@ -113,6 +113,59 @@ test('Collections additive migration preserves English vocabulary/history and en
       assert.equal((await db.query("select discover_action('get','{}','Europe/London') data")).rows[0].data.discover_version, 2);
       await assert.rejects(db.query(`insert into learning_collections(user_id,target_language,explanation_language,proficiency_level) values($1,'zh-CN','en','A1')`, [A]), /Choose Beginner/);
     });
+    await t.test('Phase 2 activation is idempotent, scopes English Discover and keeps all old rows', async () => {
+      await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+      const beforeActivation=await audit();
+      const upgrade=await read('supabase/migrations/20261125_collections_learning.sql');
+      await db.exec(upgrade);await db.exec(upgrade);
+      assert.deepEqual(await audit(),beforeActivation);
+      const verified=(await db.exec(await read('supabase/collections_learning_verify.sql'))).find(r=>r.rows?.length).rows[0].noted_collections_learning_verification;
+      assert.equal(verified.marker,'noted-collections-learning-v1');assert.equal(verified.enabled_in_snapshot,true);assert.equal(verified.discover_scoped,true);assert.equal(verified.anonymous_calendar_access,false);assert.equal(verified.authenticated_calendar_access,true);assert.equal(verified.anonymous_reorder_access,false);assert.equal(verified.authenticated_reorder_access,true);
+      await asUser(A);
+      assert.equal((await db.query('select noted_collections_snapshot() data')).rows[0].data.multilingual_enabled,true);
+      const state=(await db.query("select discover_action('get','{}','Europe/London') data")).rows[0].data;
+      const pick=state.daily.items[0];
+      const french=(await db.query('insert into words(user_id,collection_id,word,meaning) values($1,$2,$3,$4) returning *',[A,fr.id,pick.word,'A French personal meaning'])).rows[0];
+      const saved=(await db.query("select discover_action('daily_response',$1,'Europe/London') data",[JSON.stringify({set_id:state.daily.id,item_id:pick.id,response:'save'})])).rows[0].data;
+      const englishId=saved.daily.responses[String(pick.id)].library_id;
+      assert.notEqual(englishId,french.id);
+      assert.equal((await db.query('select collection_id from words where id=$1',[englishId])).rows[0].collection_id,en.id);
+      await db.exec("reset role");
+      const unseen=(await db.query('select * from discover_unseen_vocabulary($1) limit 1',[A])).rows[0];
+      await asUser(A);
+      await db.query('insert into words(user_id,collection_id,word,meaning) values($1,$2,$3,$4)',[A,fr.id,unseen.word,'French does not exclude English']);
+      await db.exec('reset role');
+      assert.equal((await db.query('select id from discover_unseen_vocabulary($1) where id=$2',[A,unseen.id])).rows.length,1);
+      await asUser(A);
+    });
+    await t.test('duplicate protection matches Unicode punctuation on Add and edits without rejecting an unchanged title',async()=>{
+      const row=(await db.query('insert into words(user_id,collection_id,word,meaning) values($1,$2,$3,$4) returning *',[A,fr.id,'l’esprit','精神'])).rows[0];
+      await assert.rejects(db.query('insert into words(user_id,collection_id,word,meaning) values($1,$2,$3,$4)',[A,fr.id," L'ESPRIT ",'重复']),/already in your Library/);
+      await db.query('update words set word=$1 where id=$2',['l’esprit',row.id]);
+      await assert.rejects(db.query('update words set word=$1 where id=$2',['chat',row.id]),/already in your Library/);
+    });
+    await t.test('Calendar filtering counts unique items per local day and enforces owner access', async()=>{
+      const french=(await db.query('select id from words where collection_id=$1 order by created_at limit 1',[fr.id])).rows[0];
+      await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+      await db.query("insert into review_events(id,user_id,learning_item_id,reviewed_at,familiarity_rating,collection_id) values(gen_random_uuid(),$1,$2,'2026-11-25T00:30:00Z','sure',$3),(gen_random_uuid(),$1,$2,'2026-11-25T00:35:00Z','not_sure',$3)",[A,french.id,fr.id]);
+      await asUser(A);
+      const calendar=(await db.query("select learning_collection_calendar('2026-11-01','America/Los_Angeles',$1) data",[fr.id])).rows[0].data;
+      assert.equal(calendar.days.find(day=>day.date==='2026-11-24').reviewed,1);
+      await asUser(B);
+      await assert.rejects(db.query("select learning_collection_calendar('2026-11-01','Europe/London',$1)",[fr.id]),/Collection unavailable/);
+      await assert.rejects(db.query('select noted_reorder_collections($1)',[[en.id,fr.id]]),/Language list changed/);
+      await asUser(A);
+    });
+    await t.test('Reordering is atomic and levels adjust only the English Discover recommendation',async()=>{
+      await db.query('select noted_reorder_collections($1)',[[fr.id,en.id]]);
+      assert.equal((await db.query('select id from learning_collections order by display_order')).rows[0].id,fr.id);
+      const before=(await db.query('select * from discover_profiles')).rows[0];
+      await db.query("update learning_collections set proficiency_level='C1' where id=$1",[en.id]);
+      const after=(await db.query('select * from discover_profiles')).rows[0];
+      assert.equal(after.recommendation_level,'5');assert.equal(after.starting_level,before.starting_level);assert.equal(after.assessment_status,before.assessment_status);
+      await db.query("update learning_collections set proficiency_level='A2' where id=$1",[fr.id]);
+      assert.equal((await db.query('select recommendation_level from discover_profiles')).rows[0].recommendation_level,'5');
+    });
     await t.test('unmarked function collision aborts atomically rather than being overwritten', async () => {
       await db.exec("reset role;comment on function public.noted_guard_duplicate_word() is null");
       await assert.rejects(db.exec(sql), /Unexpected duplicate guard/);

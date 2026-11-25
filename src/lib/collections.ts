@@ -47,3 +47,25 @@ export function chooseActiveCollection(
       c.explanation_language === 'zh-CN') ||
     items.find(c => c.user_id === owner) || null;
 }
+
+export function isOriginalEnglish(c: LearningCollection | null | undefined) {
+  return !c || c.target_language === 'en' && c.explanation_language === 'zh-CN';
+}
+export function collectionItems<T extends {collection_id?:string|null}>(items:T[], collection:LearningCollection|null, legacy=false):T[] {
+  return collection ? items.filter(item => item.collection_id === collection.id || legacy && !item.collection_id) : items;
+}
+export function targetText(value:unknown,target:TargetLanguage,max=2000):value is string {
+  if(typeof value!=='string'||value.length>max||/[<>\x00-\x08]/.test(value)||/^https?:/i.test(value))return false;
+  return target==='zh-CN'?/\p{Script=Han}/u.test(value):/\p{Script=Latin}/u.test(value)&&!/\p{Script=Han}/u.test(value);
+}
+export function inputLanguage(text:string,target:TargetLanguage,source:TargetLanguage|'auto'='auto'):TargetLanguage {
+  if(source!=='auto')return source;
+  if(/\p{Script=Han}/u.test(text))return 'zh-CN';
+  // Identify clear multiword patterns; isolated Latin cognates remain ambiguous.
+  const markers={en:new Set(['the','of','this','that','would','wouldn’t',"wouldn't",'with','your','you','it','to','i','not']),fr:new Set(['je','ne','pas','cette','avec','vous','une','des','pour','les','de','le']),es:new Set(['esta','este','usted','hola','para','una','los','las','del','que','el'])};
+  const tokens=text.toLowerCase().match(/[\p{Script=Latin}’']+/gu)||[];
+  const scores=Object.entries(markers).map(([language,words])=>({language:language as TargetLanguage,score:new Set(tokens.filter(token=>words.has(token))).size})).sort((a,b)=>b.score-a.score);
+  if(scores[0].score>=2&&scores[0].score>scores[1].score)return scores[0].language;
+  // Preserve target-language manual capture when Latin scripts cannot be distinguished.
+  return target==='zh-CN'?'en':target;
+}

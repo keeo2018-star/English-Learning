@@ -1,13 +1,14 @@
 "use client";
+import {inputLanguage,isOriginalEnglish,learningLanguages,targetText,type LearningCollection,type TargetLanguage} from '@/lib/collections';
 import {aiStatus,requestAi} from '@/lib/ai-client';
-import {searchLanguage,englishResult,type SearchItem} from '@/lib/bilingual-contract';
+import {englishResult,type SearchItem} from '@/lib/bilingual-contract';
 import {dictionaryReference,rememberDictionaryReference} from '@/lib/dictionary-client';
 import {selectExample} from '@/lib/example-quality';
 import {HighlightWord} from './highlight-word';
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {formIsComposing,imeBlocksSubmit} from '@/lib/ime';
 import Link from 'next/link';
-import { useEffect, useLayoutEffect, useId, useRef, useState,useMemo } from 'react';
+import { useEffect, useLayoutEffect, useId, useRef, useState,useMemo,useCallback } from 'react';
 import { Card } from '@/components/ui/primitives';
 import type { Suggestion, MeaningSuggestion } from '@/lib/smart-add';
 import styles from './smart-add.module.css';
@@ -21,27 +22,33 @@ import {captureKey,textLength,extractExpression,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIM
 import voiceStyles from '@/components/voice-notes/voice-notes.module.css';
 const cache = new Map<string, Suggestion[]>();
 const knownMeanings = new Map<string, string>();
-export function AddWordFlow(props: {
+export type AddDraft={query:string;word:string;meaning:string;type:string;context:string;manual:boolean;voice:VoiceDraft|null;example:string;exampleSource:SearchItem['source'];source:TargetLanguage|'auto';request?:{fingerprint:string;id:string}|null};
+type CollectionCapture={collection?:LearningCollection;initialDraft?:AddDraft;onDraftChange?:(draft:AddDraft)=>void;onInteractionBusy?:(busy:boolean)=>void};
+export function AddWordFlow(props: CollectionCapture&{
   busy: boolean; canSave: boolean; checkingAccount: boolean;library?:{id:string;word:string}[];
   onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string) => Promise<AddOutcome>;
 }) {
   if (!props.canSave) return <Card className="wb-ui-text"><p>{props.checkingAccount ? 'Checking your account…' : 'Sign in to save words to your private library.'}</p>{!props.checkingAccount && <Link className="wb-control" href="/auth">Sign in</Link>}</Card>;
   return <SmartAddForm {...props} />;
 }
-function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;library?:{id:string;word:string}[]; onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string) => Promise<AddOutcome> }) {
-  const [voice,setVoice]=useState<VoiceDraft|null>(null),[voiceBusy,setVoiceBusy]=useState(false),[voiceOpen,setVoiceOpen]=useState(false),[pendingType,setPendingType]=useState<string|null>(null);
-  const [query,setQuery]=useState(''),[candidates,setCandidates]=useState<SearchItem[]>([]),[resolving,setResolving]=useState(false),[resolveError,setResolveError]=useState(''),[aiAvailable,setAiAvailable]=useState(false),[exampleSource,setExampleSource]=useState<SearchItem['source']>('dictionary'),[suggestedExample,setSuggestedExample]=useState('');
-  const queryVersion=useRef(0),queryAbort=useRef<AbortController|null>(null),queryRef=useRef('');
-  const chinese=searchLanguage(query)==='zh';
-  const [word, setWord] = useState(''), [meaning, setMeaning] = useState(''), [type, setType] = useState('auto');
-  const [context,setContext]=useState(''),[contextOpen,setContextOpen]=useState(false),[pasted,setPasted]=useState(false),[extracting,setExtracting]=useState(false),[selected,setSelected]=useState({start:0,end:0}),[replaceContext,setReplaceContext]=useState<{expression:string;context:string}|null>(null),[saveError,setSaveError]=useState(''),[failed,setFailed]=useState(false),[remoteDuplicate,setRemoteDuplicate]=useState(false),[attemptId,setAttemptId]=useState('');
-  const request=useRef<{fingerprint:string;id:string}|null>(null),compositionEnded=useRef(-Infinity);
+function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,onDraftChange,onInteractionBusy }: CollectionCapture&{ busy: boolean;library?:{id:string;word:string}[]; onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string) => Promise<AddOutcome> }) {
+  const [voice,setVoice]=useState<VoiceDraft|null>(initialDraft?.voice||null),[voiceBusy,setVoiceBusy]=useState(false),[voiceOpen,setVoiceOpen]=useState(false),[pendingType,setPendingType]=useState<string|null>(null);
+  const [query,setQuery]=useState(initialDraft?.query||''),[candidates,setCandidates]=useState<SearchItem[]>([]),[resolving,setResolving]=useState(false),[resolveError,setResolveError]=useState(''),[aiAvailable,setAiAvailable]=useState(false),[exampleSource,setExampleSource]=useState<SearchItem['source']>(initialDraft?.exampleSource||'dictionary'),[suggestedExample,setSuggestedExample]=useState(initialDraft?.example||'');
+  const queryVersion=useRef(0),queryAbort=useRef<AbortController|null>(null),queryRef=useRef(initialDraft?.query||'');
+  const target=collection?.target_language||'en',explanation=collection?.explanation_language||'zh-CN',legacy=isOriginalEnglish(collection);
+  const [source,setSource]=useState<TargetLanguage|'auto'>(initialDraft?.source||'auto');
+  const chinese=inputLanguage(query,target,source)!==target;
+  const validTitle=useCallback((value:unknown,max=2000)=>targetText(value,target,max),[target]);
+
+  const [word, setWord] = useState(initialDraft?.word||''), [meaning, setMeaning] = useState(initialDraft?.meaning||''), [type, setType] = useState(initialDraft?.type||'auto');
+  const [context,setContext]=useState(initialDraft?.context||''),[contextOpen,setContextOpen]=useState(false),[pasted,setPasted]=useState(false),[extracting,setExtracting]=useState(false),[selected,setSelected]=useState({start:0,end:0}),[replaceContext,setReplaceContext]=useState<{expression:string;context:string}|null>(null),[saveError,setSaveError]=useState(''),[failed,setFailed]=useState(false),[remoteDuplicate,setRemoteDuplicate]=useState(false),[attemptId,setAttemptId]=useState(initialDraft?.request?.id||'');
+  const request=useRef<{fingerprint:string;id:string}|null>(initialDraft?.request||null),compositionEnded=useRef(-Infinity);
   const [items, setItems] = useState<Suggestion[]>([]), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
   const [status, setStatus] = useState(''), [revision, setRevision] = useState(0), [composing, setComposing] = useState(false);
-  const manual = useRef(false), focused = useRef(false), submitted = useRef(false), immediate = useRef(false), dismissed = useRef('');
+  const manual = useRef(initialDraft?.manual||false), focused = useRef(false), submitted = useRef(false), immediate = useRef(false), dismissed = useRef('');
   const explicitLookup = useRef<string | null>(null), manualRevision = useRef(0);
   const touch = useRef<{ id: number; x: number; y: number; word: string } | null>(null), ignoreClick = useRef(false);
-  const current = useRef(''), version = useRef(0), meaningInput = useRef<HTMLTextAreaElement>(null);
+  const current = useRef(initialDraft?.word||''), version = useRef(0), meaningInput = useRef<HTMLTextAreaElement>(null);
   const cancel = useRef<() => void>(() => {}), input = useRef<HTMLTextAreaElement>(null), id = useId();
   const {scale,mirror,probe,placement,reset:resetSizing}=useAdaptiveEditor(input,query,composing||busy);
   const index=useMemo(()=>new Map(library.map(item=>[captureKey(item.word),item])),[library]);
@@ -49,18 +56,22 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
   const overItem=textLength(word.trim())>ITEM_TEXT_LIMIT,overContext=textLength(context)>CONTEXT_TEXT_LIMIT;
   const expression=itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression';
   const extraction=extractExpression(query,selected.start,selected.end);
+  const draftCallback=useRef(onDraftChange);useEffect(()=>{draftCallback.current=onDraftChange;},[onDraftChange]);
+  useEffect(()=>{if(!composing)draftCallback.current?.({query,word,meaning,type,context,manual:manual.current,voice,example:suggestedExample,exampleSource,source,request:request.current});},[query,word,meaning,type,context,voice,suggestedExample,exampleSource,source,composing,attemptId]);
+  useEffect(()=>{onInteractionBusy?.(voiceBusy||composing);return()=>onInteractionBusy?.(false);},[voiceBusy,composing,onInteractionBusy]);
+
   useLayoutEffect(()=>{const el=meaningInput.current;if(!el||formIsComposing(el.form))return;const top=el.scrollTop;el.style.height='0px';const cap=Math.max(80,Math.min(200,(window.visualViewport?.height||innerHeight)*.25));el.style.height=Math.max(48,Math.min(el.scrollHeight+2,cap))+'px';el.style.overflowY=el.scrollHeight>cap?'auto':'hidden';el.scrollTop=top;},[meaning]);
   useEffect(()=>{const el=input.current;if(!el)return;const update=()=>{if(document.activeElement===el&&!formIsComposing(el.form))setSelected(old=>old.start===el.selectionStart&&old.end===el.selectionEnd?old:{start:el.selectionStart,end:el.selectionEnd})};document.addEventListener('selectionchange',update);el.addEventListener('select',update);el.addEventListener('pointerup',update);return()=>{document.removeEventListener('selectionchange',update);el.removeEventListener('select',update);el.removeEventListener('pointerup',update)};},[]);
   useEffect(()=>{let active=true;const generation=queryVersion;void aiStatus().then(value=>{if(active)setAiAvailable(value.available)});return()=>{active=false;queryAbort.current?.abort();generation.current++;};},[]);
   function invalidateQuery(){queryVersion.current++;queryAbort.current?.abort();setResolving(false);setResolveError('');}
   function changeQuery(next:string){
     invalidateQuery();queryRef.current=next;setQuery(next);setCandidates([]);setSuggestedExample('');
-    changeWord(searchLanguage(next)==='zh'?'':next);
+    changeWord(inputLanguage(next,target,source)!==target?'':next);
   }
   function selectCandidate(item:SearchItem){
-    if(formIsComposing(input.current?.form)||!englishResult(item.english,2000))return;
+    if(formIsComposing(input.current?.form)||!validTitle(item.english))return;
     invalidateQuery();changeWord(item.english);setExampleSource(item.source);
-    if(!manual.current)setMeaning(searchLanguage(queryRef.current)==='zh'?queryRef.current:item.meaning);
+    if(!manual.current)setMeaning(inputLanguage(queryRef.current,target,source)===explanation&&target!==explanation?queryRef.current:item.meaning);
     setSuggestedExample(item.example||'');setStatus(item.source==='ai'?'AI-generated · Check wording and context':'Translation · Editable');
   }
   async function resolveQuery(ai=false){
@@ -69,21 +80,22 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
     cancel.current();version.current++;setOpen(false);setResolving(true);setResolveError('');
     try{
       let results:SearchItem[];
+      if(ai&&!legacy)throw Error('AI help for this language is not available yet. You can still save manually.');
       if(ai){const response=await requestAi(text,'auto');results=response.alternatives;}
-      else {const response=await fetch('/api/bilingual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:text,direction:'auto'}),signal:controller.signal});const data=await response.json();if(!response.ok)throw Error(data.message||'Could not resolve this text. Try again.');results=Array.isArray(data.items)?data.items:[];if(data.reference&&ticket===queryVersion.current)rememberDictionaryReference(text,data.reference);}
+      else {const response=await fetch(legacy&&source==='auto'&&['en','zh-CN'].includes(inputLanguage(text,target,source))?'/api/bilingual':'/api/collection-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(legacy&&source==='auto'&&['en','zh-CN'].includes(inputLanguage(text,target,source))?{query:text,direction:'auto'}:{query:text,target,explanation,source}),signal:controller.signal});const data=await response.json();if(!response.ok)throw Error(data.message||'Could not resolve this text. Try again.');results=Array.isArray(data.items)?data.items:[];if(data.reference&&ticket===queryVersion.current)rememberDictionaryReference(text,data.reference);}
       if(ticket!==queryVersion.current||controller.signal.aborted||submitted.current)return;
-      const seen=new Set<string>();const clean=results.filter(item=>{if(!englishResult(item.english,2000))return false;const key=captureKey(item.english);if(seen.has(key))return false;seen.add(key);return true;}).slice(0,4);
-      if(!clean.length)throw Error('No English result found. Refine your query and try again.');
+      const seen=new Set<string>();const clean=results.filter(item=>{if(!validTitle(item.english))return false;const key=captureKey(item.english);if(seen.has(key))return false;seen.add(key);return true;}).slice(0,4);
+      if(!clean.length)throw Error(legacy?'No English result found. Refine your query and try again.':'No result in the learning language was found. Refine your query and try again.');
       setCandidates(clean);
       // A manual meaning is owned by the user, including an intentionally empty one.
-      changeWord(clean[0].english);setExampleSource(clean[0].source);if(!manual.current)setMeaning(searchLanguage(text)==='zh'?text:clean[0].meaning);setSuggestedExample(clean[0].example||'');setStatus(ai?'AI-generated · Check wording and context':'Translation · Editable');
+      changeWord(clean[0].english);setExampleSource(clean[0].source);if(!manual.current)setMeaning(inputLanguage(text,target,source)===explanation&&target!==explanation?text:clean[0].meaning);setSuggestedExample(clean[0].example||'');setStatus(ai?'AI-generated · Check wording and context':'Translation · Editable');
     }catch(error){if(ticket===queryVersion.current&&!controller.signal.aborted)setResolveError(error instanceof Error&&!/fetch|network|load failed/i.test(error.message)?error.message:'Could not connect. Your draft is kept. Try again when online.');}
     finally{if(ticket===queryVersion.current)setResolving(false);}
   }
   useEffect(()=>{
-    if(!word.trim()||!englishResult(word)||composing||suggestedExample)return;let active=true;const ticket=queryVersion.current;const timer=setTimeout(()=>{void dictionaryReference(word).then(reference=>{if(active&&ticket===queryVersion.current&&!submitted.current){setSuggestedExample(selectExample(word,meaning,reference.examples));setExampleSource('dictionary');}}).catch(()=>{});},700);
+    if(target!=='en'||!word.trim()||!englishResult(word)||composing||suggestedExample)return;let active=true;const ticket=queryVersion.current;const timer=setTimeout(()=>{void dictionaryReference(word).then(reference=>{if(active&&ticket===queryVersion.current&&!submitted.current){setSuggestedExample(selectExample(word,meaning,reference.examples));setExampleSource('dictionary');}}).catch(()=>{});},700);
     return()=>{active=false;clearTimeout(timer)};
-  },[word,meaning,composing,suggestedExample]);
+  },[word,meaning,composing,suggestedExample,target]);
   function changeWord(next: string) {
     cancel.current();version.current++;
     current.current = next;
@@ -109,7 +121,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
     explicitLookup.current = null;
     const valid = () => !abort.signal.aborted && !submitted.current && version.current === generation && current.current === word;
     let suggestionTimer: ReturnType<typeof setTimeout> | undefined, meaningTimer: ReturnType<typeof setTimeout> | undefined;
-    if (!chinese && !composing && query.length >= 1 && textLength(query)<=ITEM_TEXT_LIMIT) {
+    if (legacy&&!chinese && !composing && query.length >= 1 && textLength(query)<=ITEM_TEXT_LIMIT) {
       if (!word.includes('\n') && query.length >= 2 && query.length <= 64 && /^[a-z][a-z '’-]*$/i.test(query) && dismissed.current !== word) suggestionTimer = setTimeout(async () => {
         try {
           let values = cache.get(query.toLowerCase());
@@ -144,7 +156,13 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
     const stop = () => { clearTimeout(suggestionTimer); clearTimeout(meaningTimer); abort.abort(); };
     cancel.current = stop;
     return stop;
-  }, [word, type, revision, composing,chinese]);
+  }, [word, type, revision, composing,chinese,legacy]);
+  useEffect(()=>{
+    if(legacy||chinese||composing||!word.trim()||manual.current||!validTitle(word)||textLength(word)>ITEM_TEXT_LIMIT)return;
+    const abort=new AbortController(),ticket=queryVersion.current,edits=manualRevision.current;
+    const timer=setTimeout(()=>{void fetch('/api/collection-lookup',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({query:word,target,explanation,source:target})}).then(response=>response.ok?response.json():null).then(data=>{if(!abort.signal.aborted&&ticket===queryVersion.current&&edits===manualRevision.current&&!manual.current&&data?.items?.[0]?.meaning)setMeaning(data.items[0].meaning);}).catch(()=>{});},800);
+    return()=>{clearTimeout(timer);abort.abort();};
+  },[word,target,explanation,legacy,chinese,composing,validTitle]);
   function reset() {
     invalidateQuery();setQuery('');queryRef.current='';setCandidates([]);setSuggestedExample('');setExampleSource('dictionary');cancel.current(); request.current=null;setAttemptId('');version.current++; current.current = ''; manual.current = false;
     setVoice(null);setVoiceOpen(false);setContext('');setContextOpen(false);setPasted(false);setExtracting(false);setSaveError('');setFailed(false);setRemoteDuplicate(false);resetSizing();setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
@@ -153,7 +171,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
   function acceptExtraction(value:{expression:string;context:string}){changeQuery(value.expression);setContext(value.context);setContextOpen(true);setType('expression');setPasted(false);setExtracting(false);setReplaceContext(null);setStatus('Expression extracted. Original text kept in My Context.');input.current?.focus({preventScroll:true});}
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();if(submitted.current||busy||voiceBusy||composing||imeBlocksSubmit(event.currentTarget,event.timeStamp))return;
-    if(!englishResult(word,2000)){setSaveError('Resolve an English word or expression before saving.');return;}
+    if(!validTitle(word)){setSaveError('Resolve a word or expression in the learning language before saving.');return;}
     if(duplicate){setSaveError('Already in your Library');return;}
     if(overItem||overContext){setSaveError(overItem?'Extract or shorten the learning item to 120 characters. Your full text is still here.':'My Context supports 3000 characters. Please shorten it before saving.');return;}
     const el=input.current,selection=el?{start:el.selectionStart,end:el.selectionEnd,direction:el.selectionDirection,scroll:el.scrollTop,focused:document.activeElement===el}:null;
@@ -174,7 +192,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
   }
   return <form className={`word-form ${styles.unified}`} aria-label="Add learning item" aria-busy={busy} onSubmit={submit} onReset={reset}>
     <div className={styles.queryArea}><div className={styles.field}>
-      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder="Type in English or Chinese…" required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-has-value={!!query} data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
+      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder={collection?`Type in ${learningLanguages[target].label} or another language…`:'Type in English or Chinese…'} required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-has-value={!!query} data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
         role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?`${id}-list`:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} aria-describedby={`${id}-help`} enterKeyHint="search" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
         onFocus={()=>{focused.current=true;if(items.length&&dismissed.current!==word)setOpen(true)}} onBlur={()=>{focused.current=false;setOpen(false)}}
         onPaste={()=>{setPasted(true);setExtracting(false)}}
@@ -190,25 +208,26 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
         onPointerMove={event=>{const start=touch.current;if(start&&Math.hypot(event.clientX-start.x,event.clientY-start.y)>=12)touch.current=null}}
         onClick={event=>{if(ignoreClick.current&&event.detail!==0){ignoreClick.current=false;return;}choose(item)}}><span>{item.word}</span>{item.meaning&&<small>{item.meaning}</small>}</button>)}</div>}
     </div>
-    <div className={styles.resolveActions}><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}>{resolving?'Resolving…':chinese?'Translate':'Look up'}</button>{aiAvailable&&<><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery(true)}>AI alternatives</button><small>Only this query is sent to Gemini.</small></>}</div>
+    <div className={styles.resolveActions}><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}>{resolving?'Resolving…':chinese?'Translate':'Look up'}</button>{collection&&query.trim()&&<label className={styles.sourceChoice}><select aria-label="Input language" title="Language of the text you typed" value={source} disabled={busy} onChange={event=>{const next=event.target.value as TargetLanguage|'auto';invalidateQuery();setSource(next);setCandidates([]);changeWord(inputLanguage(query,target,next)===target?query:'');}}><option value="auto">Input: Auto</option>{Object.entries(learningLanguages).map(([code,lang])=><option key={code} value={code}>Input: {lang.label}</option>)}</select></label>}{aiAvailable&&legacy&&<><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery(true)}>AI alternatives</button><small>Only this query is sent to Gemini.</small></>}</div>
+
     {resolveError&&<p role="alert" className={styles.saveError}>{resolveError}</p>}
-    {chinese&&(resolveError||candidates.length>1)&&<p className={styles.meaningStatus}>Need a different sense? Refine the Chinese query with a little context, then translate again.</p>}
-    {candidates.length>1&&<div role="group" aria-label="English translations" className={styles.candidates}>{candidates.map(item=><button type="button" key={item.english} aria-pressed={word===item.english} onClick={()=>selectCandidate(item)} disabled={busy}><strong>{item.english}</strong>{item.usage&&<small>{item.usage}</small>}</button>)}</div>}
+    {chinese&&(resolveError||candidates.length>1)&&<p className={styles.meaningStatus}>Need a different sense? Refine your query with a little context, then translate again.</p>}
+    {candidates.length>1&&<div role="group" aria-label={legacy?'English translations':'Translation candidates'} className={styles.candidates}>{candidates.map(item=><button type="button" key={item.english} aria-pressed={word===item.english} onClick={()=>selectCandidate(item)} disabled={busy}><strong>{item.english}</strong>{item.usage&&<small>{item.usage}</small>}</button>)}</div>}
     </div>
     <section className={`panel ${styles.preview}`} aria-label="Vocabulary card preview" data-empty={!query.trim()&&!meaning&&!context&&!voice||undefined}>
     <input type="hidden" name="word" value={word}/>
     {word&&<h2 className={styles.previewTitle}>{word}</h2>}
 
-    {chinese&&!word&&<p className={styles.meaningStatus}>Translate to choose the English entry.</p>}
+    {chinese&&!word&&<p className={styles.meaningStatus}>Translate to choose an entry in the learning language.</p>}
     <div id={`${id}-help`} className={styles.captureHelp}>
-      {overItem?<span>Keep the learning item within 120 characters. {chinese?'Refine your query or choose a shorter English candidate; your original text is preserved.':/\s/u.test(word.trim())?'Extract a phrase below; your pasted text is preserved.':'Shorten it before saving; your text is preserved.'}</span>:null}
+      {overItem?<span>Keep the learning item within 120 characters. {chinese?'Refine your query or choose a shorter target-language candidate; your original text is preserved.':/\s/u.test(word.trim())?'Extract a phrase below; your pasted text is preserved.':'Shorten it before saving; your text is preserved.'}</span>:null}
       {!chinese&&(pasted||overItem)&&/\s/u.test(word.trim())&&!extracting&&<button type="button" className="text-button" onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;setExtracting(true);input.current?.focus({preventScroll:true});}}>Extract an expression</button>}
-      {extracting&&<div className={styles.extraction}><p>Select a phrase in the English text, then confirm. The full text will become My Context.</p><div className={styles.inlineActions}><button type="button" disabled={!extraction||busy} onPointerDown={event=>event.preventDefault()} onClick={()=>{if(extraction&&!formIsComposing(input.current?.form)){if(context.trim()&&context!==extraction.context)setReplaceContext(extraction);else acceptExtraction(extraction)}}}>Confirm expression</button><button type="button" className="text-button" onClick={()=>setExtracting(false)}>Cancel extraction</button></div></div>}
+      {extracting&&<div className={styles.extraction}><p>Select a phrase in the text, then confirm. The full text will become My Context.</p><div className={styles.inlineActions}><button type="button" disabled={!extraction||busy} onPointerDown={event=>event.preventDefault()} onClick={()=>{if(extraction&&!formIsComposing(input.current?.form)){if(context.trim()&&context!==extraction.context)setReplaceContext(extraction);else acceptExtraction(extraction)}}}>Confirm expression</button><button type="button" className="text-button" onClick={()=>setExtracting(false)}>Cancel extraction</button></div></div>}
       {duplicate&&<div role="status" className={styles.duplicate}><strong>Already in your Library</strong><Link className="wb-control wb-control-outline" href={'/library?q='+encodeURIComponent(existing?.word||word.trim())}>View existing item</Link></div>}
     </div>
     <div className={styles.meaningField}>
 
-      <ImeTextarea lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} className={styles.meaning} id={`${id}-meaning`} rows={1} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder="中文解释或你的理解" maxLength={2000} readOnly={busy} />
+      <ImeTextarea lang={explanation==='en'?'en':'zh-Hans'} autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} className={styles.meaning} id={`${id}-meaning`} rows={1} aria-label="Meaning" name="meaning" value={meaning} onImeStateChange={active=>{if(active){manual.current=true;manualRevision.current++;setStatus('');}}} onValueChange={value => { manual.current = true; manualRevision.current++; setAttemptId('');setFailed(false);setSaveError('');setMeaning(value); setStatus(''); }} placeholder={explanation==='en'?'Meaning in your own words…':'中文解释或你的理解'} maxLength={2000} readOnly={busy} />
 
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
@@ -220,7 +239,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[] }: { busy: boolean;libra
 
     {itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression'&&<details className={voiceStyles.draft} open={voiceOpen} onToggle={event=>setVoiceOpen(event.currentTarget.open)}><summary><Microphone/>Add a voice note</summary>{voiceOpen&&<VoiceDraftBox draft={voice} onDraft={value=>{setVoice(value);if(value)setType('expression');}} onBusy={setVoiceBusy} disabled={busy}/>}</details>}
     {pendingType!==null&&<VoiceConfirm title="Discard this draft recording?" description="Voice Notes are available only for Expressions. Keep Expression to retain this recording." confirmLabel="Discard and change type" busy={false} onCancel={()=>setPendingType(null)} onConfirm={()=>{setVoice(null);setType(pendingType);setPendingType(null);setVoiceOpen(false);}}/>}
-    {replaceContext&&<VoiceConfirm title="Replace My Context?" description="Your existing context will be replaced by the complete text currently in the English input. The English text stays unchanged until you confirm." confirmLabel="Use original text as context" busy={busy} onCancel={()=>setReplaceContext(null)} onConfirm={()=>acceptExtraction(replaceContext)}/>}
+    {replaceContext&&<VoiceConfirm title="Replace My Context?" description="Your existing context will be replaced by the complete text currently in the main input. The text stays unchanged until you confirm." confirmLabel="Use original text as context" busy={busy} onCancel={()=>setReplaceContext(null)} onConfirm={()=>acceptExtraction(replaceContext)}/>}
     {saveError&&!duplicate&&<p role="alert" className={styles.saveError}>Couldn’t save — {saveError}</p>}
     <div className="form-bottom"><button type="submit" disabled={busy||voiceBusy||duplicate||!word.trim()||overItem||overContext}>{busy ? 'Saving…' : failed?'Retry':'Add to my library + '}</button></div>
     </section>

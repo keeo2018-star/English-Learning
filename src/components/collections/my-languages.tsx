@@ -1,28 +1,17 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { learningLanguages, parseCollections, type LearningCollection } from '@/lib/collections';
-
-// The read-only foundation is safe before migration. Management waits for scoped flows.
-export function MyLanguages({ owner }: { owner: string }) {
-  const [rows, setRows] = useState<LearningCollection[]>([]);
-  useEffect(() => {
-    let active = true;
-    if (supabase && navigator.onLine) {
-      void Promise.resolve(supabase.rpc('noted_collections_snapshot')).then(({ data, error }) => {
-        if (active && !error) setRows(parseCollections(data, owner));
-      }).catch(() => { /* Missing schema/offline must not block Profile. */ });
-    }
-    return () => { active = false; };
-  }, [owner]);
-  if (!rows.length) return null;
-  return <section aria-label="My Languages" className="my-languages">
-    <h2>My Languages</h2>
-    {rows.map(row => <p key={row.id}>
-      {learningLanguages[row.target_language].label}
-      {row.proficiency_level !== 'unspecified' && ` — ${row.proficiency_level}`}
-      <span> — Explained in {row.explanation_language === 'en' ? 'English' : 'Chinese'}</span>
-    </p>)}
-  </section>;
+import {useState} from 'react';
+import {supabase} from '@/lib/supabase';
+import {useCollections} from '@/lib/use-collections';
+import {learningLanguages,type LearningCollection,type TargetLanguage} from '@/lib/collections';
+const general=['unspecified','beginner','intermediate','advanced'],cefr=['A1','A2','B1','B2','C1','C2'];
+export function MyLanguages({owner}:{owner:string}){
+ const state=useCollections(owner),[busy,setBusy]=useState(false),[error,setError]=useState(''),[adding,setAdding]=useState(false),[target,setTarget]=useState<TargetLanguage>('fr');
+ async function change(row:LearningCollection,changes:Record<string,unknown>){if(!supabase||busy)return;setBusy(true);setError('');try{const result=await supabase.from('learning_collections').update(changes).eq('id',row.id).eq('user_id',owner).select('id').single();if(result.error)throw result.error;state.refresh();}catch{setError('Could not save language settings. Please try again.');}finally{setBusy(false);}}
+ async function create(event:React.FormEvent<HTMLFormElement>){event.preventDefault();if(!supabase||busy)return;const fields=new FormData(event.currentTarget);setBusy(true);setError('');try{const result=await supabase.from('learning_collections').insert({user_id:owner,target_language:target,explanation_language:fields.get('explanation'),proficiency_level:fields.get('level'),display_order:Math.min(999,state.collections.length)}).select('*').single();if(result.error)throw result.error;state.select(result.data.id);state.refresh();setAdding(false);}catch(error){setError((error as {code?:string}).code==='23505'?'This language with these explanations is already in My Languages.':'Could not create this language. Your existing Collections are unchanged.');}finally{setBusy(false);}}
+ async function move(index:number){if(!supabase||busy||index<1)return;setBusy(true);setError('');const ids=state.collections.map(row=>row.id);[ids[index-1],ids[index]]=[ids[index],ids[index-1]];const {error}=await supabase.rpc('noted_reorder_collections',{p_ids:ids});if(error)setError('Could not change the order. Please try again.');else state.refresh();setBusy(false);}
+ if(!state.collections.length)return null;
+ return <section aria-label="My Languages" className="my-languages"><h2>My Languages</h2>
+ {state.collections.map((row,index)=>state.enabled?<details key={row.id} className="language-settings"><summary>{learningLanguages[row.target_language].label}{row.proficiency_level!=='unspecified'&&` — ${row.proficiency_level}`} · Explained in {row.explanation_language==='en'?'English':'Chinese'}</summary><div className="language-settings-controls"><button type="button" className="secondary" disabled={busy} aria-pressed={row.id===state.active?.id} onClick={()=>state.select(row.id)}>{row.id===state.active?.id?'Selected':'Learn this language'}</button><label>Level<select aria-label={`Level for ${learningLanguages[row.target_language].label}`} disabled={busy} value={row.proficiency_level} onChange={event=>void change(row,{proficiency_level:event.target.value})}>{[...general,...(row.target_language==='zh-CN'?[]:cefr)].map(level=><option key={level} value={level}>{level==='unspecified'?'Not set':level}</option>)}</select></label><label>Default auto pronunciation<select disabled={busy} value={row.preferences.auto_pronunciation===false?'off':'on'} onChange={event=>void change(row,{preferences:{...row.preferences,auto_pronunciation:event.target.value==='on'}})}><option value="on">On</option><option value="off">Off</option></select></label>{row.target_language==='en'&&<label>Pronunciation<select disabled={busy} value={row.preferences.accent==='US'?'US':'UK'} onChange={event=>void change(row,{preferences:{...row.preferences,accent:event.target.value}})}><option value="UK">UK</option><option value="US">US</option></select></label>}{index>0&&<button className="text-button" type="button" disabled={busy} aria-label={`Move ${learningLanguages[row.target_language].label} up`} onClick={()=>void move(index)}>Move up</button>}</div></details>:<p key={row.id}>{learningLanguages[row.target_language].label}{row.proficiency_level!=='unspecified'&&` — ${row.proficiency_level}`} — Explained in {row.explanation_language==='en'?'English':'Chinese'}</p>)}
+ {state.enabled&&<><button type="button" className="secondary" disabled={busy} onClick={()=>setAdding(value=>!value)} aria-expanded={adding}>Add a language</button>{adding&&<form className="language-settings-controls" onSubmit={create}><label>Language to learn<select aria-label="Language to learn" value={target} onChange={event=>setTarget(event.target.value as TargetLanguage)} disabled={busy}>{Object.entries(learningLanguages).map(([code,lang])=><option key={code} value={code}>{lang.label}</option>)}</select></label><label>Explanation language<select name="explanation" aria-label="Explanation language" defaultValue="zh-CN" disabled={busy}><option value="zh-CN">Chinese</option><option value="en">English</option></select></label><label>Approximate level<select name="level" aria-label="Approximate level" defaultValue="beginner" disabled={busy}>{[...general,...(target==='zh-CN'?[]:cefr)].map(level=><option key={level}>{level}</option>)}</select></label><button disabled={busy}>{busy?'Creating…':'Create'}</button><button type="button" className="text-button" disabled={busy} onClick={()=>setAdding(false)}>Cancel</button></form>}</>}
+ {error&&<p role="alert">{error}</p>}</section>;
 }

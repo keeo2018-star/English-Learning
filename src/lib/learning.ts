@@ -1,6 +1,7 @@
 import type { ReviewState } from "./review";
 export type LearningItem = {
   id: string;
+  collection_id?: string | null;
   item_type?: "word" | "expression" | null;
   word: string;
   meaning: string;

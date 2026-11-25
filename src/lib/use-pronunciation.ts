@@ -1,22 +1,23 @@
 "use client";
+import type {TargetLanguage} from './collections';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { englishText, preloadPronunciation,pronounce, pronunciationSupported, prepareReviewPronunciation, resumePronunciation, stopPronunciation, type Accent, type PronunciationStatus } from './pronunciation';
 const subscribe = () => () => {};
-export function usePronunciation({ text, accent = 'UK', recording, automatic = false }: {
-  text: string; accent?: Accent; recording?: string | null; automatic?: boolean;
+export function usePronunciation({ text, accent = 'UK', recording, automatic = false,language='en' }: {
+  language?:TargetLanguage;text: string; accent?: Accent; recording?: string | null; automatic?: boolean;
 }) {
   const owner = useRef(Symbol('pronunciation'));
   const audio = useRef<HTMLAudioElement>(null);
   const alive = useRef(true);
   const [status, setStatus] = useState<PronunciationStatus>('idle');
   const available = useSyncExternalStore(subscribe, pronunciationSupported, () => false);
-  useEffect(()=>{if(available)void preloadPronunciation(text,accent);},[available,text,accent]);
+  useEffect(()=>{if(available)void preloadPronunciation(text,accent,language);},[available,text,accent,language]);
   const stop = useCallback(() => stopPronunciation(owner.current), []);
   const start = useCallback((automaticPlayback: boolean) => {
     if (!audio.current || !available) return;
-    void pronounce({ owner: owner.current, text, accent, recording, audio: audio.current, automatic: automaticPlayback,
+    void pronounce({ owner: owner.current, text, accent, recording,language, audio: audio.current, automatic: automaticPlayback,
       report: value => { if (alive.current) setStatus(value); } });
-  }, [available, text, accent, recording]);
+  }, [available, text, accent, recording,language]);
   const play = useCallback(() => {
     if (resumePronunciation(owner.current)) return;
     prepareReviewPronunciation(false);
@@ -60,5 +61,5 @@ export function usePronunciation({ text, accent = 'UK', recording, automatic = f
     if (element.parentElement) observer.observe(element.parentElement);
     return () => observer.disconnect();
   }, [recording]);
-  return { audio, play, stop, status, available: available && /\p{Script=Latin}/u.test(englishText(text)) };
+  return { audio, play, stop, status, available: available && /[\p{Script=Latin}\p{Script=Han}]/u.test(language==='en'?englishText(text):text) };
 }

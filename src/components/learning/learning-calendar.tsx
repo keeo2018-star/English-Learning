@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
+import {useCollections} from '@/lib/use-collections';
+import {learningLanguages} from '@/lib/collections';
 import { supabase } from '@/lib/supabase';
 import { activityLevel, activityScale, localDateKey, reviewCoverage, type ActivityMonth } from '@/lib/activity';
 import { SelectableButton } from '@/components/ui/selection';
@@ -7,6 +9,9 @@ import type { LearningItem } from '@/lib/learning';
 export const DEMO_EVENTS_KEY = 'noted-demo-review-events-v1';
 const EMPTY_WORDS: LearningItem[] = [];
 export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, initiallyOpen = false }: { account: string; revision?: number; words?: LearningItem[]; initiallyOpen?: boolean }) {
+  const learning=useCollections(account==='local-demo'?null:account);
+  const [filter,setFilter]=useState<string|null>(null);
+  const selectedCollection=learning.enabled?learning.collections.find(c=>c.id===filter):undefined;
   const [open, setOpen] = useState(initiallyOpen);
   const [month, setMonth] = useState('');
   const [today, setToday] = useState('');
@@ -36,7 +41,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
     const timer = window.setInterval(refresh, 30000);
     return () => { clearInterval(timer); window.removeEventListener('focus', refresh);window.removeEventListener('noted-reviews-synced',refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [open, account]);
-  const requestKey = `${account}/${month}/${timezone}/${revision}/${retry}`;
+  const requestKey = `${account}/${month}/${timezone}/${revision}/${retry}/${selectedCollection?.id||'all'}`;
   useEffect(() => {
     if (!open || !month) return;
     let cancelled = false;
@@ -44,7 +49,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
       try {
         let data: ActivityMonth;
         if (supabase) {
-          const response = await supabase.rpc('learning_calendar', { p_month: month + '-01', p_timezone: timezone });
+          const response = await supabase.rpc(selectedCollection?'learning_collection_calendar':'learning_calendar', { p_month: month + '-01', p_timezone: timezone,...(selectedCollection?{p_collection:selectedCollection.id}:{}) });
           if (response.error) throw response.error;
           if (!response.data || !Array.isArray(response.data.days)) throw new Error('Invalid activity response.');
           data = response.data;
@@ -69,7 +74,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
     };
     void run();
     return () => { cancelled = true; };
-  }, [open, month, timezone, account, revision, retry, requestKey, words]);
+  }, [open, month, timezone, account, revision, retry, requestKey, words,selectedCollection]);
   function move(delta: number) {
     const [year, number] = month.split('-').map(Number);
     const date = new Date(year, number - 1 + delta, 1, 12);
@@ -87,6 +92,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
   return <details data-metric={metric} className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary>Learning calendar</summary>
     {open && month && <div className="learning-calendar-content">
+      {learning.enabled&&learning.collections.length>1&&<label className="calendar-language">Languages<select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label} · {row.explanation_language==='en'?'English':'Chinese'} explanations</option>)}</select></label>}
       <div className="calendar-metrics" role="group" aria-label="Calendar activity">
         <SelectableButton className="secondary" selected={metric === 'reviewed'} onClick={() => setMetric('reviewed')}>Reviewed</SelectableButton>
         <SelectableButton className="secondary" selected={metric === 'added'} onClick={() => setMetric('added')}>Added</SelectableButton>

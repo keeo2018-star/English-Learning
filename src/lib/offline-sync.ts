@@ -16,7 +16,7 @@ export async function syncOfflineReviews(owner:string){
    const session=await client.auth.getSession();if(session.data.session?.user.id!==owner)throw Error('Account changed. Reviews remain saved on this device.');
    for(let retry=0;retry<3;retry++){
     const loaded=await client.from('words').select('*').eq('id',event.itemId).eq('user_id',owner).single();if(loaded.error){if(loaded.error.code==='PGRST116'){const recorded=await client.from('review_events').select('id').eq('id',event.id).eq('learning_item_id',event.itemId).eq('user_id',owner).maybeSingle();if(recorded.data?.id===event.id)await acknowledgeReview(owner,event.id);else unavailable=true;break;}throw Error('Could not load a saved review yet. Its progress remains on this device.');}
-    const word=loaded.data as LearningItem,next=rateItem(word,event.rating,Date.parse(event.at));
+    const word=loaded.data as LearningItem;if(event.updated.collection_id&&word.collection_id!==event.updated.collection_id){unavailable=true;break;}const next=rateItem(word,event.rating,Date.parse(event.at));
     const result=await client.rpc('record_offline_learning_review',{p_event_id:event.id,p_item_id:event.itemId,p_rating:event.rating==='sure'?'sure':'not_sure',p_expected_count:reviewState(word)?.review_count||0,p_due_at:next.due_at,p_interval_days:next.interval_days,p_review_state:next.review_state,p_reviewed_at:event.at});
     if(result.error?.code==='40001'&&retry<2)continue;
     if(result.error)throw Error(['PGRST202','PGRST205'].includes(result.error.code)?'Your reviews are saved on this device. Sync is not available yet.':'Could not sync yet. Your reviews are saved on this device.');

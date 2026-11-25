@@ -85,3 +85,7 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .preview[data-empty="true"] .meaningField,.preview[data-empty="true"] .previewSettings { display:none; }
 .field textarea.queryInput[data-has-value="false"] { padding-right:16px; }
 .field textarea.queryInput[data-has-value="false"]:focus { padding-right:15px; }
+
+.sourceChoice select { width:auto;max-width:100%;min-height:44px;padding:8px 12px;font-size:12px;border:1px solid currentColor;border-radius:var(--wb-radius-pill);background:transparent; }
+
+.sourceChoice select:focus-visible { outline:2px solid var(--wb-black);outline-offset:-2px; }

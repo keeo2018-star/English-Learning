@@ -1083,3 +1083,42 @@ summary:focus-visible {
 .my-languages { margin-block:24px; }
 .my-languages h2 { font-size:24px;letter-spacing:normal; }
 .my-languages p { font-size:14px;line-height:1.6;overflow-wrap:anywhere; }
+.language-settings { border-bottom:1px solid rgb(0 0 0 / 16%);padding-block:12px;margin-bottom:12px; }
+.language-settings summary { cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:14px;line-height:1.6; }
+.language-settings-controls { display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-block:16px; }
+.language-settings-controls label { display:grid;gap:6px;font-size:14px;min-width:0;max-width:100%; }
+.language-settings-controls select { width:auto;max-width:100%;min-height:44px; }
+/* Compact context header: only this row sticks; filters and content scroll. */
+.learning-header { position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:var(--wb-learning-header-height);padding-block:8px;background:var(--wb-offwhite);isolation:isolate; }
+.learning-header h1 { margin:0;font-size:clamp(28px,5vw,36px);line-height:1.15;letter-spacing:var(--wb-brand-tracking); }
+.learning-language { position:relative;flex:0 0 auto;max-width:65%; }
+.language-trigger.language-trigger { display:inline-flex;gap:8px;background:var(--wb-lavender);color:var(--wb-black);border:0;min-height:44px;padding:10px 16px;font-size:14px;white-space:nowrap; }
+.language-menu { position:absolute;inset-inline-end:0;top:calc(100% + 8px);z-index:21;width:min(300px,calc(100vw - 40px));max-height:min(420px,calc(100dvh - var(--wb-nav-clearance) - var(--wb-learning-header-height) - var(--wb-space-5) - env(safe-area-inset-top,0px)));overflow-y:auto;overscroll-behavior:contain;padding:8px;border:1px solid var(--wb-black);border-radius:var(--wb-radius-small);background:var(--wb-offwhite); }
+.language-menu button { display:flex;width:100%;justify-content:space-between;gap:12px;text-align:left;padding:12px;min-height:64px;border:0;border-radius:12px;background:transparent;color:var(--wb-black); }
+.language-menu button span:first-child { display:grid;gap:4px;min-width:0; }
+.language-menu button strong { font-size:16px;overflow-wrap:anywhere; }
+.language-menu button small { font-size:12px;line-height:1.4;overflow-wrap:anywhere; }
+.language-menu button[aria-checked=true] { background:var(--wb-lavender); }
+.language-menu button:focus-visible,.language-trigger:focus-visible { outline:2px solid var(--wb-black);outline-offset:-2px; }
+.library-back { display:inline-flex;align-items:center;min-height:44px;font-size:14px;width:fit-content; }
+.library-scope,.calendar-language { display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px; }
+.library-scope select,.calendar-language select { width:auto;max-width:100%;min-height:44px; }
+.wb-navigation .wb-nav-item.wb-selectable { gap:4px;min-height:64px; }
+.wb-navigation .wb-nav-item > span:first-child { width:44px;height:44px;border-radius:50%; }
+.wb-navigation .wb-nav-item[data-selected=true] > span:first-child { background:var(--wb-black);color:var(--wb-white); }
+.wb-navigation .wb-nav-item[data-selected=true] > span:last-child { text-decoration:none; }
+.wb-navigation .wb-nav-item > span:last-child { font-size:11px;line-height:1.2; }
+:root { scroll-padding-top:calc(80px + env(safe-area-inset-top,0px)); }
+.profile-refined .learning-header { flex-basis:100%; }
+@media(prefers-reduced-motion:no-preference){.language-menu button,.language-trigger { transition:none;translate:none!important;scale:1!important; }}
+
+.learning-header::before { content:'';position:absolute;inset-inline:0;top:calc(-1 * env(safe-area-inset-top,0px));height:env(safe-area-inset-top,0px);background:var(--wb-offwhite); }
+.wb-navigation .wb-nav-item.wb-selectable { mix-blend-mode:normal; }
+.word-form [data-adaptive-editor] { scroll-margin-top:calc(80px + env(safe-area-inset-top,0px)); }
+
+.learning-header ~ .review-modes { gap:8px; }
+.learning-header ~ .review-modes button.wb-selectable { min-height:44px;padding:10px 14px;font-size:13px; }
+.library-inline-link { display:inline-flex;align-items:center;min-height:44px;padding:8px 0;margin-inline-start:auto;font-size:14px;text-decoration:underline;text-underline-offset:4px; }
+.language-settings-controls select:focus-visible,.library-scope select:focus-visible,.calendar-language select:focus-visible { outline:2px solid var(--wb-black);outline-offset:-2px; }
+
+:root { --wb-learning-header-height:var(--wb-space-8); }

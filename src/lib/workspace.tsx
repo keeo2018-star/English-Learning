@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
+import {useCollections} from './use-collections';
+import {collectionItems,isOriginalEnglish,learningLanguages,type LearningCollection} from './collections';
+import {LearningHeader} from '@/components/collections/learning-header';
+import {CollectionAddFlow} from '@/components/collections/collection-add-flow';
 import {imeBlocksSubmit} from './ime';
 import Link from "next/link";
 import {afterSaveAi} from "./ai-client";
@@ -24,7 +28,6 @@ import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
 import { SelectableLink, SelectableButton, SelectableToggle } from "@/components/ui/selection";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
-import { AddWordFlow } from "@/components/dictionary/add-word-flow";
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
@@ -37,7 +40,7 @@ import {clearItemVoice,voiceFiles,removeVoiceFiles,uploadVoice,voiceError,type V
 import {VoiceManager} from '@/components/voice-notes/voice-manager';
 import {VoiceConfirm} from '@/components/voice-notes/voice-confirm';
 import {ExpressionReviewAudio} from '@/components/voice-notes/review-audio';
-type NewLearningItem = { request_id?:string;example_source?:"ai"|"dictionary"|"personal"|null; word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
+type NewLearningItem = { request_id?:string;collection_id?:string;example_source?:"ai"|"dictionary"|"personal"|null; word: string; meaning: string; example: string; item_type?: "word" | "expression" | null };
 type SaveResult = Word | null;
 function errorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error && "code" in error && error.code === "PGRST204" && "message" in error && String(error.message).includes("item_type"))
@@ -68,8 +71,9 @@ export default function Workspace({
   const randomMode = page === "review" && searchParams.get("mode") === "random";
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
+    [refreshed,setRefreshed]=useState(false),
     [loadError, setLoadError] = useState(false),
-    [words, setWords] = useState<Word[]>([]),
+    [allWords, setWords] = useState<Word[]>([]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(() => searchParams.get("q") || ""),
@@ -78,11 +82,25 @@ export default function Workspace({
     [revealed, setRevealed] = useState<string | null>(null),
     [session, setSession] = useState<ReviewSession | null>(null),
     [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
-    [autoPronunciation, setAutoPronunciation] = useState(true),
+    [autoChoice,setAutoChoice]=useState<{key:string;enabled:boolean}|null>(null),
     [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
     [now, setNow] = useState(0),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
+  const learning = useCollections(user?.id);
+  const original = learning.collections.find(c=>c.target_language==='en'&&c.explanation_language==='zh-CN');
+  const collection = learning.enabled ? learning.active : original||null;
+  const contextMissing=!!user&&allWords.some(item=>item.collection_id)&&!learning.collections.length;
+  const [allLanguages,setAllLanguages] = useState(false);
+  const sessionScope = collection && collection.id!==original?.id ? collection.id : undefined;
+  const sessionScopeRef = useRef(sessionScope);useEffect(()=>{sessionScopeRef.current=sessionScope;},[sessionScope]);
+  const words = useMemo(()=>contextMissing?[]:page==='library'&&allLanguages&&learning.enabled?allWords.filter(item=>!item.collection_id||learning.collections.some(c=>c.id===item.collection_id)):collectionItems(allWords,collection,collection?.id===original?.id),[allWords,collection,page,allLanguages,learning.enabled,original?.id,contextMissing,learning.collections]);
+  const entryCollection=(item:Word):LearningCollection|undefined=>item.collection_id?learning.collections.find(c=>c.id===item.collection_id):original;
+  const missingContext=learning.enabled&&allWords.some(item=>item.collection_id&&!learning.collections.some(c=>c.id===item.collection_id));
+  const refreshCollections=learning.refresh;
+  useEffect(()=>{if(missingContext)refreshCollections();},[missingContext,refreshCollections]);
+  function selectCollection(id:string|null){if(busy||editing||captureBusy)return;if(id===collection?.id){setAllLanguages(false);return;}stopPronunciation();setMessage('');setRevealed(null);setSession(null);requestedRandom.current=false;setLibraryPage(0);setAllLanguages(id===null);if(id)learning.select(id);}
+  const [captureBusy,setCaptureBusy]=useState(false);
   const [offlineNotice,setOfflineNotice]=useState('');
   const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
   const [deleteHasRecording,setDeleteHasRecording]=useState(false);
@@ -138,7 +156,7 @@ export default function Workspace({
         setMessage(cached ? "Offline · Your saved Library is available. Reviews save on this device." : errorMessage(error, "Could not load your library."));
       }
     } finally {
-      if (version === loadVersion.current) setReady(true);
+      if (version === loadVersion.current) {setReady(true);setRefreshed(true);}
     }
   }, []);
   useEffect(() => {
@@ -180,12 +198,12 @@ export default function Workspace({
         setSession(null);
         requestedRandom.current = false;
 
-        setEditing(null);
+        setEditing(null);setAllLanguages(false);
         setDeleting(null);
         setVoiceTypeEdit(null);setVoiceUploads([]);
         setLibraryPage(0);
         setSyncError(false);setOfflineNotice('');
-        setReady(false);
+        setReady(false);setRefreshed(false);
       }
       setUser(session?.user || null);
       setTimeout(() => void load(session?.user || null), 0);
@@ -211,19 +229,35 @@ export default function Workspace({
     return () => { clearInterval(timer); window.removeEventListener("online", refresh);window.removeEventListener("noted-reviews-synced",refresh); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", visible); if (channel && client) void client.removeChannel(channel); };
   }, [ready, user, load, editing]);
   const account = user?.id || "local-demo";
-  useEffect(()=>{if(ready&&!loadError&&user?.id)rememberLibrary(user.id,words);},[ready,loadError,user?.id,words]);
+  const browseKey=`noted-library-browse-v1:${account}:${collection?.id||'legacy'}`;
+  const [restoredBrowse,setRestoredBrowse]=useState('');
+  const urlQuery=searchParams.get('q');
+  useEffect(()=>{
+    if(page!=='library')return;
+    let stored:{query?:unknown;type?:unknown;page?:unknown;all?:unknown}={};try{stored=JSON.parse(localStorage.getItem(browseKey)||'{}')||{};}catch{}
+    setQuery(urlQuery!==null?urlQuery:typeof stored.query==='string'?stored.query:'');
+    setTypeFilter(urlQuery!==null?'all':stored.type==='word'||stored.type==='expression'?stored.type:'all');
+    setLibraryPage(urlQuery!==null?0:typeof stored.page==='number'&&Number.isInteger(stored.page)&&stored.page>=0?stored.page:0);
+    setAllLanguages(urlQuery===null&&learning.enabled&&stored.all===true);setRestoredBrowse(browseKey);
+  },[page,browseKey,urlQuery,learning.enabled]);
+  useEffect(()=>{if(page==='library'&&restoredBrowse===browseKey)try{localStorage.setItem(browseKey,JSON.stringify({query,type:typeFilter,page:libraryPage,all:allLanguages}));}catch{}},[page,restoredBrowse,browseKey,query,typeFilter,libraryPage,allLanguages]);
+  const pronunciationKey=`noted-auto-pronunciation:${account}:${collection?.id||'legacy'}`;
+  const storedAuto=useMemo(()=>{try{const value=localStorage.getItem(pronunciationKey);return value===null?collection?.preferences.auto_pronunciation!==false:value!=='off';}catch{return collection?.preferences.auto_pronunciation!==false;}},[pronunciationKey,collection?.preferences.auto_pronunciation]);
+  const autoPronunciation=autoChoice?.key===pronunciationKey?autoChoice.enabled:storedAuto;
+  useEffect(()=>{if(ready&&!loadError&&user?.id)rememberLibrary(user.id,allWords);},[ready,loadError,user?.id,allWords]);
   const persistSession = useCallback((next: ReviewSession) => {
-    try { localStorage.setItem(reviewSessionKey(next.account), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
-    void storeReviewSession(next).catch(()=>{});setSession(next);
+    try { localStorage.setItem(reviewSessionKey(next.account,next.collectionId), JSON.stringify(next)); } catch { /* An in-memory session still works when storage is restricted. */ }
+    void storeReviewSession(next).catch(()=>{});if(next.collectionId===sessionScopeRef.current&&next.account===(accountId.current||'local-demo'))setSession(next);
   }, []);
   useEffect(() => {
     const sync = (event: StorageEvent) => {
-      if(event.key===reviewSessionKey(account)){const incoming=readReviewSession(event.newValue,account);if(incoming)setSession(previous=>mergeReviewSessions(incoming,previous));}
+      if(event.key===reviewSessionKey(account,sessionScope)){const incoming=readReviewSession(event.newValue,account,sessionScope);if(incoming)setSession(previous=>mergeReviewSessions(incoming,previous));}
       if (!supabase && event.key === storageKey) void load(null);
     };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
-  }, [account, load]);
+  }, [account,sessionScope, load]);
+  useEffect(()=>{requestedRandom.current=false;setSession(null);setRevealed(null);stopPronunciation();},[collection?.id]);
   const persistLocal = (next: Word[]) => {
     localStorage.setItem(storageKey, JSON.stringify(next));
     setWords(next);
@@ -233,9 +267,10 @@ export default function Workspace({
     saving.current = true;
     setBusy(true);
     setMessage("");
-    const { item_type, ...content } = input;
+    const { item_type,collection_id:destination, ...content } = input;
     const entry = {
       ...content,
+      ...(destination||collection?{collection_id:destination||collection!.id}:{}),
       ...(item_type ? { item_type } : {}),
       word: input.word.trim(),
       meaning: input.meaning.trim(),
@@ -257,15 +292,16 @@ export default function Workspace({
           .single();
         if(error?.code==='23505'&&requestId){
           const previous=await supabase.from('words').select('*').eq('id',requestId).eq('user_id',user.id).maybeSingle();
-          if(previous.data&&previous.data.word===entry.word&&previous.data.meaning===entry.meaning&&previous.data.example===entry.example){data=previous.data;error=null;}
+          if(previous.data&&previous.data.word===entry.word&&previous.data.meaning===entry.meaning&&previous.data.example===entry.example&&(!entry.collection_id||previous.data.collection_id===entry.collection_id)){data=previous.data;error=null;}
         }
         if (error && !entry.meaning && error.code === '23514') throw new Error('Add a meaning before saving. Your text is kept.');
         if (error) throw error;
         if (accountId.current !== user.id) return null;
         created=data;setWords((previous) => [data, ...previous.filter(item=>item.id!==data.id)]);
-      } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...words]);}
-      if(created&&user)void afterSaveAi(user.id,created.word);
-      if(created&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
+      } else {created={...entry,id:crypto.randomUUID()};persistLocal([created,...allWords]);}
+      const savedContext=learning.collections.find(c=>c.id===created?.collection_id)||collection;
+      if(created&&user&&isOriginalEnglish(savedContext))void afterSaveAi(user.id,created.word);
+      if(created&&isOriginalEnglish(savedContext)&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
       setMessage("Word saved. Ready for your next review.");
       return created;
     } catch (error) {
@@ -277,11 +313,11 @@ export default function Workspace({
       saving.current = false;
     }
   }
-  async function saveRelated(request:NewLearningItem){
+  async function saveRelated(request:NewLearningItem,context:LearningCollection|undefined=collection||undefined){
     const {request_id,...input}=request;
     const key=(s:string)=>s.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
-    if(words.some(w=>key(w.word)===key(input.word)))return;
-    try{const result=await saveEntry(input,true,request_id);if(!result)throw new Error('Could not save right now. Please try again.');}
+    if(collectionItems(allWords,context||null,context?.id===original?.id).some(w=>key(w.word)===key(input.word)))return;
+    try{const result=await saveEntry({...input,...(context?{collection_id:context.id}:{})},true,request_id);if(!result)throw new Error('Could not save right now. Please try again.');}
     catch(error){if((error as {code?:string}).code==='23505'&&/This item is already in your Library/i.test((error as {message?:string}).message||'')){void load(user,true);return;}throw error instanceof Error?error:new Error((error as {message?:string}).message||'Could not save. Please try again.');}
   }
   async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string):Promise<AddOutcome> {
@@ -322,9 +358,9 @@ export default function Workspace({
         if (accountId.current !== owner) return false;
         ++loadVersion.current;
         setWords((previous) => previous.filter((w) => w.id !== id));
-      } else persistLocal(words.filter((w) => w.id !== id));
+      } else persistLocal(allWords.filter((w) => w.id !== id));
       let latest=session;
-      try { latest=readReviewSession(localStorage.getItem(reviewSessionKey(account)),account)||latest; } catch { /* Keep the in-memory session. */ }
+      try { latest=readReviewSession(localStorage.getItem(reviewSessionKey(account,sessionScope)),account,sessionScope)||latest; } catch { /* Keep the in-memory session. */ }
       if(latest)persistSession(removeSessionItem(latest,id));
       setRevealed(null);return true;
     } catch (error) {
@@ -347,7 +383,7 @@ export default function Workspace({
         if (error) throw new Error(errorMessage(error, "Could not save your meaning. Please try again."));
         if (accountId.current !== user.id) throw new Error("Your account changed. Please reopen the item.");
         setWords(previous => previous.map(item => item.id === word.id ? data : item));
-      } else persistLocal(words.map(item => item.id === word.id ? { ...item, meaning } : item));
+      } else persistLocal(allWords.map(item => item.id === word.id ? { ...item, meaning } : item));
       setMessage("Meaning updated.");
     } finally { saving.current = false; setBusy(false); }
   }
@@ -374,6 +410,7 @@ export default function Workspace({
     try {
       if (!changes.word)
         throw new Error("Enter a word or expression.");
+      if(captureKey(changes.word)!==captureKey(word.word)&&allWords.some(item=>item.id!==word.id&&item.collection_id===word.collection_id&&captureKey(item.word)===captureKey(changes.word)))throw new Error('Already in this Library. Choose a different entry.');
       let updated = { ...word, ...changes };
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
@@ -389,7 +426,7 @@ export default function Workspace({
         );
       } else
         persistLocal(
-          words.map((item) => (item.id === word.id ? updated : item)),
+          allWords.map((item) => (item.id === word.id ? updated : item)),
         );
       setEditing(null);setVoiceTypeEdit(null);
       setMessage("Word updated.");
@@ -409,7 +446,7 @@ export default function Workspace({
     setBusy(true);
     setMessage("");
     let updated = rateItem(word, rating);
-    const currentSession = randomMode ? session : null;
+    const currentSession = randomMode ? visibleSession : null;
     const entry = currentSession?.queue.find(c => c.id === word.id && !currentSession.completed.includes(c.eventId));
     const attemptKey = `noted-due-attempt-v1:${account}:${word.id}:${reviewState(word)?.review_count ?? 0}`;
     let eventId = entry?.eventId;
@@ -421,7 +458,7 @@ export default function Workspace({
     try {
       if (supabase) {
         if (!user) throw new Error("Please sign in first.");
-        const localReview=async()=>{const local=await enqueueReview(user.id,word,rating,eventId!,words,Date.now(),currentSession);if(accountId.current!==owner)return;updated=local.event.updated;rememberLibrary(user.id,local.items,false);setWords(local.items);setOfflineNotice('Review saved on this device · Waiting to sync.');};
+        const localReview=async()=>{const local=await enqueueReview(user.id,word,rating,eventId!,allWords,Date.now(),currentSession);if(accountId.current!==owner)return;updated=local.event.updated;rememberLibrary(user.id,local.items,false);setWords(local.items);setOfflineNotice('Review saved on this device · Waiting to sync.');};
         if(!navigator.onLine||(await pendingReviews(user.id).catch(()=>[])).length){await localReview();}
         else {
         let { data, error } = await supabase.rpc("record_learning_review", {
@@ -453,14 +490,14 @@ export default function Workspace({
         if (!events.some((e: { id: string }) => e.id === eventId)) {
           events.push({ id: eventId, learning_item_id: word.id, reviewed_at: new Date().toISOString(), familiarity_rating: rating === "sure" ? "sure" : "not_sure" });
           localStorage.setItem(DEMO_EVENTS_KEY, JSON.stringify(events));
-          persistLocal(words.map(w => w.id === word.id ? updated : w));
+          persistLocal(allWords.map(w => w.id === word.id ? updated : w));
         }
       }
       focusNextCard.current = true;
       setRevealed(null);
       if (currentSession && entry) {
         let latest: ReviewSession | null = null;
-        try { latest = readReviewSession(localStorage.getItem(reviewSessionKey(account)), account); } catch { /* In-memory sessions remain usable. */ }
+        try { latest = readReviewSession(localStorage.getItem(reviewSessionKey(account,sessionScope)), account,sessionScope); } catch { /* In-memory sessions remain usable. */ }
         if (latest && latest.id !== currentSession.id) setSession(latest);
         else persistSession(completeSessionCard(latest || currentSession, entry.eventId));
       }
@@ -474,11 +511,12 @@ export default function Workspace({
   }
 
   const due = useMemo(() => words.filter((w) => new Date(w.due_at).getTime() <= now), [words, now]);
-  const randomQueue = session?.queue ?? null;
-  const randomPosition = session ? session.queue.findIndex(entry => !session.completed.includes(entry.eventId) && words.some(word => word.id === entry.id)) : 0;
+  const visibleSession=session?.account===account&&session.collectionId===sessionScope?session:null;
+  const randomQueue = visibleSession?.queue ?? null;
+  const randomPosition = visibleSession ? visibleSession.queue.findIndex(entry => !visibleSession.completed.includes(entry.eventId) && words.some(word => word.id === entry.id)) : 0;
   const reviewCard = randomPosition >= 0 ? randomQueue?.[randomPosition] : undefined;
-  const sessionTotal = session?.queue.filter(entry => session.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
-  const reviewedCount = session?.completed.length ?? 0;
+  const sessionTotal = visibleSession?.queue.filter(entry => visibleSession.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
+  const reviewedCount = visibleSession?.completed.length ?? 0;
   const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
   useEffect(()=>{
     if(deleting||!deleteFocusPending.current)return;
@@ -499,35 +537,35 @@ export default function Workspace({
     const queue = createReviewQueue(words);
     for (const entry of queue.slice(0, 2)) {
       const word = words.find(item => item.id === entry.id);
-      if (word) void preloadPronunciation(word.word);
+      if (word) void preloadPronunciation(word.word,undefined,collection?.target_language);
     }
-    persistSession(newReviewSession(account, queue));
+    persistSession(newReviewSession(account, queue,sessionScope));
     setRevealed(null);
     setMessage("");
   }
   useEffect(() => {
     if (!randomMode) { requestedRandom.current = false; return; }
-    if (ready && (!supabase || user) && !loadError && words.length && !requestedRandom.current) {
+    if (ready && learning.ready && (!supabase || user) && !loadError && words.length && !requestedRandom.current) {
       requestedRandom.current = true;
       let restored: ReviewSession | null = null;
-      try { restored = readReviewSession(localStorage.getItem(reviewSessionKey(account)), account); } catch { /* Restricted storage. */ }
+      try { restored = readReviewSession(localStorage.getItem(reviewSessionKey(account,sessionScope)), account,sessionScope); } catch { /* Restricted storage. */ }
       let cancelled=false,finished=false;const local=restored;
-      void storedReviewSession(account).catch(()=>null).then(stored=>{if(cancelled)return;finished=true;const best=local?mergeReviewSessions(local,stored):stored;persistSession(best||newReviewSession(account,createReviewQueue(words)));});
+      void storedReviewSession(account,sessionScope).catch(()=>null).then(stored=>{if(cancelled)return;finished=true;const best=local?mergeReviewSessions(local,stored):stored;persistSession(best||newReviewSession(account,createReviewQueue(words),sessionScope));});
       return()=>{cancelled=true;if(!finished)requestedRandom.current=false;};
     }
-  }, [randomMode, ready, user, loadError, words, account, persistSession]);
+  }, [randomMode, ready, user, loadError, words, account,sessionScope,learning.ready, persistSession]);
   useEffect(() => {
     if (page !== "review") return;
-    if (card) void preloadPronunciation(card.word);
+    if (card) void preloadPronunciation(card.word,undefined,collection?.target_language);
     if (randomMode) {
       for (const entry of randomQueue?.filter(entry => !session?.completed.includes(entry.eventId) && entry.id !== card?.id).slice(0, 2) ?? []) {
         const candidate = words.find(word => word.id === entry.id);
-        if (candidate) void preloadPronunciation(candidate.word);
+        if (candidate) void preloadPronunciation(candidate.word,undefined,collection?.target_language);
       }
     } else {
-      for (const candidate of due.slice(1, 3)) void preloadPronunciation(candidate.word);
+      for (const candidate of due.slice(1, 3)) void preloadPronunciation(candidate.word,undefined,collection?.target_language);
     }
-  }, [page, randomMode, card, randomQueue, randomPosition, words, due, session?.completed]);
+  }, [page, randomMode, card, randomQueue, randomPosition, words, due, session?.completed,collection?.target_language]);
   const [view, setView] = useState("");
   useEffect(() => {
     const timer = setTimeout(
@@ -574,17 +612,8 @@ export default function Workspace({
           configured.
         </div>
       )}
-      <div className="page-title">
-        <h1>
-          {page === "add"
-            ? "Add a word."
-            : page === "review"
-              ? "Let’s make it stick."
-              : "Library."}
-        </h1>
-
-      </div>
-      {page !== "add" && (
+      <LearningHeader title={page==='add'?'Add.':page==='review'?'Review.':'Library.'} legacyTitle={page==='add'?'Add a word.':page==='review'?'Let’s make it stick.':'Library.'} enabled={learning.enabled} collections={learning.collections} active={collection} disabled={busy||!!editing||captureBusy} onSelect={selectCollection}/>
+      {page==='library'&&learning.enabled?<Link href={searchParams.get('review')==='random'?'/review?mode=random':'/review'} className="library-back">← Review</Link>:page !== "add" && (
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
           {page === "review" ? <>
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
@@ -599,7 +628,7 @@ export default function Workspace({
             <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Due words</SelectableLink>
             <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Random review</SelectableLink>
           </>}
-          <SelectableLink className="wb-control wb-control-outline" selected={page === "library"} href="/library"
+          <SelectableLink className={learning.enabled?"library-inline-link":"wb-control wb-control-outline"} selected={page === "library"} href={learning.enabled?`/library?review=${randomMode?'random':'due'}`:"/library"}
             aria-disabled={busy || undefined} onClick={event => { if (busy) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
         </nav>
       )}
@@ -607,15 +636,15 @@ export default function Workspace({
       {message && <Feedback>{message}</Feedback>}
       {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
-      {page === "add" ? (
-        <><AddWordFlow key={account}
+      {contextMissing?<StatePanel title="Your languages couldn’t be loaded." description="Your Library is safe. Reconnect and try again before choosing a learning language." actionLabel="Try again" onAction={learning.refresh}/> : page === "add" ? (
+        <><CollectionAddFlow key={account+':'+(collection?.id||'legacy')} owner={user?.id} collection={collection||undefined} onInteractionBusy={setCaptureBusy}
           busy={busy}
-          canSave={ready && (!supabase || !!user)}
-          checkingAccount={!ready}
+          canSave={ready && learning.ready && (!supabase || !!user)}
+          checkingAccount={!ready||!learning.ready}
           library={words}
           onManualSubmit={add}
         /></>
-      ) : !ready ? (
+      ) : !ready||!learning.ready ? (
         <LoadingState />
       ) : supabase && !user ? (
         <StatePanel
@@ -631,11 +660,11 @@ export default function Workspace({
           description="Your saved words haven’t been removed. Check your connection and try again."
           actionLabel="Try again"
           onAction={() => {
-            setReady(false);
+            setReady(false);setRefreshed(false);
             void load(user);
           }}
         />
-      ) : (
+      ) : collection&&typeof navigator!=='undefined'&&!navigator.onLine&&!words.length ? <StatePanel title={`No cached ${learningLanguages[collection.target_language].label} items.`} description="Connect to load this Collection. Your other prepared languages remain available."/> : (
         <>
           {page === "library" && (
             <>
@@ -658,21 +687,22 @@ export default function Workspace({
                   </Link>
                 </Card>
               )}
+              <div className="library-tools">
+                <ImeInput
+                  aria-label="Search library"
+                  ref={librarySearch}
+                  placeholder="Search words or meanings…"
+                  value={query} onImeStateChange={setCaptureBusy}
+                  onValueChange={(value) => { startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
+                />
+              </div>
+              {learning.enabled&&learning.collections.length>1&&<label className="library-scope">Browse<select aria-label="Library browsing scope" value={allLanguages?'all':'current'} onChange={event=>{setAllLanguages(event.target.value==='all');setLibraryPage(0);}}><option value="current">Current language</option><option value="all">All languages</option></select></label>}
               <div className="library-metadata wb-ui-text">
                 <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
                 <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
               </div>
               <div className="library-filters" role="group" aria-label="Library content type">
                 {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => { setTypeFilter(type); setLibraryPage(0); }}>{label}</SelectableButton>)}
-              </div>
-              <div className="library-tools">
-                <ImeInput
-                  aria-label="Search library"
-                  ref={librarySearch}
-                  placeholder="Search words or meanings…"
-                  defaultValue={query}
-                  onValueChange={(value) => { startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
-                />
               </div>
               <div ref={libraryResults} tabIndex={-1} role="region" className="library-results" aria-label="Library results" aria-busy={searchPending}>
               {displayedWords.map((w) => (
@@ -731,15 +761,16 @@ export default function Workspace({
                       </form>
                     ) : (
                       <div className="wb-word-content">
-                        {itemType(w)==='expression'?<div className="expression-title"><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word}/></div>:<><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word}/></>}
+                        {allLanguages&&entryCollection(w)&&<small className="wb-ui-text">{learningLanguages[entryCollection(w)!.target_language].label}</small>}
+                        {itemType(w)==='expression'?<div className="expression-title"><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word} language={entryCollection(w)?.target_language}/></div>:<><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word} language={entryCollection(w)?.target_language}/></>}
                         <p className="wb-learning-content">{w.meaning}</p>
                         {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                         {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        <ContextExample item={w} owner={account}/>
+                        <ContextExample item={w} owner={account} lookup={isOriginalEnglish(entryCollection(w))}/>
                       </div>
                     )}
                     <div className="word-actions">
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={w.word} meaning={w.meaning} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
+                      <DictionaryButton onRelatedSave={input=>saveRelated(input,entryCollection(w))} savedWords={collectionItems(allWords,entryCollection(w)||null,true).map(item=>item.word)} word={w.word} meaning={w.meaning} collection={entryCollection(w)} example={w.example} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
                       <button
                         className="text-button"
                         disabled={busy || editing === w.id}
@@ -784,7 +815,7 @@ export default function Workspace({
           )}
           {page === "review" && words.length > 0 && (
             <SelectableToggle className="review-auto-pronunciation" checked={autoPronunciation}
-              onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoPronunciation(event.target.checked); }}>
+              onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoChoice({key:pronunciationKey,enabled:event.target.checked});try{localStorage.setItem(pronunciationKey,event.target.checked?'on':'off');}catch{} }}>
               Auto pronunciation
             </SelectableToggle>
           )}
@@ -802,13 +833,13 @@ export default function Workspace({
                 >
                   {randomMode&&<div className="review-card-tools"><button type="button" className="review-delete" aria-label="Delete entry" disabled={busy} onClick={()=>void requestDelete(card)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></button></div>}
                   <h2 className="wb-learning-content">{prompt}</h2>
-                  {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio text={card.word} automatic={autoPronunciation} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation text={card.word} automatic={autoPronunciation}/>)}
+                  {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
                   {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
-                      <ContextExample item={card} owner={account}/>
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      <ContextExample item={card} owner={account} lookup={isOriginalEnglish(collection)}/>
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

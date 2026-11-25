@@ -1,3 +1,4 @@
+import {learningLanguages,type TargetLanguage} from './collections';
 import {dictionaryPayload} from './dictionary-client';
 import { audioSource } from './audio-source';
 import { pauseContextVideos } from './learning-media';
@@ -89,7 +90,8 @@ function discardRecording(source: string) {
   recordingFiles.delete(source);readyFiles.delete(source);
   void pending.then(url => { if (url) { retiredFiles.add(url); releaseRecordingFiles(); } });
 }
-export async function preloadPronunciation(text: string, accent: Accent = 'UK') {
+export async function preloadPronunciation(text: string, accent: Accent = 'UK',language:TargetLanguage='en') {
+  if(language!=='en')return;
   if (typeof window === 'undefined') return;
   const key = normalizedKey(text);
   const known = cache.get(key);
@@ -219,14 +221,15 @@ function finish(request: Request, status: PronunciationStatus) {
   request.cleanups.splice(0).forEach(cleanup => cleanup());
   request.report(status);
 }
-async function speak(request: Request, text: string, accent: Accent) {
+async function speak(request: Request, text: string, accent: Accent,language:TargetLanguage='en') {
   if(!active(request))return;
   if(!speechSupported()){finish(request,'error');return;}
-  const synth=window.speechSynthesis,locale=accent==='US'?'en-US':PRONUNCIATION_SETTINGS.locale;
+  const synth=window.speechSynthesis,locale=language==='en'?(accent==='US'?'en-US':PRONUNCIATION_SETTINGS.locale):learningLanguages[language].locale;
   let attempts=0,started=false,permissionBlocked=false,timer:ReturnType<typeof setTimeout>|undefined;
   const tried=new Set<string>();
   const identity=(voice:SpeechSynthesisVoice)=>voice.voiceURI||voice.name||voice.lang;
-  const nextVoice=()=>selectEnglishVoice(voiceCatalog().filter(v=>!tried.has(identity(v))),locale);
+  const choose=(catalog:SpeechSynthesisVoice[])=>language==='en'?selectEnglishVoice(catalog,locale):catalog.filter(v=>v.lang.toLowerCase().replaceAll('_','-').split('-')[0]===locale.toLowerCase().split('-')[0]).sort((a,b)=>Number(b.lang===locale)-Number(a.lang===locale))[0];
+  const nextVoice=()=>choose(voiceCatalog().filter(v=>!tried.has(identity(v))));
   const blocked=()=>{clearTimeout(timer);if(!active(request))return;permissionBlocked=true;request.speech=undefined;try{synth.cancel();}catch{}request.retry=()=>{request.retry=undefined;void speak(request,text,accent)};request.report('blocked');};
   const launch=(voice?:SpeechSynthesisVoice)=>{
     if(!active(request))return;clearTimeout(timer);attempts++;started=false;
@@ -242,7 +245,7 @@ async function speak(request: Request, text: string, accent: Accent) {
     utterance.onerror=event=>{if(!valid())return;clearTimeout(timer);if(event.error==='not-allowed'){blocked();return;}
       const retryable=['voice-unavailable','language-unavailable','synthesis-failed'].includes(event.error),alternative=nextVoice();
       if(!started&&attempts<2&&alternative&&retryable)launch(alternative);
-      else if(!started&&attempts<2&&retryable&&!voiceCatalog().some(v=>/^en(?:[-_]|$)/i.test(v.lang))){
+      else if(!started&&attempts<2&&retryable&&!choose(voiceCatalog())){
         request.speech=undefined;request.report('loading');timer=setTimeout(()=>{if(!active(request))return;const loaded=nextVoice();if(loaded)launch(loaded);else finish(request,'error');},1800);
       }else finish(request,'error');
     };
@@ -255,19 +258,20 @@ async function speak(request: Request, text: string, accent: Accent) {
   };
   const changed=()=>{if(!active(request)||permissionBlocked||started||attempts>=2)return;if(synth.speaking)return;const candidate=nextVoice();if(candidate)launch(candidate);};
   synth.addEventListener('voiceschanged',changed);request.cleanups.push(()=>{clearTimeout(timer);synth.removeEventListener('voiceschanged',changed);});
-  launch(selectEnglishVoice(voiceCatalog(),locale));
+  launch(choose(voiceCatalog()));
 }
-export async function pronounce({ owner, text, accent = 'UK', recording, audio, report, automatic = false }: {
-  owner: symbol; text: string; accent?: Accent; recording?: string | null;
+export async function pronounce({ owner, text, accent = 'UK', recording, audio, report, automatic = false,language='en' }: {
+  owner: symbol; text: string; accent?: Accent; recording?: string | null;language?:TargetLanguage;
   audio: HTMLAudioElement; report: (status: PronunciationStatus) => void; automatic?: boolean;
 }) {
   pauseContextVideos();
   stopPronunciation();
-  const title = englishText(text);
-  if (!/\p{Script=Latin}/u.test(title)) return;
+  const title = language==='en'?englishText(text):text.normalize('NFKC').trim();
+  if (!/[\p{Script=Latin}\p{Script=Han}]/u.test(title)) return;
   const request: Request = { owner, audio, report, automatic,cleanups: [] };
   current = request;
   report('loading');
+  if(language!=='en'){await speak(request,title,accent,language);return;}
   let source = completeRecording(recording,title);
   let candidate=false;
   if (!source) {

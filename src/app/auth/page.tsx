@@ -4,6 +4,8 @@ import {ImeInput} from '@/components/ui/ime-field';
 import {imeBlocksSubmit} from '@/lib/ime';
 import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
+import {LearningHeader} from '@/components/collections/learning-header';
+import {useCollections} from '@/lib/use-collections';
 import {MyLanguages} from '@/components/collections/my-languages';
 import {AiSettings} from "@/components/dictionary/ai-settings";
 import { LearningCalendar } from "@/components/learning/learning-calendar";
@@ -108,16 +110,16 @@ function AuthForm() {
       setBusy(false);
     }
   }
+  const collections=useCollections(user?.id);
   if (checkingAccount) return <AppShell active="Profile" compact><LoadingState label="Checking your account…" /></AppShell>;
   if (user) return <AppShell active="Profile" compact>
-    <div className="profile-header wb-ui-text">
-      <h1>Profile.</h1>
-      <section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>
-    </div>
+    <LearningHeader title="Profile." enabled={collections.enabled}/>
+    {!collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}
     {message && <Feedback>{message}</Feedback>}
     <MyLanguages key={"languages:"+user.id} owner={user.id}/>
     <LearningCalendar key={user.id} account={user.id} initiallyOpen />
     <AiSettings key={"ai:"+user.id} user={user}/>
+    {collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}
   </AppShell>;
   return (
     <AppShell active="Profile" compact showBranding>
