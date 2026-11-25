@@ -1,10 +1,17 @@
 # Bilingual Dictionary / Translator deployment
 
-The Add-page Dictionary / Translator works without Gemini. Searches are explicit,
-use the existing dictionary followed by whole-query MyMemory translation, and do
-not replace the unsaved Add form. The free Chinese-to-English translator supplies
+Add now uses one bilingual query and one editable lavender card preview. English
+entries appear instantly with debounced dictionary meaning suggestions; Chinese
+translation and AI alternatives require explicit actions. Whole-query MyMemory
+translation and manual English saving work without Gemini. The original query
+stays intact while selecting English candidates and editing My Meaning. The
+preview is the saved state; there is no separate translation form or preview copy.
+The free Chinese-to-English translator supplies
 one primary translation; nuanced alternatives require the optional AI provider.
 Provider coverage and free quotas vary. No translations or attribution are invented.
+
+This unified Add change requires no additional database migration. AI still needs
+the separate optional setup below; it is not enabled by deploying this UI.
 
 ## Production Discover status
 

@@ -14,15 +14,15 @@ async function setup(page:Page,count=3){
 }
 test.describe('Integrated Add title and Random Review deletion',()=>{
  test.skip(!cloudUrl,'Uses isolated authenticated fixtures');
- for(const width of [320,390,1440])test(`editable title, divider, clear and multiline at ${width}`,async({page})=>{
+ for(const width of [320,390,1440])test(`bilingual query, preview title, divider, clear and multiline at ${width}`,async({page})=>{
   await page.setViewportSize({width,height:844});await setup(page);await page.goto('/add');const input=page.getByRole('combobox',{name:'Word or phrase'});
-  await expect(input).toHaveAttribute('placeholder','Type a word or phrase…');await expect(page.getByRole('button',{name:'Clear English text'})).toHaveCount(0);
+  await expect(input).toHaveAttribute('placeholder','Type in English or Chinese…');await expect(page.getByRole('button',{name:'Clear input'})).toHaveCount(0);
   const style=await input.evaluate(el=>{const c=getComputedStyle(el);return {background:c.backgroundColor,radius:c.borderRadius,border:c.borderTopWidth,divider:c.borderBottomColor,outline:c.outlineStyle}});
   expect(style).toMatchObject({background:'rgba(0, 0, 0, 0)',radius:'0px',border:'0px',outline:'none'});await input.screenshot({path:`/tmp/noted-title-empty-${width}.png`});
   await input.fill('subtle');await input.focus();await expect(input).toHaveCSS('outline-style','none');expect(await input.evaluate(el=>getComputedStyle(el).borderBottomColor)).not.toBe(style.divider);
-  expect(await input.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(36);await input.screenshot({path:`/tmp/noted-title-word-${width}.png`});const short=(await input.boundingBox())!.height;
+  expect(await page.getByRole('region',{name:'Vocabulary card preview'}).getByRole('heading').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(36);await input.screenshot({path:`/tmp/noted-title-word-${width}.png`});const short=(await input.boundingBox())!.height;
   await input.fill('I wouldn’t put it that way, even if you asked me directly.\nAnother natural expression to remember.');await page.waitForTimeout(450);expect((await input.boundingBox())!.height).toBeGreaterThan(short);
-  expect(await input.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);const clear=page.getByRole('button',{name:'Clear English text'}),button=(await clear.boundingBox())!,bounds=(await input.boundingBox())!;expect(button.x).toBeGreaterThan(bounds.x+bounds.width-60);await input.screenshot({path:`/tmp/noted-title-expression-${width}.png`});
+  expect(await input.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);const clear=page.getByRole('button',{name:'Clear input'}),button=(await clear.boundingBox())!,bounds=(await input.boundingBox())!;expect(button.x).toBeGreaterThan(bounds.x+bounds.width-60);await input.screenshot({path:`/tmp/noted-title-expression-${width}.png`});
   await clear.click();await expect(input).toHaveValue('');await expect(input).toBeFocused();await expect(clear).toHaveCount(0);
  });
  test('keyboard-sized viewport keeps the editor visible and Save above the navigation/accessory region',async({page})=>{

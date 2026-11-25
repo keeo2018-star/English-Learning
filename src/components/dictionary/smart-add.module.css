@@ -48,3 +48,18 @@
 .typeControl select { width:auto;max-width:100%;margin:0;min-height:44px;padding:8px 30px 8px 12px;border:1px solid rgb(0 0 0 / 24%);border-radius:var(--wb-radius-pill);background:transparent;font-size:12px; }
 .typeControl select { appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23161616' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center; }
 .typeControl select:focus-visible { outline:none;box-shadow:none;border-color:var(--wb-black);background-color:rgb(0 0 0 / 6%); }
+/* One bilingual query, followed by the editable card that is actually saved. */
+form.unified { padding:0;gap:20px;background:transparent; }
+.queryArea { display:grid;gap:10px;min-width:0; }
+.queryArea > label { font-size:13px; }
+.field textarea.queryInput, .field textarea.queryInput[data-scale] { font-size:1.125rem;font-weight:400;line-height:1.4;padding-top:12px;min-height:54px; }
+.resolveActions { display:flex;flex-wrap:wrap;gap:8px; }
+.resolveActions button { min-height:44px;font-size:13px;padding:10px 18px; }
+.candidates { display:grid;gap:8px; }
+.candidates button { display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;background:transparent;color:var(--wb-black);border:1px solid rgb(0 0 0 / 24%);padding:12px 16px;min-height:48px;white-space:normal;overflow-wrap:anywhere; }
+.candidates button[aria-pressed=true] { background:var(--wb-black);color:var(--wb-offwhite);border-color:var(--wb-black); }
+.candidates small { font-size:12px;line-height:1.6;font-weight:400; }
+.preview { display:grid;gap:16px;min-width:0;padding:var(--wb-card-padding);background:var(--wb-lavender,var(--noted-lavender,#c9b9f5)); }
+.previewTitle { margin:0;padding-bottom:16px;border-bottom:1px solid rgb(0 0 0 / 24%);font-size:clamp(2.25rem,9vw,3.25rem);font-weight:var(--wb-bold);line-height:1.16;letter-spacing:normal;overflow-wrap:anywhere;white-space:pre-wrap; }
+.previewExample { margin:0;font-size:1rem;line-height:1.65;overflow-wrap:anywhere; }
+.previewExample small { display:block;margin-top:8px;font-size:12px; }

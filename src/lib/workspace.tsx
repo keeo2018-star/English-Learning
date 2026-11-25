@@ -23,7 +23,7 @@ import { SelectableLink, SelectableButton, SelectableToggle } from "@/components
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
 import { AddWordFlow } from "@/components/dictionary/add-word-flow";
-import { DictionarySearchButton, DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
@@ -268,11 +268,11 @@ export default function Workspace({
   }
   async function add(event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string):Promise<AddOutcome> {
     event.preventDefault();const form=event.currentTarget,values=new FormData(form);
-    const content={word:String(values.get('word')||''),meaning:String(values.get('meaning')||''),example:String(values.get('example')||''),item_type:values.get('item_type')==='auto'?null:String(values.get('item_type')) as 'word'|'expression'};
+    const content={word:String(values.get('word')||''),meaning:String(values.get('meaning')||''),example:String(values.get('example')||''),item_type:values.get('item_type')==='auto'?itemType({word:String(values.get('word')||'')}):String(values.get('item_type')) as 'word'|'expression'};
     if(textLength(content.word.trim())>ITEM_TEXT_LIMIT||textLength(content.example)>CONTEXT_TEXT_LIMIT)return {saved:false,message:'Extract or shorten the item/context before saving. Your text has been kept.'};
     if(words.some(item=>item.id!==requestId&&captureKey(item.word)===captureKey(content.word)))return {saved:false,duplicate:true,message:'Already in your Library'};
     try{
-      const result=await saveEntry(content,true,requestId);if(!result)return {saved:false,message:'Another save is in progress. Please retry.'};
+      const result=await saveEntry({...content,...(values.get('example_source')==='ai'?{example_source:'ai' as const}:{})},true,requestId);if(!result)return {saved:false,message:'Another save is in progress. Please retry.'};
       setMessage('Added to Library');
       if(voice){setBusy(true);try{await uploadVoice(result.id,voice);if(accountId.current===user?.id)setMessage('Expression and voice note saved.');}catch(error){if(accountId.current===user?.id){setVoiceUploads(previous=>[...previous,{owner:user?.id||'local-demo',item:result,draft:voice,error:voiceError(error)}]);setMessage('Expression saved. Voice note upload needs retry.');}}finally{setBusy(false);}}
       form.reset();return {saved:true};
@@ -584,7 +584,7 @@ export default function Workspace({
       {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
       {page === "add" ? (
-        <><DictionarySearchButton key={account} onSave={ready&&(!supabase||user)?saveRelated:undefined} savedWords={dictionarySavedWords}/><AddWordFlow
+        <><AddWordFlow key={account}
           busy={busy}
           canSave={ready && (!supabase || !!user)}
           checkingAccount={!ready}
