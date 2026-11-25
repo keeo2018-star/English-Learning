@@ -29,3 +29,10 @@ export function SelectableToggle({ children, checked, onChange, className = '' }
     <span aria-hidden="true">{checked ? '✓' : '○'}</span>{children}
   </label>;
 }
+
+export function SwitchControl({ label, ...props }: Omit<ComponentProps<'input'>,'type'|'role'|'className'> & { label: string }) {
+  return <label className="wb-switch-row">
+    {label}
+    <input {...props} className="wb-switch" type="checkbox" role="switch"/>
+  </label>;
+}

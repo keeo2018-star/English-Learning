@@ -51,7 +51,7 @@ export function StatePanel({
       color={color}
       className={`panel wb-state ${completed ? "wb-state-completed" : ""}`}
     >
-      <Pill>{eyebrow}</Pill>
+      {eyebrow && <Pill>{eyebrow}</Pill>}
       <h2>{title}</h2>
       <p>{description}</p>
       {href && (

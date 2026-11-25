@@ -1,4 +1,8 @@
 "use client";
+import { useEffect, useState } from 'react';
+import { LearningHeader } from '@/components/collections/learning-header';
+import { supabase } from '@/lib/supabase';
+import { useCollections } from '@/lib/use-collections';
 import Link from "next/link";
 import { prepareReviewPronunciation,stopPronunciation } from "@/lib/pronunciation";
 import { AppShell } from "@/components/ui/app-shell";
@@ -6,10 +10,17 @@ import { ArrowIcon } from "@/components/ui/primitives";
 import styles from "./home.module.css";
 
 export default function Home() {
-  return <AppShell hideAddAction>
+  const [owner, setOwner] = useState<string|null>(null);
+  const learning = useCollections(owner);
+  useEffect(() => {
+    const session = supabase?.auth.onAuthStateChange((_event, data) => setOwner(data?.user.id ?? null));
+    return () => session?.data.subscription.unsubscribe();
+  }, []);
+  return <AppShell hideAddAction showBranding={false}>
+    <LearningHeader brand title={<Link href="/" className="wb-wordmark" aria-label="Noted home">Noted</Link>}
+      enabled={learning.enabled} collections={learning.collections} active={learning.active} onSelect={learning.select}/>
     <section className={`${styles.home} wb-ui-text`} aria-labelledby="home-title">
       <div className={styles.welcome}>
-        <p className={styles.eyebrow}><span aria-hidden="true" />YOUR DAILY WORD SPACE</p>
         <h1 id="home-title">Make room for<br /><span className={styles.highlight}>new words.</span></h1>
         <p className={styles.intro}>Keep a little. Come back for more.</p>
       </div>

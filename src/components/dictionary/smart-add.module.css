@@ -101,3 +101,6 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .personalNote textarea { min-height: 56px; margin-top: 6px; background: var(--wb-offwhite); }
 .previewExample::before, .previewExample::after { content: none; }
 .personalNote textarea { font-weight: 400; }
+
+.queryArea > .contextField > summary { min-height: var(--wb-touch); display: flex; align-items: center; font-size: var(--wb-size-label); }
+.queryArea .contextField textarea { min-height: 68px; }

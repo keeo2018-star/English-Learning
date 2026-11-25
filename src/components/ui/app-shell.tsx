@@ -39,7 +39,7 @@ export function AppShell({
         </footer>}
       </div>
       <KeyboardViewport />
-      <Navigation active={active} />
+      <div className="wb-app-navigation"><div id="wb-toast-anchor" role="status" aria-live="polite" aria-atomic="true" /><Navigation active={active} /></div>
     </div>
   );
 }

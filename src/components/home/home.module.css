@@ -1,18 +1,8 @@
 .home {
-  max-width: 960px;
+  max-width: var(--wb-content-width);
   margin: 0 auto;
   padding: 8px 0 0;
 }
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  font-weight: var(--wb-medium);
-  letter-spacing: .045em;
-  margin: 0 0 20px;
-}
-.eyebrow > span { width: 7px; height: 7px; background: var(--noted-lime); border-radius: 50%; }
 .home h1 {
   font-size: clamp(40px, 7vw, 72px);
   font-weight: var(--wb-bold);

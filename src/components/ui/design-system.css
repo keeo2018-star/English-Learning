@@ -26,19 +26,28 @@
   --wb-space-9: 96px;
   /* Shared layout rhythm: 8 / 16 / 24 / 32 / 48. */
   --wb-page-gutter: 20px;
+  --wb-content-width: 960px;
   --wb-card-padding: 24px;
   --wb-learning-padding: 24px;
   --wb-learning-radius: 24px;
   --wb-learning-width: 760px;
   --wb-learning-word-size: clamp(40px, 7vw, 80px);
   --wb-control-height: 48px;
+  --wb-touch: 44px;
+  --wb-border: 1px solid var(--wb-black);
+  --wb-divider: 1px solid rgb(22 22 22 / .15);
+  --wb-size-page: clamp(1.75rem, 5vw, 2rem);
+  --wb-size-heading: clamp(1.375rem, 4vw, 1.5rem);
+  --wb-size-support: .875rem;
+  --wb-size-label: .875rem;
+  --wb-size-small: .8125rem;
   --wb-control-gap: var(--wb-space-2);
   --wb-section-gap: var(--wb-space-5);
   --wb-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
-  --wb-radius-card: 32px;
+  --wb-radius-card: var(--wb-learning-radius);
   --wb-radius-pill: 999px;
   --wb-radius-small: 16px;
-  --wb-size-meta: 11px;
+  --wb-size-meta: .75rem;
   --wb-size-body: 16px;
   --wb-size-section: clamp(32px, 4vw, 52px);
 }

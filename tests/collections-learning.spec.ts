@@ -63,8 +63,43 @@ test('English 17/30 resumes after a French session; offline ratings retain both 
  await choose(page,'French');await page.getByRole('button',{name:'Start another review',exact:true}).click();await page.getByRole('button',{name:'Reveal answer',exact:true}).click();await page.getByRole('button',{name:'Sure',exact:true}).click();await choose(page,'English');await expect(page.getByRole('progressbar',{name:'Items reviewed'})).toHaveAttribute('value','18');await context.setOffline(false);await expect.poll(()=>f.ratings.size).toBe(20);
 });
 
-test('Profile creates a context, edits independent levels, reorders and Calendar filters without changing active language',async({page})=>{
- test.skip(!cloudUrl);const f=await setup(page,{one:true});await page.goto('/add');await expect(switcher(page)).toHaveCount(0);await page.goto('/auth');await page.getByRole('button',{name:'Add a language',exact:true}).click();await page.getByLabel('Language to learn',{exact:true}).selectOption('fr');await page.getByLabel('Approximate level',{exact:true}).selectOption('A1');await page.getByRole('button',{name:'Add French',exact:true}).click();const french=page.locator('.language-settings').filter({hasText:/French.*A1/});await expect(french).toBeVisible();await french.locator('summary').click();await page.getByLabel('Level for French',{exact:true}).selectOption('B1');await expect(page.locator('.language-settings summary').filter({hasText:/French.*B1/})).toBeVisible();expect(f.collections.find(c=>c.target_language==='en')!.proficiency_level).toBe('unspecified');await page.getByRole('button',{name:'Move French up',exact:true}).click();await expect(page.locator('.language-settings summary').first()).toContainText('French');await page.getByLabel('Calendar language',{exact:true}).selectOption(en.id);await expect.poll(()=>f.calendars.length).toBeGreaterThan(0);expect(f.calendars.at(-1)?.p_collection).toBe(en.id);await page.goto('/add');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');
+test('Profile settings persist independently and ordering stays separate from preferences',async({page})=>{
+ test.skip(!cloudUrl);
+ const f=await setup(page,{one:true});
+ await page.goto('/auth');
+ await page.getByRole('button',{name:'Add a language',exact:true}).click();
+ await page.getByLabel('Language to learn',{exact:true}).selectOption('fr');
+ await page.getByLabel('Approximate level',{exact:true}).selectOption('A1');
+ await page.getByRole('button',{name:'Add French',exact:true}).click();
+ const french=page.getByRole('button',{name:'Settings for French'});
+ await expect(french).toContainText('A1');
+ await french.click();
+ const sheet=page.getByRole('dialog',{name:'Language settings'});
+ await expect(sheet).toBeVisible();
+ await page.getByLabel('Level for French',{exact:true}).selectOption('B1');
+ await expect(sheet.getByLabel('Level for French')).toHaveValue('B1');
+ await sheet.getByRole('switch',{name:'Auto pronunciation'}).click();
+ await expect(sheet.getByRole('switch',{name:'Auto pronunciation'})).not.toBeChecked();
+ await page.getByLabel('Explanation language for French').selectOption('en');
+ await expect(sheet.getByLabel('Explanation language for French')).toHaveValue('en');
+ await sheet.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(french).toContainText('English explanations');
+ await expect(french).toBeFocused();
+ await page.getByRole('button',{name:'Edit order',exact:true}).click();
+ await page.getByRole('button',{name:'Move French up',exact:true}).click();
+ await expect(page.locator('.wb-language-row').first()).toContainText('French');
+ await expect(page.locator('.wb-language-row').first().locator('.wb-language-mark')).toHaveCSS('background-color','rgb(181, 212, 244)');
+ await page.getByRole('button',{name:'Done ordering',exact:true}).click();
+ expect(f.collections.find(c=>c.target_language==='en')!.proficiency_level).toBe('unspecified');
+ await page.getByLabel('Calendar language',{exact:true}).selectOption(en.id);
+ await expect.poll(()=>f.calendars.at(-1)?.p_collection).toBe(en.id);
+ await page.reload();
+ await french.click();
+ await expect(sheet.getByRole('switch',{name:'Auto pronunciation'})).not.toBeChecked();
+ await expect(sheet.getByText('Currently active')).toBeVisible();
+ await sheet.getByRole('button',{name:'Done',exact:true}).click();
+ await page.goto('/add');
+ await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');
 });
 
 test('Discover gates unsupported languages before requesting English progress',async({page})=>{test.skip(!cloudUrl);const f=await setup(page);await page.goto('/add');await choose(page,'French');await page.goto('/discover');await expect(page.getByText('Discover for French isn’t available yet.',{exact:false})).toBeVisible();expect(f.discoverCalls()).toBe(0);});
@@ -92,7 +127,7 @@ for(const width of [320,375,390,430,768,1440])test(`compact headers, consistent 
   await page.goto(path);await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();const header=page.locator('.learning-header');await expect(header).toHaveCSS('position','sticky');await expect(page.locator('.wb-masthead')).toHaveCount(0);await expect(page.locator('h1')).toHaveCount(1);
   const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('link')).toHaveCount(5);const active=nav.getByRole('link',{name:tab,exact:true});await expect(active).toHaveAttribute('aria-current','page');await expect(active.locator('span').first()).toHaveCSS('background-color','rgb(22, 22, 22)');await expect(active.locator('span').first()).toHaveCSS('border-radius','50%');const paths=await nav.locator('svg path').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('d')||''));if(!icons.length)icons=paths;else expect(paths).toEqual(icons);expect(paths[3]).toContain('M20 11a8');expect(paths[4]).toContain('M16 7');
   if(path==='/library'){await page.locator('.word-row').last().scrollIntoViewIfNeeded();const y=(await header.boundingBox())!.y;expect(y).toBeGreaterThanOrEqual(0);expect(y).toBeLessThan(2);await page.getByRole('link',{name:'← Review',exact:true}).scrollIntoViewIfNeeded();}
-  if(path==='/auth')await expect(languageTrigger(page)).toHaveCount(0);else {await languageTrigger(page).click();await expect(page.getByRole('menuitemradio',{name:'French',exact:true})).toContainText('Explained in Chinese · A1');await page.keyboard.press('Escape');await expect(languageTrigger(page)).toBeFocused();}
+  if(path==='/auth')await expect(languageTrigger(page)).toHaveCount(0);else {await languageTrigger(page).click();await expect(page.getByRole('menuitemradio',{name:'French',exact:true})).toContainText('French');await page.keyboard.press('Escape');await expect(languageTrigger(page)).toBeFocused();}
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }
  await page.screenshot({path:`/tmp/noted-compact-profile-${width}.png`,fullPage:true});
@@ -130,22 +165,23 @@ test('AI candidates update all learning content without replacing notes or issui
   ]}}});
  });
  await page.goto('/add');
- await page.screenshot({path:'/tmp/noted-round02-shots/add-empty.png'});
+ await page.screenshot({path:'/tmp/noted-round03-after/add-empty.png'});
  await input(page).fill('荷花');
  await page.getByText('Translation context',{exact:false}).first().click();
  await page.getByRole('textbox',{name:'Translation context'}).fill('Pond plants');
- await page.screenshot({path:'/tmp/noted-round02-shots/add-translation-context.png'});
+ await page.screenshot({path:'/tmp/noted-round03-after/add-translation-context.png'});
  await page.getByRole('button',{name:'Translate with AI',exact:true}).click();
  await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
  await expect(page.locator('mark')).toHaveText('lotuses');
- await page.screenshot({path:'/tmp/noted-round02-shots/add-candidates.png'});
+ await expect(page.locator('mark')).toHaveCSS('background-color','rgb(193, 255, 50)');
+ await page.screenshot({path:'/tmp/noted-round03-after/add-candidates.png'});
  await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
  await page.getByRole('button',{name:/lotus flower/}).click();
  await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('莲花的花朵');
  await expect(page.locator('mark')).toHaveText('lotus flower');
  await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
- await page.getByText('她拍下了一朵莲花。').scrollIntoViewIfNeeded();
- await page.screenshot({path:'/tmp/noted-round02-shots/add-selected-example.png'});
+ await page.getByRole('button',{name:/Add to my library/}).scrollIntoViewIfNeeded();
+ await page.screenshot({path:'/tmp/noted-round03-after/add-selected-example.png'});
  await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Private note');
  await page.getByRole('button',{name:/^lotus Best match/}).click();
  await expect(page.getByRole('heading',{name:'lotus',exact:true})).toBeVisible();
@@ -176,20 +212,20 @@ test('the shared scrollport keeps Home navigation and the end of Profile clear a
  await expect.poll(async()=>Math.round((await navigation.boundingBox())!.y+(await navigation.boundingBox())!.height)).toBe(568);
  await navigation.getByRole('link',{name:'Profile'}).click();
  await expect(page.getByRole('heading',{name:'Profile.'})).toBeVisible();
- await page.screenshot({path:'/tmp/noted-round02-shots/profile-languages.png'});
+ await page.screenshot({path:'/tmp/noted-round03-after/profile-languages.png'});
  const legal=page.getByRole('link',{name:'Privacy & terms'});
  await legal.scrollIntoViewIfNeeded();
  await expect(legal).toBeInViewport();
  const calendar=page.locator('.calendar-grid');
  await calendar.getByRole('button').last().scrollIntoViewIfNeeded();
- await page.screenshot({path:'/tmp/noted-round02-shots/profile-calendar.png'});
+ await page.screenshot({path:'/tmp/noted-round03-after/profile-calendar.png'});
  const day=(await calendar.getByRole('button').last().boundingBox())!;
  expect(day.y+day.height).toBeLessThanOrEqual((await navigation.boundingBox())!.y);
  await page.getByRole('button',{name:'Add a language'}).click();
  const sheet=page.getByRole('dialog',{name:'Add a language'});
  await expect(sheet).toBeVisible();
  await expect(sheet.getByRole('combobox')).toHaveCount(3);
- await page.screenshot({path:'/tmp/noted-round02-shots/add-language.png'});
+ await page.screenshot({path:'/tmp/noted-round03-after/add-language.png'});
  await page.keyboard.press('Escape');
  await expect(sheet).toHaveCount(0);
 });
@@ -208,4 +244,128 @@ test('older schemas keep the complete unsaved draft when note storage is unavail
  await expect(input(page)).toHaveValue('personal vocabulary');
  await expect(page.getByRole('textbox',{name:'My Context'})).toHaveValue('Keep this draft');
  expect(fixture.inserts).toHaveLength(0);
+});
+
+test('language identities stay consistent across pages and after reopening', async ({page}) => {
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width:390,height:844});
+ await setup(page);
+ const shot=(name:string)=>page.screenshot({path:'/tmp/noted-round03-after/'+name+'.png'});
+ const color=async (expected:string)=>expect(languageTrigger(page)).toHaveCSS('background-color',expected);
+ await page.goto('/');
+ await color('rgb(198, 180, 247)');
+ await shot('home');
+ await page.goto('/add');
+ await color('rgb(198, 180, 247)');
+ await shot('english-selector');
+ await shot('add-empty');
+ await page.getByText('+ Add translation context',{exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Translation context'})).toBeVisible();
+ await shot('add-translation-context');
+ await choose(page,'French');
+ await color('rgb(181, 212, 244)');
+ await shot('french-selector');
+ await choose(page,'Spanish');
+ await color('rgb(246, 194, 165)');
+ await shot('spanish-selector');
+ await languageTrigger(page).click();
+ const selected=page.getByRole('menuitemradio',{name:'Spanish'});
+ await expect(selected).toHaveAttribute('aria-checked','true');
+ await expect(selected).toContainText('✓');
+ await shot('language-menu');
+ await page.keyboard.press('Escape');
+ for(const [path,name] of [['/discover','discover'],['/review','review-empty'],['/library','library'],['/','home-spanish']]){
+  await page.goto(path);
+  await color('rgb(246, 194, 165)');
+  await shot(name);
+ }
+ await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','Spanish');
+ await page.goto('/auth');
+ await expect(page.getByRole('button',{name:'Settings for Spanish'})).toContainText('Active');
+ await expect(page.getByRole('button',{name:'Settings for French'}).locator('.wb-language-mark')).toHaveCSS('background-color','rgb(181, 212, 244)');
+ await shot('profile-languages');
+ const profileTitle = page.getByRole('heading',{name:'Profile.'});
+ const original = await profileTitle.boundingBox();
+ await page.getByRole('button',{name:'Settings for French'}).click();
+ await shot('language-settings');
+ await page.getByRole('button',{name:'Set as active language'}).click();
+ await page.getByRole('button',{name:'Done',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Settings for French'})).toBeFocused();
+ expect((await profileTitle.boundingBox())!.y).toBe(original!.y);
+ await page.getByRole('button',{name:'Add a language',exact:true}).click();
+ await shot('add-language');
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.locator('.wb-language-list li')).toHaveCount(4);
+ const calendar=page.locator('.learning-calendar');
+ await calendar.locator('.calendar-day').last().scrollIntoViewIfNeeded();
+ await calendar.screenshot({path:'/tmp/noted-round03-after/profile-calendar.png'});
+ for(let i=0;i<2;i++){
+  const month=(await calendar.locator('.calendar-month h2').innerText()).trim();
+  const date=new Date('1 '+month);
+  const offset=(date.getDay()+6)%7;
+  await expect(calendar.locator('.calendar-grid > span:not(.calendar-weekday)')).toHaveCount(offset);
+  await expect(calendar.locator('.calendar-day')).toHaveCount(new Date(date.getFullYear(),date.getMonth()+1,0).getDate());
+  await calendar.getByRole('button',{name:'Previous month'}).click();
+ }
+ await page.goto('/add');
+ await color('rgb(181, 212, 244)');
+});
+
+test('successful Add saves announce once without moving the input', async ({page}) => {
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width:390,height:844});
+ const store=await setup(page);
+ await page.goto('/add');
+ await expect(input(page)).toBeVisible();
+ const start=await input(page).boundingBox();
+ await input(page).fill('notebook entry');
+ await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('笔记条目');
+ await page.getByRole('button',{name:/Add to my library/}).click();
+ const toast=page.locator('.wb-toast');
+ await expect(toast).toHaveText('Added to Library');
+ await expect(input(page)).toHaveValue('');
+ await expect.poll(async()=>(await input(page).boundingBox())?.y).toBe(start?.y);
+ const navbar=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();
+ const bounds=await toast.boundingBox();
+ expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(navbar!.y);
+ await page.screenshot({path:'/tmp/noted-round03-after/add-toast.png'});
+ await expect(toast).toHaveCount(0,{timeout:5000});
+ expect(store.inserts).toHaveLength(1);
+});
+
+test('Review distinguishes empty and caught-up collections', async ({page}) => {
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width:390,height:844});
+ const fixture=await setup(page);
+ fixture.rows.forEach(row=>{row.due_at='2099-01-01T00:00:00Z';});
+ await page.goto('/review');
+ await expect(page.getByRole('heading',{name:'You’re all caught up.'})).toBeVisible();
+ await page.screenshot({path:'/tmp/noted-round03-after/review-caught-up.png'});
+ await choose(page,'Spanish');
+ await expect(page.getByRole('heading',{name:'Start your Spanish collection.'})).toBeVisible();
+ await page.getByRole('link',{name:'Add your first word'}).click();
+ await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','Spanish');
+});
+
+test('Review reports a failed request when no saved offline copy exists', async ({page}) => {
+ test.skip(!cloudUrl);
+ await setup(page);
+ await page.route(cloudOrigin+'/rest/v1/words*',route=>route.fulfill({status:403,json:{message:'Fixture access failure'}}));
+ await page.goto('/review');
+ await expect(page.getByRole('heading',{name:'Couldn’t load your words.'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Try again'})).toBeVisible();
+});
+
+test('Review keeps loading distinct from an empty collection', async ({page}) => {
+ test.skip(!cloudUrl);
+ await setup(page);
+ let release!: () => void;
+ const pending=new Promise<void>(resolve=>{release=resolve;});
+ await page.route(cloudOrigin+'/rest/v1/words*', async route=>{await pending;return route.fallback();});
+ await page.goto('/review');
+ try {
+  await expect(page.getByText('Loading your library…')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Make room for your first word.'})).toHaveCount(0);
+ } finally {release();}
+ await expect(page.getByRole('button',{name:'Reveal answer'})).toBeVisible();
 });

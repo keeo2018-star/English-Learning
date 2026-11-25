@@ -234,7 +234,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
   function reset() {
     invalidateQuery();setQuery('');setEditingExpression(false);clearCandidates();setTranslationContext('');setSuggestedExample('');setExampleSource('dictionary');cancel.current(); request.current=null;setAttemptId('');version.current++; current.current = ''; manual.current = false;
     setVoice(null);setVoiceOpen(false);setContext('');setPasted(false);setExtracting(false);setSaveError('');setFailed(false);setRemoteDuplicate(false);resetSizing();setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
-    requestAnimationFrame(() => {const field=input.current;if(field?.getClientRects().length&&!formIsComposing(field.form)){field.focus({preventScroll:true});field.scrollIntoView({block:'nearest',behavior:'instant'});}});
+    requestAnimationFrame(() => {const field=input.current;if(field?.getClientRects().length&&!formIsComposing(field.form)){if(window.matchMedia('(pointer: fine)').matches)field.focus({preventScroll:true});field.scrollIntoView({block:'nearest',behavior:'instant'});}});
   }
   function acceptExtraction(value:{expression:string;context:string}){changeQuery(value.expression);setContext(value.context);setType('expression');setPasted(false);setExtracting(false);setReplaceContext(null);setStatus('Expression extracted. Original text kept in My Context.');input.current?.focus({preventScroll:true});}
   async function submit(event: React.FormEvent<HTMLFormElement>) {

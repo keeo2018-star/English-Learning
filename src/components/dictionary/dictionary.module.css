@@ -17,9 +17,9 @@
 .sheet::backdrop { background: rgb(0 0 0 / 55%); }
 .header { display: flex; align-items: center; justify-content: space-between; gap: var(--wb-space-3); position: sticky; top: 0; z-index: 20; isolation:isolate; padding: 0 0 8px; background: var(--wb-offwhite); }
 .kicker { font-size: 10px; font-weight: var(--wb-medium); letter-spacing: .05em; line-height: 1.5; }
-.header .close { width: 48px; min-width: 48px; height: 48px; padding: 0; flex-shrink: 0; }
+.header .close { width: var(--wb-control-height); min-width: var(--wb-touch); height: var(--wb-control-height); padding: 0; flex-shrink: 0; }
 .header .close:focus, .header .close:focus-visible { outline: none; box-shadow: none; border: 1px solid var(--wb-black); }
-.header .close:focus-visible { background: var(--noted-lime); }
+.header .close:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 2px; }
 .sheet h2 { font-size: clamp(36px, 7vw, 56px); line-height: 1.08; letter-spacing: normal; overflow-wrap: anywhere; margin: 8px 0 16px; }
 .pronunciation { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--wb-control-gap) var(--wb-space-3); }
 .pronunciation:empty { display: none; }

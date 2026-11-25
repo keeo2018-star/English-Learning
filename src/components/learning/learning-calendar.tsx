@@ -1,4 +1,5 @@
 "use client";
+import {Segments} from '@/components/ui/segments';
 import {Select} from '@/components/ui/select';
 import { useEffect, useState } from 'react';
 import {useCollections} from '@/lib/use-collections';
@@ -91,17 +92,17 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
   const selectedData = data?.days.find(day => day.date === selected);
   const coverage = data ? reviewCoverage(selected, data.tracking_since, timezone) : 'unknown';
   return <details data-metric={metric} className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>Learning calendar</summary>
+    <summary>Learning calendar <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m4 6 4 4 4-4"/></svg></summary>
     {open && month && <div className="learning-calendar-content">
-      {learning.enabled&&learning.collections.length>1&&<label className="calendar-language"><Select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label}{learning.collections.some(other=>other.id!==row.id&&other.target_language===row.target_language)?(row.explanation_language==='en'?' · EN':' · 中文'):''}</option>)}</Select></label>}
-      <div className="calendar-metrics" role="group" aria-label="Calendar activity">
+      <div className="wb-calendar-tools">{learning.enabled&&learning.collections.length>1&&<label className="calendar-language"><Select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label}{learning.collections.some(other=>other.id!==row.id&&other.target_language===row.target_language)?(row.explanation_language==='en'?' · EN':' · 中文'):''}</option>)}</Select></label>}
+      <Segments label="Calendar activity">
         <SelectableButton className="secondary" selected={metric === 'reviewed'} onClick={() => setMetric('reviewed')}>Reviewed</SelectableButton>
         <SelectableButton className="secondary" selected={metric === 'added'} onClick={() => setMetric('added')}>Added</SelectableButton>
-      </div>
+      </Segments></div>
       <div className="calendar-month">
-        <button type="button" className="secondary" aria-label="Previous month" disabled={month <= '1970-01'} onClick={() => move(-1)}>←</button>
+        <button type="button" className="wb-icon-button" aria-label="Previous month" disabled={month <= '1970-01'} onClick={() => move(-1)}>←</button>
         <h2>{first!.toLocaleDateString('en', { month: 'long', year: 'numeric' })}</h2>
-        <button type="button" className="secondary" aria-label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => move(1)}>→</button>
+        <button type="button" className="wb-icon-button" aria-label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => move(1)}>→</button>
       </div>
       {!data && !error && <p role="status">Loading activity…</p>}
       {error && <div role="status"><p>{error}</p><button type="button" className="secondary" onClick={() => setRetry(n => n + 1)}>Try again</button></div>}

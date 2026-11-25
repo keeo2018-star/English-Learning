@@ -1,4 +1,6 @@
 "use client";
+import {Segments} from '@/components/ui/segments';
+import {Toast} from '@/components/ui/toast';
 import {vocabularyDetails, type VocabularyDetails} from './vocabulary-details';
 import {Select} from '@/components/ui/select';
 import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
@@ -304,7 +306,7 @@ export default function Workspace({
       const savedContext=learning.collections.find(c=>c.id===created?.collection_id)||collection;
       if(created&&user&&!created.example?.trim()&&created.learning_details?.source!=='ai'&&isOriginalEnglish(savedContext))void afterSaveAi(user.id,created.word);
       if(created&&!created.learning_details&&isOriginalEnglish(savedContext)&&!created.example?.trim())void resolveExample(user?.id||"local-demo",created);
-      setMessage("Word saved. Ready for your next review.");
+      if(page!=='add')setMessage("Word saved. Ready for your next review.");
       return created;
     } catch (error) {
       if(propagate)throw error;
@@ -607,6 +609,8 @@ export default function Workspace({
     libraryResults.current?.scrollIntoView({ block: "start" });
     libraryResults.current?.focus({ preventScroll: true });
   }
+  const dismissToast = useCallback(() => setMessage(''), []);
+  const savedNotice = page === 'add' && ['Added to Library','Expression and voice note saved.','Voice note saved.'].includes(message);
   return (
     <AppShell
       hideAddAction={page === "add"}
@@ -624,7 +628,7 @@ export default function Workspace({
       <LearningHeader title={page==='add'?'Add.':page==='review'?'Review.':'Library.'} legacyTitle={page==='add'?'Add a word.':page==='review'?'Let’s make it stick.':'Library.'} enabled={learning.enabled} collections={learning.collections} active={collection} disabled={busy||!!editing||captureBusy} onSelect={selectCollection}/>
       {page==='library'&&learning.enabled?<Link href={searchParams.get('review')==='random'?'/review?mode=random':'/review'} className="library-back">← Review</Link>:page !== "add" && (
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
-          {page === "review" ? <>
+          {page === "review" ? <Segments label="Review mode">
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
               onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
               Due words
@@ -633,7 +637,7 @@ export default function Workspace({
               onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
               Random review
             </SelectableButton>
-          </> : <>
+          </Segments> : <>
             <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Due words</SelectableLink>
             <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Random review</SelectableLink>
           </>}
@@ -642,7 +646,7 @@ export default function Workspace({
         </nav>
       )}
       {offlineNotice&&<Feedback>{offlineNotice}</Feedback>}
-      {message && <Feedback>{message}</Feedback>}
+      {message && (savedNotice ? <Toast message={message} onDismiss={dismissToast}/> : <Feedback>{message}</Feedback>)}
       {voiceUploads.filter(upload=>upload.owner===account).map(upload=><div className="wb-feedback" key={upload.draft.id}><p>“{upload.item.word}” is saved. {upload.error}</p><button type="button" disabled={busy} onClick={async()=>{setBusy(true);try{await uploadVoice(upload.item.id,upload.draft);setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));setMessage('Voice note saved.');}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Retry voice note upload</button><button type="button" className="secondary" disabled={busy} onClick={async()=>{setBusy(true);try{try{await removeVoiceFiles((await voiceFiles([upload.item.id])).filter(file=>file.id===upload.draft.id));}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||''))throw error;}setVoiceUploads(previous=>previous.filter(value=>value.draft.id!==upload.draft.id));}catch(error){setVoiceUploads(previous=>previous.map(value=>value.draft.id===upload.draft.id?{...value,error:voiceError(error)}:value));}finally{setBusy(false)}}}>Keep Expression without this draft</button></div>)}
       {syncError && <Feedback>Could not refresh. Showing your last loaded items. <button type="button" className="text-button" onClick={() => void load(user, true)}>Retry sync</button></Feedback>}
       {contextMissing?<StatePanel title="Your languages couldn’t be loaded." description="Your Library is safe. Reconnect and try again before choosing a learning language." actionLabel="Try again" onAction={learning.refresh}/> : page === "add" ? (
@@ -665,7 +669,7 @@ export default function Workspace({
         />
       ) : loadError ? (
         <StatePanel
-          title="Your library couldn’t be loaded."
+          title={page==='review'?"Couldn’t load your words.":"Your library couldn’t be loaded."}
           description="Your saved words haven’t been removed. Check your connection and try again."
           actionLabel="Try again"
           onAction={() => {
@@ -865,26 +869,17 @@ export default function Workspace({
               </>
             ) : (
               <div className="review-card">
-                {randomMode ? <section className="review-completion wb-ui-text">
+                {!words.length ? <StatePanel
+                  title={collection && collection.target_language!=='en' ? `Start your ${learningLanguages[collection.target_language].label} collection.` : 'Make room for your first word.'}
+                  description="Add a word to start practising."
+                  href="/add" actionLabel="Add your first word" eyebrow=""
+                /> : randomMode && !visibleSession ? <LoadingState label="Preparing review…" /> : randomMode ? <section className="review-completion wb-ui-text">
                   <h2>Review complete.</h2>
                   <p>{reviewedCount} {reviewedCount === 1 ? "item" : "items"} reviewed.</p>
                   <button type="button" onClick={() => { prepareReviewPronunciation(); startRandomReview(); }}>Start another review</button>
-                </section> : <StatePanel
-                  title={
-                    words.length
-                      ? "You’re all caught up."
-                      : "Make room for your first word."
-                  }
-                  description={
-                    words.length
-                      ? "Come back when your next cards are due."
-                      : "Add a word, then come here to practice recalling it."
-                  }
-                  href="/add"
-                  actionLabel="Discover another word"
-                  color={words.length ? "green" : "paper"}
-                  completed={words.length > 0}
-                />}
+                </section> : <StatePanel title="You’re all caught up."
+                  description="You have no words due for review right now."
+                  href="/review?mode=random" actionLabel="Random review" eyebrow="" />}
               </div>
             ))}
         </>
