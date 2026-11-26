@@ -1329,3 +1329,4 @@ html[data-wb-modal-keyboard] .wb-sheet-footer { padding-block-end:10px; }
 .wb-button[data-button-surface][aria-pressed="true"] > .wb-button-surface { background: var(--wb-black); color: var(--wb-white); }
 .wb-button[data-button-variant].wb-dictionary-action { margin-inline: 0; }
 @media (prefers-reduced-motion: reduce) { .wb-button[data-button-variant] { transition: none; } }
+.wb-dialog .wb-button[data-button-variant]:focus-visible { outline-offset: 0; }
