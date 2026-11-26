@@ -19,8 +19,8 @@ export type DictionaryEnrichment = {
 export class EnrichmentValidationError extends Error {
   readonly paths: string[];
 
-  constructor(paths: string[]) {
-    super('Invalid AI learning notes.');
+  constructor(message: string, paths: string[]) {
+    super(message);
     this.paths = paths;
   }
 }
@@ -42,7 +42,7 @@ export function parseEnrichment(raw:unknown,input:EnrichmentInput):DictionaryEnr
     data.target !== input.target ? 'target' : '',
     data.explanationLanguage !== input.explanation ? 'explanationLanguage' : '',
   ].filter(Boolean);
-  if (identityPaths.length) throw new EnrichmentValidationError(identityPaths);
+  if (identityPaths.length) throw new EnrichmentValidationError('AI returned learning notes for a different entry or language.', identityPaths);
   const explains=(value:unknown)=>{
     const text=plain(value,340);
     return (input.explanation==='zh-CN'?/\p{Script=Han}/u:/\p{Script=Latin}/u).test(text)&&
@@ -64,6 +64,6 @@ export function parseEnrichment(raw:unknown,input:EnrichmentInput):DictionaryEnr
   const collocations=phrases(data.collocations,false);
   const contexts=[...new Set((Array.isArray(data.contexts)?data.contexts.slice(0,8):[]).map(explains).filter(Boolean))].slice(0,3);
   const usage=explains(data.usage);
-  if(!comparisons.length&&!collocations.length&&!contexts.length&&!usage)throw new EnrichmentValidationError(['comparisons', 'collocations', 'contexts', 'usage']);
+  if(!comparisons.length&&!collocations.length&&!contexts.length&&!usage)throw new EnrichmentValidationError('AI returned no usable learning notes.', ['comparisons', 'collocations', 'contexts', 'usage']);
   return {word:input.word,target:input.target,explanationLanguage:input.explanation,comparisons,collocations,contexts,usage};
 }
