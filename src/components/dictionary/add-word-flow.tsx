@@ -1,6 +1,7 @@
 "use client";
 import {Icon,IconButton} from '@/components/ui/icon';
 import {Sheet} from '@/components/ui/sheet';
+import {DictionaryButton} from './dictionary-sheet';
 import {PhotoInput} from './photo-input';
 import {SpeechInput} from './speech-input';
 import {Select} from '@/components/ui/select';
@@ -400,6 +401,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
     </div>
     {selectedCandidate?.lemma&&selectedCandidate.lemma!==word&&<p className={styles.meaningStatus}>Dictionary form: {selectedCandidate.lemma}</p>}
     {selectedCandidate?.usage&&<p className={styles.meaningStatus}>{selectedCandidate.usage}</p>}
+    {selectedCandidate&&word.trim()&&!overItem&&<DictionaryButton key={word} word={word} meaning={meaning} collection={collection} example={suggestedExample}/>}
     <div className={styles.previewSettings}><div className={styles.typeControl}><Select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"} · Auto</option><option value="word">Word</option><option value="expression">Expression</option></Select></div><button type="button" className="text-button" disabled={busy||resolving||!validTitle(word)}
       onClick={()=>void suggestMeaning()}>Suggest meaning</button></div>
     {suggestedExample&&<blockquote className={styles.previewExample}>

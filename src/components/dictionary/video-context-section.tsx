@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { createContextPlayer, officialContextUrl, type ContextPlayer, type VideoAccent } from '@/lib/video-context';
 import { registerContextVideo } from '@/lib/learning-media';
 import { stopPronunciation } from '@/lib/pronunciation';
+import {Icon} from '@/components/ui/icon';
 import styles from './video-context.module.css';
 
 const standalone = () => window.matchMedia('(display-mode: standalone)').matches || !!(navigator as Navigator & { standalone?: boolean }).standalone;
@@ -22,10 +23,7 @@ export function VideoContextSection({ word }: { word: string }) {
     <p>{installed ? 'Video examples open on YouGlish in your browser.' : 'Hear it in a real conversation. Video via YouGlish.'}</p>
     <div className={styles.card}>
     {!expanded ? <button type="button" className={styles.preview} aria-label="Watch in context" aria-expanded={false} onClick={() => setExpanded(true)}>
-      <span className={styles.previewMeta}>VIDEO CONTEXT · {accent.toUpperCase()} ENGLISH</span>
-      <span className={styles.play} aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5v15l12-7.5z" /></svg></span>
-      <span className={styles.previewWord}>{word}</span>
-      <span className={styles.previewLabel}>{installed ? 'Watch in your browser' : 'Watch in context'}</span>
+      <Icon name="external" size={16}/><span><strong>Hear it in the wild</strong><small>YouGlish · Real-world examples</small></span>
     </button> : <div id={id} className={styles.expanded}>
       <div className={styles.cardHeader}><span className={styles.previewMeta}>VIDEO CONTEXT</span><button type="button" className="wb-control wb-control-outline" aria-expanded={true} aria-controls={id} onClick={() => setExpanded(false)}>Hide video</button></div>
       {installed ? <><p>Video examples for the installed app currently open in your browser.</p><a className="wb-control wb-control-outline" href={officialContextUrl(word)} target="_blank" rel="noopener noreferrer" onClick={() => stopPronunciation()}>Open YouGlish ↗</a></> : <>

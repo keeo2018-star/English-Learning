@@ -1,6 +1,7 @@
 'use client';
+import {LanguagePicker} from '@/components/ui/language-picker';
 
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { LanguageMark } from '@/components/ui/language-mark';
 import { Select } from '@/components/ui/select';
 import { SwitchControl } from '@/components/ui/selection';
@@ -27,6 +28,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const opener=useRef<HTMLButtonElement|null>(null);
   const [panel, setPanel] = useState<string | null>(null);
   const [ordering, setOrdering] = useState(false);
   const [target, setTarget] = useState<TargetLanguage>('fr');
@@ -106,15 +108,15 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
         const contents = <>
           <LanguageMark language={item.target_language}/>
           <span className="wb-language-row-copy">
-            <strong>{label}</strong>
+            <strong>{label}{item.id===state.active?.id&&<small>Active</small>}</strong>
             <small id={`language-details-${item.id}`}>{levelLabel(item.proficiency_level)} · {item.explanation_language === 'en' ? 'English' : 'Chinese'} explanations
-              {item.id === state.active?.id && ' · Active'}</small>
+              </small>
           </span>
         </>;
         return <li key={item.id}>
           {state.enabled && !ordering
             ? <button className="wb-language-row" type="button" aria-haspopup="dialog"
-                aria-label={`Settings for ${label}`} aria-describedby={`language-details-${item.id}`} onClick={() => { setError(''); setPanel(item.id); }}>
+                aria-label={`Settings for ${label}`} aria-describedby={`language-details-${item.id}`} onClick={event => { opener.current=event.currentTarget; setError(''); setPanel(item.id); }}>
                 {contents}<Icon name="chevronRight" size={16}/>
               </button>
             : <div className="wb-language-row">{contents}{ordering && index > 0 &&
@@ -123,10 +125,10 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
         </li>;
       })}
     </ul>
-    {state.enabled && <button type="button" className="secondary" disabled={busy} aria-haspopup="dialog"
-      onClick={() => { setError(''); setTarget('fr'); setPanel('add'); }}>Add a language</button>}
+    {state.enabled && <button type="button" className="text-button" disabled={busy} aria-haspopup="dialog"
+      onClick={event => { opener.current=event.currentTarget; setError(''); setTarget('fr'); setPanel('add'); }}><Icon name="add" size={16}/> Add a language</button>}
 
-    {panel === 'add' && <Sheet title="Add a language" busy={busy} onClose={close}>
+    {panel === 'add' && <Sheet title="Add a language" busy={busy} onClose={close} returnFocus={opener}>
       <form className="language-sheet-fields" onSubmit={create}>
         <label>Language to learn<Select aria-label="Language to learn" value={target} disabled={busy}
           onChange={event => setTarget(event.target.value as TargetLanguage)}>
@@ -142,16 +144,20 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
       </form>
     </Sheet>}
 
-    {row && <Sheet title="Language settings" busy={busy} onClose={close}>
+    {row && <Sheet title="Language settings" busy={busy} onClose={close} returnFocus={opener}>
       <div className="language-sheet-fields">
         <p className="wb-sheet-identity"><LanguageMark language={row.target_language}/><strong>{name}</strong></p>
-        <label>Explanation language<Select aria-label={`Explanation language for ${name}`} disabled={busy || row.target_language === 'en'}
-          value={row.explanation_language} onChange={event => void change(row, { explanation_language: event.target.value })}>
-          <option value="zh-CN">Chinese</option><option value="en">English</option>
-        </Select><small>{row.target_language === 'en' ? 'Choose an explanation language when adding an English collection.' :
-          'Changes future explanations. Saved meanings stay as written.'}</small></label>
-        <label>Learning level<Select aria-label={`Level for ${name}`} disabled={busy} value={row.proficiency_level}
-          onChange={event => void change(row, { proficiency_level: event.target.value })}>{levelOptions(row.target_language)}</Select></label>
+        <div className="wb-setting-field">Explanation language
+          <LanguagePicker plain align="start" label={`Explanation language for ${name}`} value={row.explanation_language}
+            disabled={busy||row.target_language==='en'} options={[{id:'zh-CN',label:'Chinese'},{id:'en',label:'English'}]}
+            onSelect={value=>void change(row,{explanation_language:value})}/>
+          <small>{row.target_language==='en'?'Choose an explanation language when adding an English collection.':'Changes future explanations. Saved meanings stay as written.'}</small>
+        </div>
+        <div className="wb-setting-field">Learning level
+          <LanguagePicker plain align="start" label={`Level for ${name}`} value={row.proficiency_level} disabled={busy}
+            options={levelOptions(row.target_language).map(option=>({id:String(option.props.value),label:String(option.props.children)}))}
+            onSelect={value=>void change(row,{proficiency_level:value})}/>
+        </div>
         <SwitchControl label="Auto pronunciation" disabled={busy} checked={row.preferences.auto_pronunciation !== false}
           onChange={event => void change(row, { preferences: { ...row.preferences, auto_pronunciation: event.target.checked } })}/>
         {row.target_language === 'en' && <label>Pronunciation<Select disabled={busy} value={row.preferences.accent === 'US' ? 'US' : 'UK'}

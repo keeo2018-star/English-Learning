@@ -3,7 +3,13 @@ async function compile(path,mapping={}){let source=ts.transpileModule(await fs.r
 const contract=new URL('../../src/lib/bilingual-contract.ts',import.meta.url).href;
 const provider=await compile('../../src/lib/ai-provider.ts',{'./bilingual-contract':contract});
 const stub='data:text/javascript,'+encodeURIComponent('export function createClient(){return globalThis.__notedAiClientTest;}');
-const route=await import(await compile('../../src/app/api/ai-dictionary/route.ts',{'@supabase/supabase-js':stub,'@/lib/ai-provider':provider,'@/lib/bilingual-contract':contract}));
+const enrichment=new URL('../../src/lib/dictionary-enrichment.ts',import.meta.url).href;
+const enrichProvider=await compile('../../src/lib/dictionary-enrichment-provider.ts',{'./ai-provider':provider,'./dictionary-enrichment':enrichment});
+const route=await import(await compile('../../src/app/api/ai-dictionary/route.ts',{
+ '@supabase/supabase-js':stub,'@/lib/ai-provider':provider,'@/lib/bilingual-contract':contract,
+ '@/lib/collections':new URL('../../src/lib/collections.ts',import.meta.url).href,
+ '@/lib/dictionary-enrichment':enrichment,'@/lib/dictionary-enrichment-provider':enrichProvider,
+}));
 test('AI HTTP route gates auth, schema, persistent budget and cache before any model request',async()=>{
  const originals={fetch:globalThis.fetch,key:process.env.GEMINI_API_KEY,flag:process.env.GEMINI_FREE_TIER_ENABLED};
  const entry={explanation:'区分表达语境。',alternatives:[{english:'awkward',meaning:'令人尴尬',usage:'形容局面'}],related:[]};
@@ -22,4 +28,42 @@ test('AI HTTP route gates auth, schema, persistent budget and cache before any m
   state.status='reserved';assert.equal((await post()).status,200);assert.equal(state.modelCalls,1);assert(state.quota.includes('noted_ai_finish'));
   state.fail=true;assert.equal((await post()).status,503);assert.equal(state.modelCalls,2);assert.equal(state.quota.at(-1),'noted_ai_fail');
  }finally{globalThis.fetch=originals.fetch;delete globalThis.__notedAiClientTest;for(const[k,v]of Object.entries({GEMINI_API_KEY:originals.key,GEMINI_FREE_TIER_ENABLED:originals.flag})){if(v===undefined)delete process.env[k];else process.env[k]=v;}}
+});
+
+test('Dictionary enrichment reuses owner quota, caches validated structured output and isolates locale keys',async()=>{
+ const original={fetch:globalThis.fetch,key:process.env.GEMINI_API_KEY,flag:process.env.GEMINI_FREE_TIER_ENABLED};
+ let cached=null,limited=false,modelCalls=0,failed=0,invalid=false;
+ const hashes=[];
+ globalThis.__notedAiClientTest={auth:{getUser:async()=>({data:{user:{id:'owner'}}})},rpc:async(name,args)=>{
+  if(name==='noted_ai_reserve'){hashes.push(args.p_hash);return{data:limited?{status:'limited'}:cached?{status:'cached',payload:cached}:{status:'reserved',lease:'lease'}};}
+  if(name==='noted_ai_finish'){cached=args.p_payload;return{data:true};}
+  if(name==='noted_ai_fail')failed++;
+  return{data:true};
+ }};
+ globalThis.fetch=async (url,options)=>{
+  assert.match(String(url),/^https:\/\/generativelanguage.googleapis.com/);
+  modelCalls++;
+  const payload=JSON.parse(options.body), input=JSON.parse(payload.contents[0].parts[0].text);
+  assert.deepEqual(Object.keys(input).sort(),['explanation','level','partOfSpeech','target','word']);
+  assert.equal(payload.generationConfig.responseMimeType,'application/json');
+  return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({
+    word:input.word,target:input.target,explanationLanguage:input.explanation,
+    collocations:invalid?[]:[{expression:'dire bonjour',explanation:'打招呼。'}],contexts:[],usage:'',
+  })}]}}]});
+ };
+ const post=(extra={})=>route.POST(new Request('https://noted.test/api/ai-dictionary',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test'},
+  body:JSON.stringify({mode:'enrichment',q:'bonjour',target:'fr',explanation:'zh-CN',level:'A1',consent:true,privateNote:'private',...extra})}));
+ try{
+  process.env.GEMINI_API_KEY='test-key';process.env.GEMINI_FREE_TIER_ENABLED='true';
+  assert.equal((await post({consent:false})).status,400);
+  assert.equal((await post()).status,200);
+  const hit=await post();assert.equal(hit.status,200);assert.equal((await hit.json()).cached,true);
+  assert.equal(modelCalls,1);assert.equal(hashes[0],hashes[1]);
+  limited=true;assert.equal((await post({explanation:'en'})).status,429);assert.notEqual(hashes[1],hashes[2]);
+  limited=false;cached=null;invalid=true;assert.equal((await post()).status,503);assert.equal(failed,1);
+ }finally{globalThis.fetch=original.fetch;delete globalThis.__notedAiClientTest;
+  for(const [key,value] of Object.entries({GEMINI_API_KEY:original.key,GEMINI_FREE_TIER_ENABLED:original.flag})){
+   if(value===undefined)delete process.env[key];else process.env[key]=value;
+  }
+ }
 });

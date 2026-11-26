@@ -1,10 +1,10 @@
 "use client";
-import {Icon} from "@/components/ui/icon";
+import {Icon,IconButton} from "@/components/ui/icon";
 import {Segments} from '@/components/ui/segments';
 import {Toast} from '@/components/ui/toast';
 import {vocabularyDetails, type VocabularyDetails} from './vocabulary-details';
 import {Select} from '@/components/ui/select';
-import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue, startTransition } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, useDeferredValue } from "react";
 import {ImeInput,ImeTextarea} from '@/components/ui/ime-field';
 import {useCollections} from './use-collections';
 import {collectionItems,isOriginalEnglish,learningLanguages,type LearningCollection} from './collections';
@@ -30,10 +30,10 @@ import {
   ArrowIcon,
 } from "@/components/ui/primitives";
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
-import { SelectableLink, SelectableButton } from "@/components/ui/selection";
+import { SelectableLink, SelectableButton, SwitchControl } from "@/components/ui/selection";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
-import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
+import { DictionaryButton } from "@/components/dictionary/dictionary-sheet";
 import { contextPrompt, createReviewQueue, rateItem, reviewState, type RecallRating } from "./review";
 import { preloadPronunciation, prepareReviewPronunciation, stopPronunciation } from "./pronunciation";
 import { ReviewPronunciation } from "@/components/dictionary/review-pronunciation";
@@ -707,27 +707,31 @@ export default function Workspace({
                   ref={librarySearch}
                   placeholder="Search words or meanings…"
                   value={query} onImeStateChange={setCaptureBusy}
-                  onValueChange={(value) => { startTransition(() => { setQuery(value); setLibraryPage(0); }); }}
+                  onValueChange={(value) => { setQuery(value); setLibraryPage(0); }}
                 />
               </div>
               {learning.enabled&&learning.collections.length>1&&<label className="library-scope">Browse<Select aria-label="Library browsing scope" value={allLanguages?'all':'current'} onChange={event=>{setAllLanguages(event.target.value==='all');setLibraryPage(0);}}><option value="current">Current language</option><option value="all">All languages</option></Select></label>}
               <div className="library-metadata wb-ui-text">
-                <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"} · ${words.length} total items` : `${visibleWords.length} ${visibleWords.length === 1 ? "item" : "items"}`}</p>
+                <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"}` : `${visibleWords.length} ${visibleWords.length === 1 ? "saved item" : "saved items"}`}</p>
                 <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
               </div>
-              <div className="library-filters" role="group" aria-label="Library content type">
+              <div className="library-filters"><Segments label="Library content type">
                 {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => { setTypeFilter(type); setLibraryPage(0); }}>{label}</SelectableButton>)}
-              </div>
+              </Segments></div>
               <div ref={libraryResults} tabIndex={-1} role="region" className="library-results" aria-label="Library results" aria-busy={searchPending}>
-              {displayedWords.map((w) => (
-                  <Card
-                    color={
-                      w.interval_days === 0 ? "paper" : collectionColor(w.id)
-                    }
-                    className="word-row"
-                    key={w.id}
-                  >
-                    {editing === w.id ? (
+              {displayedWords.map(w => {
+                const entry=entryCollection(w);
+                return <div className="word-row" key={w.id}>
+                  <DictionaryButton browse blockClose={editing===w.id} word={w.word} meaning={w.meaning} collection={entry}
+                    metadata={allLanguages&&entry?learningLanguages[entry.target_language].label:w.learning_details?.partOfSpeech}
+                    onSaveMeaning={value=>saveDictionaryMeaning(w,value)} onRelatedSave={input=>saveRelated(input,entry)}
+                    savedWords={collectionItems(allWords,entry||null,true).map(item=>item.word)}
+                    details={<>
+                    <ContextExample item={w} owner={account} language={entry?.target_language} lookup={isOriginalEnglish(entry)}/>
+                    {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
+                    {reviewState(w)&&<p className="wb-supporting">Last review: {reviewState(w)?.last_rating==='sure'?'Sure':'Not sure'}</p>}
+                    </>}
+                    management={editing===w.id?(
                       <form
                         className="edit-form"
                         aria-label={"Edit " + w.word}
@@ -773,37 +777,12 @@ export default function Workspace({
                           </button>
                         </div>
                       </form>
-                    ) : (
-                      <div className="wb-word-content">
-                        {allLanguages&&entryCollection(w)&&<small className="wb-ui-text">{learningLanguages[entryCollection(w)!.target_language].label}</small>}
-                        {itemType(w)==='expression'?<div className="expression-title"><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word} language={entryCollection(w)?.target_language}/></div>:<><h2 className="wb-learning-content">{w.word}</h2><WordPronunciation key={w.word} word={w.word} language={entryCollection(w)?.target_language}/></>}
-                        <p className="wb-learning-content">{w.meaning}</p>
-                        {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
-                        {reviewState(w) && <span className="wb-familiarity wb-ui-text">{reviewState(w)?.last_rating === "sure" ? "Sure" : "Not sure"}</span>}
-                        <ContextExample item={w} owner={account} language={entryCollection(w)?.target_language} lookup={isOriginalEnglish(entryCollection(w))}/>
-                      </div>
-                    )}
-                    <div className="word-actions">
-                      <DictionaryButton onRelatedSave={input=>saveRelated(input,entryCollection(w))} savedWords={collectionItems(allWords,entryCollection(w)||null,true).map(item=>item.word)} word={w.word} meaning={w.meaning} collection={entryCollection(w)} example={w.example} onSaveMeaning={value => saveDictionaryMeaning(w, value)} />
-                      <button
-                        className="text-button"
-                        disabled={busy || editing === w.id}
-                        aria-label={"Edit " + w.word}
-                        onClick={() => setEditing(w.id)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-button"
-                        disabled={busy}
-                        aria-label={"Delete " + w.word}
-                        onClick={() => void requestDelete(w)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </Card>
-                ))}
+                    ):<div className="wb-entry-management">
+                      <button type="button" className="text-button" disabled={busy} aria-label={'Edit '+w.word} onClick={()=>setEditing(w.id)}>Edit entry</button>
+                      <button type="button" className="text-button" disabled={busy} aria-label={'Delete '+w.word} onClick={()=>void requestDelete(w)}>Delete entry</button>
+                    </div>}/>
+                </div>;
+              })}
               </div>
               {matchingWords.length > LIBRARY_PAGE_SIZE && <nav className="library-pagination wb-ui-text" aria-label="Library pages">
                 <button type="button" className="secondary" disabled={currentPage === 0 || searchPending || !!editing} onClick={() => changeLibraryPage(currentPage - 1)}>Previous</button>
@@ -829,11 +808,9 @@ export default function Workspace({
           )}
           {page === "review" && words.length > 0 && <div className="wb-review-utilities">
             {!randomMode&&due.length>0&&<p role="status">{due.length} {due.length===1?'word':'words'} due</p>}
-            <label className="review-auto-pronunciation"><Icon name="volume" size={16}/>
-              <input type="checkbox" aria-label="Auto pronunciation" checked={autoPronunciation}
-                onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoChoice({key:pronunciationKey,enabled:event.target.checked});try{localStorage.setItem(pronunciationKey,event.target.checked?'on':'off');}catch{} }}/>
-              Auto pronunciation
-            </label>
+            {randomMode&&<p>Random review</p>}
+            <SwitchControl label="Auto pronunciation" caption={<><Icon name="volume" size={20}/> Auto</>} checked={autoPronunciation}
+              onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoChoice({key:pronunciationKey,enabled:event.target.checked});try{localStorage.setItem(pronunciationKey,event.target.checked?'on':'off');}catch{} }}/>
           </div>}
           {page === "review" &&
             (randomMode && randomQueue === null && words.length > 0 ? <LoadingState label="Opening review…" /> : card ? (
@@ -847,7 +824,7 @@ export default function Workspace({
                   color={randomMode ? "coral" : collectionColor(card.id)}
                   className="panel review-card wb-learning-card"
                 >
-                  {randomMode&&<div className="review-card-tools"><button type="button" className="review-delete" aria-label="Delete entry" disabled={busy} onClick={()=>void requestDelete(card)}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></button></div>}
+                  {randomMode&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
                   <h2 className="wb-learning-content">{prompt}</h2>
                   {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
                   {revealed === card.id ? (
@@ -855,7 +832,7 @@ export default function Workspace({
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)}/>
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} details={<ContextExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

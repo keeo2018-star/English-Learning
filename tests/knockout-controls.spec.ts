@@ -93,14 +93,12 @@ for (const width of [390, 1440]) test(`one selected system across Home, Add, Lib
   }
   await expect(page.getByRole('button', { name: 'Forgot password?', exact: true })).toHaveCount(0);
   await page.goto('/review');
-  const checkbox = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
-  const toggle = page.locator('.wb-toggle');
-  await expect(toggle).toHaveClass(/wb-knockout/);
-  await page.keyboard.press('Tab'); await checkbox.focus();
-  await expect(toggle).toHaveCSS('outline-width', '2px');
-  await expect(checkbox).toHaveCSS('outline-style', 'none');
-  await checkbox.uncheck();
-  await expect(toggle).not.toHaveClass(/wb-knockout/);
+  const toggle=page.getByRole('switch',{name:'Auto pronunciation'});
+  await expect(toggle).toHaveClass('wb-switch');
+  await page.keyboard.press('Tab');await toggle.focus();
+  await expect(toggle).toHaveCSS('outline-width','2px');
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck();await expect(toggle).not.toBeChecked();
 });
 
 test('cached masks still update for a changed label and resized control', async ({ page }) => {

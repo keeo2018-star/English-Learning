@@ -31,6 +31,10 @@ export type DictionaryResult = {
 const record = (v: unknown): Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const list = (v: unknown): unknown[] => Array.isArray(v) ? v.slice(0, 20) : [];
 const text = (v: unknown, max = 2000) => typeof v === "string" ? v.trim().slice(0, max) : "";
+// UAPI sometimes joins a leading determiner and an ordinal in the raw example.
+function exampleSource(raw:unknown) {
+    return text(raw).replace(/^(The|This|That)(first|last|next|same)(?=\s)/, '$1 $2');
+}
 export class DictionaryError extends Error {
     status: number;
     code: string;
@@ -74,7 +78,7 @@ export function normalizeDictionaryResponse(raw: unknown): DictionaryResult {
         }),
         chinese: list(entry.definitions).map(v => text(record(v).meaning)).filter(Boolean).slice(0, 6),
         english: list(entry.english_definitions).map(v => { const item = record(v); return { partOfSpeech: text(item.part_of_speech, 80), definition: text(item.definition) }; }).filter(v => v.definition).slice(0, 6),
-        examples: list(entry.examples).map(v => { const item = record(v); return { source: text(item.source), translation: text(item.translation) }; }).filter(v => v.source || v.translation).slice(0, 3),
+        examples: list(entry.examples).map(v => { const item = record(v); return { source: exampleSource(item.source), translation: text(item.translation) }; }).filter(v => v.source || v.translation).slice(0, 3),
         synonyms: [...new Set(list(entry.synonyms).flatMap(v => list(record(v).words).map(w => text(w, 100))).filter(Boolean))].slice(0, 8),
     };
 }

@@ -30,9 +30,9 @@ export function SelectableToggle({ children, checked, onChange, className = '' }
   </label>;
 }
 
-export function SwitchControl({ label, ...props }: Omit<ComponentProps<'input'>,'type'|'role'|'className'> & { label: string }) {
+export function SwitchControl({ label, caption, ...props }: Omit<ComponentProps<'input'>,'type'|'role'|'className'> & { label: string; caption?: React.ReactNode }) {
   return <label className="wb-switch-row">
-    {label}
-    <input {...props} className="wb-switch" type="checkbox" role="switch"/>
+    <span>{caption??label}</span>
+    <input {...props} aria-label={label} className="wb-switch" type="checkbox" role="switch"/>
   </label>;
 }

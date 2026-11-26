@@ -4,6 +4,7 @@ import {imeBlocksSubmit} from '@/lib/ime';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {vocabularyKey,componentOnly,relatedQuery,relatedSenseMatches,relatedMeaning,relatedPreview,type RelatedTerm} from '@/lib/related-words';
 import {dictionaryReference} from '@/lib/dictionary-client';
+import {IconButton} from "@/components/ui/icon";
 import styles from './dictionary.module.css';
 export type RelatedInput={request_id?:string;word:string;meaning:string;example:string;item_type:'word'|'expression';example_source?:'ai'|'dictionary'|'personal'|null};
 type Info={meaning:string;example:string;chinese:string[];english:string[]};
@@ -25,7 +26,7 @@ export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=
   if(old&&Date.now()-old.at<3600000){queueMicrotask(()=>accept(old.items));return()=>controller.abort();}
   void fetch('/api/related-words?'+new URLSearchParams({word,v:'2'}),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d.items))throw Error();const next=d.items.filter((x:RelatedTerm)=>typeof x.word==='string');if(controller.signal.aborted)return;if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{items:next,at:Date.now()});accept(next);}).catch(()=>{if(!controller.signal.aborted)setPhase('error')});return()=>controller.abort();
  },[word,attempt]);
- const all=useMemo<RelatedTerm[]>(()=>{const key=(text:string)=>relatedQuery(text)||vocabularyKey(text),seen=new Set([key(word)]);return [...items.filter(item=>item.relation==='synonym'||item.relation==='antonym'),...synonyms.map(word=>({word})),...items.filter(item=>item.relation!=='synonym'&&item.relation!=='antonym')].filter(x=>relatedQuery(x.word)&&!componentOnly(word,x.word)&&!seen.has(key(x.word))&&!!seen.add(key(x.word))).slice(0,24)},[items,synonyms,word]);
+ const all=useMemo<RelatedTerm[]>(()=>{const key=(text:string)=>relatedQuery(text)||vocabularyKey(text),seen=new Set([key(word)]);return [...items.filter(item=>item.relation==='synonym'||item.relation==='antonym'),...items.filter(item=>item.relation!=='synonym'&&item.relation!=='antonym'),...synonyms.map(word=>({word}))].filter(x=>relatedQuery(x.word)&&!componentOnly(word,x.word)&&!seen.has(key(x.word))&&!!seen.add(key(x.word))).slice(0,24)},[items,synonyms,word]);
  useEffect(()=>{if(!section.current||!referenceReady)return;const observer=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){setVisible(true);observer?.disconnect()}},{rootMargin:'100px'}):null;if(observer)observer.observe(section.current);else queueMicrotask(()=>setVisible(true));return()=>observer?.disconnect();},[phase,all.length,referenceReady]);
  useEffect(()=>{
   if(!visible||phase==='loading')return;
@@ -40,11 +41,11 @@ export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=
   const worker=async()=>{
    while(next<budget&&found.size<limit&&failures<2&&!cancelled){const index=next++,term=all[index];
     try{const info=await information(term.word);if(cancelled)return;
-     if(relatedSenseMatches(meaning,info.chinese,info.english,term.relation)){
+     if((term.relation==='antonym'||term.relation==='synonym'||(!!meaning.trim()&&!!info.meaning))&&relatedSenseMatches(meaning,info.chinese,info.english,term.relation)){
       found.set(index,term);setTranslations(old=>({...old,[vocabularyKey(term.word)]:relatedMeaning(meaning,info.chinese,info.english,term.relation)}));
 
      }
-    }catch{failures++;if(!cancelled&&(term.relation==='synonym'||term.relation==='antonym')){found.set(index,term);}}
+    }catch{failures++;}
     complete++;
    }
   };
@@ -56,7 +57,8 @@ export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=
  return <section ref={section} className={styles.related} aria-label="Related Words"><h3>Related Words</h3>
   {(!accepted.length&&(phase==='loading'||checking||!checked))&&phase!=='error'&&<p role="status">Finding relevant connections…</p>}
   {phase==='error'&&<p className="wb-ui-text">Connections are unavailable. <button type="button" className="text-button" onClick={()=>{setPhase('loading');setAttempt(x=>x+1)}}>Try related words again</button></p>}
-  <div className={styles.relatedGrid}>{accepted.map(item=>{const key=vocabularyKey(item.word);return <div className={styles.relatedItem} key={key}><button type="button" className={styles.relatedTerm} onClick={()=>onOpen(item.word)}><span className="wb-learning-content">{item.word}</span>{item.relation==='antonym'&&<span className={styles.relation}>Antonym</span>}{translations[key]&&<small lang="zh">{relatedPreview(translations[key])}</small>}</button>{onSave&&<button type="button" className={`text-button ${styles.relatedSave}`} aria-label={(known.has(key)?'Saved ':'Save ')+item.word} disabled={known.has(key)||saving.includes(key)} onClick={()=>void save(item.word)}>{known.has(key)?'Saved':saving.includes(key)?'…':'Save'}</button>}</div>})}</div>
+  <div className={styles.relatedGrid}>{accepted.map(item=>{const key=vocabularyKey(item.word);return <div className={styles.relatedItem} key={key}><button type="button" className={styles.relatedTerm} onClick={()=>onOpen(item.word)}><span className="wb-learning-content">{item.word}</span>{item.relation==='antonym'&&<span className={styles.relation}>Antonym</span>}{translations[key]&&<small lang="zh">{relatedPreview(translations[key])}</small>}</button>{onSave&&<IconButton icon={known.has(key)?'check':'add'} label={(known.has(key)?'Saved ':'Save ')+item.word}
+     aria-busy={saving.includes(key)} disabled={known.has(key)||saving.includes(key)} onClick={()=>void save(item.word)}/>}</div>})}</div>
   {hasMore&&<button type="button" className={`text-button ${styles.explore}`} disabled={checking} aria-busy={checking} onClick={()=>setLimit(n=>n+6)}>{checking?'Finding more…':'Explore more'}</button>}
   {checked&&!checking&&!hasMore&&limit>6&&accepted.length<=limit-6&&<p role="status" className="wb-ui-text">No more relevant connections found.</p>}
   {needsMeaning&&<form className={styles.relatedMeaning} onSubmit={e=>{e.preventDefault();if(!imeBlocksSubmit(e.currentTarget,e.timeStamp))void save(needsMeaning)}}><label>Meaning for {needsMeaning}<ImeInput lang="zh-Hans" autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-label="Meaning for related word" value={custom} onValueChange={setCustom} maxLength={2000} required/></label><button disabled={saving.includes(vocabularyKey(needsMeaning))}>Save with meaning</button></form>}

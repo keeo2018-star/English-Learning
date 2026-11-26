@@ -57,3 +57,11 @@
 .random { display:inline-flex; min-height:var(--wb-touch); align-items:center; gap:var(--wb-space-2); margin-top:var(--wb-space-2); }
 @media(max-width:360px){ .action { padding:var(--wb-space-3); } }
 @media(max-width:300px){ .actions { grid-template-columns:minmax(0,1fr); } }
+.home h1 { font-size:clamp(2rem,5vw,2.25rem); }
+.intro { margin:12px 0 20px; }
+.today { display:grid; grid-template-columns:minmax(0,1fr) auto; padding:16px 20px; }
+.today h2 { font-size:1rem; font-weight:600; }
+.dueCount { font-size:clamp(2.25rem,9vw,2.75rem); line-height:1; }
+.dueAction { display:grid; place-items:center; width:44px; height:44px; border-radius:50%; background:var(--wb-black); color:var(--wb-white); }
+.random { grid-column:1/-1; justify-self:start; margin:0; font-size:.875rem; }
+.library { border:0; background:var(--wb-grey); }

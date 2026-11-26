@@ -18,3 +18,12 @@ export async function requestTranslation(
   if (!response.ok || !data.result) throw Error(data.message || 'AI translation is unavailable.');
   return data.result;
 }
+
+export async function requestEnrichment(input:import('./dictionary-enrichment').EnrichmentInput,signal:AbortSignal) {
+  const response=await fetch('/api/ai-dictionary',{method:'POST',headers:await headers(),signal,
+    body:JSON.stringify({mode:'enrichment',consent:true,q:input.word,target:input.target,explanation:input.explanation,level:input.level,partOfSpeech:input.partOfSpeech})});
+  const data=await response.json();
+  if(!response.ok||!data.result)throw Error(data.message||'AI learning notes are unavailable.');
+  const {parseEnrichment}=await import('./dictionary-enrichment');
+  return parseEnrichment(data.result,input);
+}

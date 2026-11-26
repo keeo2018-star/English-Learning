@@ -7,3 +7,12 @@ test('missing fields and bounded sections',()=>{assert.deepEqual(normalizeDictio
 test('validation rejects empty and unsafe words without fetching',async()=>{for(const w of ['', '../a','https://bad','a'.repeat(121)]) assert.throws(()=>validateDictionaryWord(w),{status:400});let called=false;await assert.rejects(lookupDictionary('../bad',async()=>{called=true;}));assert.equal(called,false);});
 test('fixed UAPI host and encoded query',async()=>{let address;await lookupDictionary(' ICE  CREAM ',async u=>{address=u;return Response.json(raw);});assert.equal(address,'https://uapis.cn/api/v1/dictionary/lookup?word=ice+cream');});
 test('not found and upstream failures',async()=>{await assert.rejects(lookupDictionary('a',async()=>new Response('{}',{status:404})),{status:404});assert.throws(()=>normalizeDictionaryResponse({found:false}),{status:404});assert.throws(()=>normalizeDictionaryResponse({code:'WORD_NOT_FOUND'}),{status:404});for(const response of [new Response('{}',{status:503}),new Response('bad'),Response.json({})])await assert.rejects(lookupDictionary('a',async()=>response),{status:502});await assert.rejects(lookupDictionary('a',async()=>{throw new Error('timeout');}),{status:502});});
+
+test('repairs a provider-joined determiner and ordinal without rewriting valid words',()=>{
+ const result=normalizeDictionaryResponse({found:true,entry:{word:'question',examples:[
+  {source:'Thelast question was hard.'},{source:'Therefore the question was hard.'},{source:'Celui-ci est difficile.'},
+ ]}});
+ assert.deepEqual(result.examples.map(example=>example.source),[
+  'The last question was hard.','Therefore the question was hard.','Celui-ci est difficile.',
+ ]);
+});

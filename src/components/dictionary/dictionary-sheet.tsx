@@ -1,24 +1,27 @@
 "use client";
-import {isOriginalEnglish,type LearningCollection,type TargetLanguage} from '@/lib/collections';
+import {isOriginalEnglish,type LearningCollection} from '@/lib/collections';
 import {CollectionReference} from './collection-reference';
 import {PronunciationControl} from './pronunciation-control';
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {imeBlocksSubmit,formIsComposing} from '@/lib/ime';
 import { useEffect, useId, useRef, useState } from "react";
 import type { DictionaryResult } from "@/lib/dictionary";
-import { ArrowIcon } from "@/components/ui/primitives";
+import { Icon, IconButton } from "@/components/ui/icon";
+import { Sheet } from "@/components/ui/sheet";
+import { VocabularyRow } from "@/components/ui/vocabulary-row";
+import type { ReactNode } from "react";
 import { Feedback, LoadingState } from "@/components/ui/states";
-import { getPronunciations, rememberPronunciations } from "@/lib/pronunciation";
+import { rememberPronunciations } from "@/lib/pronunciation";
 import styles from "./dictionary.module.css";
 import {dictionaryReference} from '@/lib/dictionary-client';
 import { RelatedWords,type RelatedInput } from './related-words';
 import {stopPronunciation} from '@/lib/pronunciation';
 import {DictionaryPronunciation,DictionaryReferenceContent} from './dictionary-reference';
 import {BilingualSearch} from './bilingual-search';
-import {AiExplanation} from './ai-explanation';
+import {LearningNotes} from './learning-notes';
 import { VideoContextSection } from './video-context-section';
-export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,savedWords,collection,example }: {
-    example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
+export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,savedWords,collection,example, browse, details, metadata, management, blockClose }: {
+    browse?:boolean; blockClose?:boolean; details?:ReactNode; management?:ReactNode; metadata?:string; example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
     onSaveMeaning?: (meaning: string) => Promise<void>;
     word: string;
     meaning: string;
@@ -26,28 +29,13 @@ export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,sa
     const [open, setOpen] = useState(false);
     const dialogId = useId();
     const trigger = useRef<HTMLButtonElement>(null);
-    return <><button ref={trigger} type="button" className="secondary wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open ? dialogId : undefined} aria-haspopup="dialog" onClick={() => setOpen(value => !value)}>Dictionary <ArrowIcon /></button>{open && <DictionarySheet returnFocus={trigger} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
+    const openEntry=()=>setOpen(true);
+    return <>{browse ? <VocabularyRow expression={word} meaning={meaning} metadata={metadata} buttonRef={trigger} onClick={openEntry}/> :
+      <button ref={trigger} type="button" className="secondary wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open?dialogId:undefined} aria-haspopup="dialog" onClick={openEntry}>Dictionary <Icon name="chevronRight" size={16}/></button>}
+      {open && <DictionarySheet returnFocus={trigger} blockClose={blockClose} details={details} management={management} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
 }
-export function WordPronunciation({ word,language='en' }: { word: string;language?:TargetLanguage }) {
-    const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"] | null>(null);
-    const anchor = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if(language!=='en')return;
-        let active = true;
-        const load = () => {
-            observer?.disconnect();
-            void getPronunciations(word).then(data => { if (active) setPhonetics(data); });
-        };
-        const observer = typeof IntersectionObserver === "function" ? new IntersectionObserver(entries => {
-            if (entries.some(entry => entry.isIntersecting)) load();
-        }, { rootMargin: "180px 0px" }) : null;
-        if (observer && anchor.current) observer.observe(anchor.current); else load();
-        return () => { active = false; observer?.disconnect(); };
-    }, [word,language]);
-    return <div ref={anchor} className={styles.wordPronunciation}>{language!=='en'?<PronunciationControl text={word} language={language}/>:phonetics && <DictionaryPronunciation word={word} phonetics={phonetics} showErrors={false} />}</div>;
-}
-function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example }: {
-    returnFocus?:React.RefObject<HTMLButtonElement|null>;
+function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example,details,management,blockClose }: {
+    blockClose?:boolean; details?: ReactNode; management?: ReactNode; returnFocus?:React.RefObject<HTMLButtonElement|null>;
     example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
     onSaveMeaning?: (meaning: string) => Promise<void>;
     dialogId: string;
@@ -58,8 +46,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
     const englishReference=!collection||collection.target_language==='en';
     const [trail,setTrail]=useState<{word:string;scroll:number}[]>([]);
     const word=trail.at(-1)?.word||rootWord,meaning=trail.length?'':rootMeaning,onSaveMeaning=trail.length?undefined:rootSaveMeaning;
-    const dialog = useRef<HTMLDialogElement>(null), close = useRef<HTMLButtonElement>(null), id = useId();
-    const backdropPress = useRef(false),restoreScroll=useRef(0);
+    const dialog = useRef<HTMLDivElement>(null), restoreScroll=useRef(0);
     const savingMeaning = useRef(false);
     const meaningInput = useRef<HTMLTextAreaElement>(null);
     const editButton = useRef<HTMLButtonElement>(null);
@@ -75,61 +62,15 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         catch (error) { setMeaningError(error instanceof Error ? error.message : "Could not save your meaning. Please try again."); }
         finally { savingMeaning.current = false; setMeaningBusy(false); }
     }
+    const [closeAlert,setCloseAlert]=useState(false);
     function requestClose() {
+        if(blockClose){setCloseAlert(true);return;}
         if (savingMeaning.current || formIsComposing(dialog.current)) return;
         if (editingMeaning && draft !== meaning) { setMeaningError("Save or cancel your edit before closing."); meaningInput.current?.focus(); return; }
         onClose();
     }
     useEffect(() => { if (editingMeaning) meaningInput.current?.focus(); }, [editingMeaning]);
-    useEffect(() => {
-        const element = dialog.current;
-        if (!element) return;
-        let start: { x: number; y: number; distance: number; handle: boolean } | null = null;
-        const reset = () => { start = null; element.removeAttribute("data-dragging"); element.style.removeProperty("--dictionary-drag-y"); };
-        const begin = (event: TouchEvent) => {
-            reset();
-            if (!window.matchMedia("(max-width: 699px)").matches || editingMeaning || savingMeaning.current || formIsComposing(element) || event.touches.length !== 1) return;
-            const target = event.target instanceof Element ? event.target : null;
-            if (target?.closest("button,input,textarea,select,summary,a,[contenteditable=true]")) return;
-            const handle = !!target?.closest("[data-dictionary-drag-handle]");
-            if (element.scrollTop > 0 && !handle) return;
-            const touch = event.touches[0], bounds = element.getBoundingClientRect();
-            if (touch.clientX < bounds.left || touch.clientX > bounds.right || touch.clientY < bounds.top || touch.clientY > bounds.bottom) return;
-            start = { x: touch.clientX, y: touch.clientY, distance: 0, handle };
-        };
-        const move = (event: TouchEvent) => {
-            if (!start || event.touches.length !== 1) return;
-            const selection = window.getSelection();
-            if ((selection && !selection.isCollapsed && element.contains(selection.anchorNode)) || (element.scrollTop > 0 && !start.handle)) { reset(); return; }
-            const touch = event.touches[0], dy = touch.clientY - start.y, dx = Math.abs(touch.clientX - start.x);
-            if (dy <= 0 || dx > Math.max(12, dy)) { reset(); return; }
-            if (dy < 8) return;
-            if (event.cancelable) event.preventDefault();
-            start.distance = dy;
-            element.setAttribute("data-dragging", "true");
-            element.style.setProperty("--dictionary-drag-y", `${Math.min(dy, 180)}px`);
-        };
-        const end = () => { const dismiss = !!start && start.distance >= 96; reset(); if (dismiss && !savingMeaning.current && !formIsComposing(element)) onClose(); };
-        element.addEventListener("touchstart", begin, { passive: true });
-        element.addEventListener("touchmove", move, { passive: false });
-        element.addEventListener("touchend", end);
-        element.addEventListener("touchcancel", reset);
-        return () => { reset(); element.removeEventListener("touchstart", begin); element.removeEventListener("touchmove", move); element.removeEventListener("touchend", end); element.removeEventListener("touchcancel", reset); };
-    }, [onClose, editingMeaning]);
-    const outside = (x: number, y: number) => {
-        const bounds = dialog.current?.getBoundingClientRect();
-        return !!bounds && (x < bounds.left || x > bounds.right || y < bounds.top || y > bounds.bottom);
-    };
     const [result, setResult] = useState<DictionaryResult | null>(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
-    useEffect(() => {
-        const element = dialog.current, previous = returnFocus?.current ?? document.activeElement;
-        element?.showModal();
-        if(searchOnly)element?.querySelector<HTMLTextAreaElement>('textarea[aria-label="Search English or Chinese"]')?.focus();else close.current?.focus();
-        const overflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        return () => { element?.close(); document.body.style.overflow = overflow; if (previous instanceof HTMLElement && previous.isConnected)
-            previous.focus({ preventScroll: true }); };
-    }, [searchOnly,returnFocus]);
     useEffect(() => {
         if(searchOnly||!englishReference)return;
         const controller = new AbortController();
@@ -149,21 +90,17 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         return () => controller.abort();
     }, [word, attempt,searchOnly,englishReference]);
     function resetEntry(){stopPronunciation();setResult(null);setError('');setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
-    function navigate(next:string){if(savingMeaning.current||formIsComposing(dialog.current))return;if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus();return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});close.current?.focus({preventScroll:true});});}
-    function back(){if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>{close.current?.focus({preventScroll:true});});}
-    return <dialog id={dialogId} ref={dialog} className={styles.sheet} aria-labelledby={id}
- onPointerDown={event => { backdropPress.current = outside(event.clientX, event.clientY); }}
- onClick={event => { const dismiss = backdropPress.current && outside(event.clientX, event.clientY); backdropPress.current = false; if (dismiss) requestClose(); }}
- onCancel={e => { e.preventDefault(); requestClose(); }}>
- <div className={styles.dragHandle} data-dictionary-drag-handle aria-hidden="true"><span /></div>
- <div className={styles.header} data-dictionary-drag-handle><span className={`${styles.kicker} wb-ui-text`}>{searchOnly?'DICTIONARY / TRANSLATOR':'DICTIONARY / REFERENCE'}</span><button ref={close} type="button" className={`wb-control wb-control-outline ${styles.close}`} aria-label="Close" title="Close dictionary" disabled={meaningBusy} onClick={requestClose}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button></div>
- {searchOnly?<><h2 id={id}>Dictionary.</h2><BilingualSearch onSave={onRelatedSave} savedWords={savedWords}/></>:<>
+    function navigate(next:string){if(savingMeaning.current||formIsComposing(dialog.current))return;if(blockClose){setCloseAlert(true);return;}if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus();return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});});}
+    function back(){if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));}
+    return <Sheet id={dialogId} title="Dictionary" wide swipe={!editingMeaning&&!blockClose} onBackdrop bodyRef={dialog} busy={meaningBusy} returnFocus={returnFocus} onClose={requestClose}>
+ {searchOnly?<BilingualSearch onSave={onRelatedSave} savedWords={savedWords}/>:<>
  {trail.length>0&&<button type="button" className="text-button" onClick={back}>Back to {trail.length>1?trail[trail.length-2].word:rootWord}</button>}
- <h2 id={id} className="wb-learning-content">{word}</h2>
+ <h2 className={`${styles.hero} wb-learning-content`}>{word}</h2>
+ {result&&result.english[0]?.partOfSpeech&&<p className="wb-supporting">{result.english[0].partOfSpeech}</p>}
  {!englishReference&&<PronunciationControl text={word} language={collection?.target_language}/>}
  {result && <DictionaryPronunciation word={word} phonetics={result.phonetics} activeStyle/>}
- {!trail.length&&<aside className={styles.personal}>
- <div className={styles.personalHeader}><h3 className="wb-ui-text">My meaning</h3>{onSaveMeaning && !editingMeaning && <button ref={editButton} type="button" className="text-button" aria-label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}>Edit</button>}</div>
+ {!trail.length&&(onSaveMeaning||meaning)&&<aside className={styles.personal}>
+ <div className={styles.personalHeader}><h3 className="wb-ui-text">{onSaveMeaning?"My meaning":"Meaning"}</h3>{onSaveMeaning && !editingMeaning && <IconButton ref={editButton} icon="pencil" label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}/>}</div>
  {editingMeaning ? <form onSubmit={saveMeaning} aria-label="Edit my meaning">
  <label><ImeTextarea aria-label="My meaning" lang={collection?.explanation_language==='en'?'en':'zh-Hans'} autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy} /></label>
  {meaningError && <p role="alert" className="wb-ui-text">{meaningError}</p>}
@@ -172,14 +109,20 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  </aside>}
  {englishReference&&!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" className="wb-control" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
+ {!trail.length&&details}
+ {closeAlert&&blockClose&&<p role="alert">Save or cancel your entry edit before closing.</p>}
  {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word}/>}
- {englishReference&&<>{isOriginalEnglish(collection)&&<AiExplanation key={"ai:"+word} word={word}/>}
+ <LearningNotes key={JSON.stringify([word,collection?.id,result?.english[0]?.partOfSpeech])}
+   input={{word,target:collection?.target_language||'en',explanation:collection?.explanation_language||'zh-CN',
+     level:collection?.proficiency_level||'unspecified',partOfSpeech:result?.english[0]?.partOfSpeech||''}}/>
+ {englishReference&&<>
  <VideoContextSection key={"video:"+word} word={word} />
  {isOriginalEnglish(collection)&&<RelatedWords referenceReady={!!result||!!error} key={"related:"+word} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/>}</>}
- {!englishReference&&example&&<blockquote className="wb-learning-content">{example}</blockquote>}
+ {!trail.length&&!details&&example&&<blockquote className="wb-learning-content">{example}</blockquote>}
  {collection&&!englishReference&&<CollectionReference key={collection.target_language + ":" + word} word={word} language={collection.target_language}/>}
+ {!trail.length&&management}
  </>}
- </dialog>;
+ </Sheet>;
 }
 
 

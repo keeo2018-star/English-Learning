@@ -8,6 +8,7 @@ const paths = {
   external: 'M6 18 18 6M8 6h10v10', left: 'm12 5-7 7 7 7M5 12h14', right: 'm12 5 7 7-7 7M5 12h14',
   chevronRight: 'm9 6 6 6-6 6', chevronLeft: 'm15 6-6 6 6 6', chevronDown: 'm6 9 6 6 6-6',
   check: 'm5 12 4 4L19 6', close: 'm6 6 12 12M18 6 6 18', minus: 'M5 12h14',
+  trash:'M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6',
   pencil: 'm15 5 4 4M4 20l4-1 12-12-4-4L4 15z',
   clipboard: 'M9 5H6a2 2 0 0 0-2 2v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a2 2 0 0 0-2-2h-3M9 3h6v5H9z',
   camera: 'M4 7h4l2-3h4l2 3h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Zm12 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
@@ -18,7 +19,7 @@ const paths = {
 export type IconName = keyof typeof paths;
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
-  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
+  return <svg className="wb-svg-icon" aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name]}/></svg>;
 }
 

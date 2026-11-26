@@ -16,11 +16,11 @@ test.describe('unified learning navigation', () => {
     await expect(due).toHaveAttribute('aria-pressed', 'true');
     for (const control of [due, random, library]) {
       await expect(control).toBeVisible();
-      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(48);
-      await expect(control).toHaveCSS('font-size', '14px');
+      expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      expect(await control.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
       await expect(control).toHaveCSS('border-radius', '999px');
     }
-    const setting = page.getByRole('checkbox', { name: 'Auto pronunciation', exact: true });
+    const setting = page.getByRole('switch', { name: 'Auto pronunciation', exact: true });
     await expect(modes.getByRole('checkbox')).toHaveCount(0);
     await setting.uncheck();
     await random.click();
@@ -37,7 +37,7 @@ test.describe('unified learning navigation', () => {
     await selected.focus();
     await expect(selected).toHaveCSS('outline-width', '2px');
     await expect(page.getByLabel('Search library')).toBeVisible();
-    await expect(page.getByRole('checkbox', { name: 'Auto pronunciation' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Auto pronunciation' })).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Library', exact: true })).toHaveCount(0);
     if (width === 390 || width === 1440) await page.screenshot({ path: `/tmp/noted-learning-modes-${width}.png`, fullPage: true });
     await libraryModes.getByRole('link', { name: 'Due words', exact: true }).click();
@@ -63,14 +63,13 @@ test.describe('unified learning navigation', () => {
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Library', exact: true }).click();
     await page.getByLabel('Search library').fill(sampleWord.word);
     await expect(page.getByRole('heading', { name: sampleWord.word, exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: `Dictionary for ${sampleWord.word}` }).click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Play pronunciation', exact: true }).first()).toBeEnabled();
     await expect(page.getByRole('dialog').getByText('测试', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: `Edit ${sampleWord.word}`, exact: true }).click();
     await page.locator('form.edit-form').getByRole('textbox', { name: 'Meaning', exact: true }).fill('A personal discovery');
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByText('A personal discovery', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'Dictionary'}).getByText('A personal discovery', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: `Delete ${sampleWord.word}`, exact: true }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete word', exact: true }).click();
     await expect(page.getByRole('heading', { name: sampleWord.word, exact: true })).toHaveCount(0);

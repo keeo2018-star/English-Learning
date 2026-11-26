@@ -75,12 +75,14 @@ test('Profile settings persist independently and ordering stays separate from pr
  await french.click();
  const sheet=page.getByRole('dialog',{name:'Language settings'});
  await expect(sheet).toBeVisible();
- await page.getByLabel('Level for French',{exact:true}).selectOption('B1');
- await expect(sheet.getByLabel('Level for French')).toHaveValue('B1');
+ await sheet.getByRole('button',{name:'Level for French'}).click();
+ await sheet.getByRole('menuitemradio',{name:'B1',exact:true}).click();
+ await expect(sheet.getByRole('button',{name:'Level for French'})).toContainText('B1');
  await sheet.getByRole('switch',{name:'Auto pronunciation'}).click();
  await expect(sheet.getByRole('switch',{name:'Auto pronunciation'})).not.toBeChecked();
- await page.getByLabel('Explanation language for French').selectOption('en');
- await expect(sheet.getByLabel('Explanation language for French')).toHaveValue('en');
+ await sheet.getByRole('button',{name:'Explanation language for French'}).click();
+ await sheet.getByRole('menuitemradio',{name:'English',exact:true}).click();
+ await expect(sheet.getByRole('button',{name:'Explanation language for French'})).toContainText('English');
  await sheet.getByRole('button',{name:'Done',exact:true}).click();
  await expect(french).toContainText('English explanations');
  await expect(french).toBeFocused();
@@ -110,7 +112,7 @@ test('missing Collection metadata blocks mixed-language review rather than falli
 
 test('French and Chinese use the shared TTS controller with the correct locale and manual playback',async({page})=>{
  test.skip(!cloudUrl);const f=await setup(page);await page.addInitScript(()=>{const log:{text:string;lang:string;voice?:string}[]=[];Object.assign(window,{collectionSpeech:log});Object.defineProperty(window,'SpeechSynthesisUtterance',{configurable:true,value:class{text:string;lang='';voice:{lang:string}|null=null;onstart:(()=>void)|null=null;onend:(()=>void)|null=null;constructor(text:string){this.text=text}}});Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{getVoices:()=>['en-GB','fr-FR','es-ES','zh-CN'].map(lang=>({lang,name:lang,voiceURI:lang})),speak:(u:SpeechSynthesisUtterance)=>{log.push({text:u.text,lang:u.lang,voice:u.voice?.lang});queueMicrotask(()=>u.onstart?.({} as SpeechSynthesisEvent))},cancel:()=>{},resume:()=>{},addEventListener:()=>{},removeEventListener:()=>{}}});HTMLMediaElement.prototype.play=function(){return Promise.resolve()};HTMLMediaElement.prototype.pause=function(){};});
- await page.goto('/review');await choose(page,'French');await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:{lang:string}[]}).collectionSpeech.some(row=>row.lang==='fr-FR'))).toBe(true);const before=f.dictionaryCalls();await choose(page,'Simplified Chinese');await expect(page.locator('.review-card h2')).toHaveText('你好');await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:{text:string;lang:string}[]}).collectionSpeech.some(row=>row.lang==='zh-CN'&&row.text==='你好'))).toBe(true);await page.getByRole('checkbox',{name:'Auto pronunciation',exact:true}).uncheck();const calls=await page.evaluate(()=>(window as unknown as {collectionSpeech:unknown[]}).collectionSpeech.length);await page.getByRole('button',{name:'Play pronunciation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:unknown[]}).collectionSpeech.length)).toBe(calls+1);expect(f.dictionaryCalls()).toBe(before);
+ await page.goto('/review');await choose(page,'French');await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:{lang:string}[]}).collectionSpeech.some(row=>row.lang==='fr-FR'))).toBe(true);const before=f.dictionaryCalls();await choose(page,'Simplified Chinese');await expect(page.locator('.review-card h2')).toHaveText('你好');await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:{text:string;lang:string}[]}).collectionSpeech.some(row=>row.lang==='zh-CN'&&row.text==='你好'))).toBe(true);await page.getByRole('switch',{name:'Auto pronunciation',exact:true}).uncheck();const calls=await page.evaluate(()=>(window as unknown as {collectionSpeech:unknown[]}).collectionSpeech.length);await page.getByRole('button',{name:'Play pronunciation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as unknown as {collectionSpeech:unknown[]}).collectionSpeech.length)).toBe(calls+1);expect(f.dictionaryCalls()).toBe(before);
 });
 
 test('obsolete translation cannot replace a newer French draft or a manually edited meaning',async({page})=>{
@@ -191,9 +193,10 @@ test('AI candidates update all learning content without replacing notes or issui
  expect(fixture.inserts[0]).toMatchObject({word:'lotus flower',meaning:'莲花的花朵',example:'She photographed a lotus flower.',personal_note:'Private note',collection_id:en.id,learning_details:{exampleTranslation:'她拍下了一朵莲花。',highlight:'lotus flower',translationContext:'Pond plants'}});
  await page.goto('/library?q=lotus');
  await page.reload();
+ await page.getByRole('button',{name:'Dictionary for lotus flower'}).click();
  await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
  await expect(page.getByText('Private note', {exact:false})).toBeVisible();
- await expect(page.locator('.word-row mark')).toHaveText('lotus flower');
+ await expect(page.getByRole('dialog').locator('mark').first()).toHaveText('lotus flower');
  fixture.rows.splice(0,3);
  await page.goto('/review?mode=random');
  await page.getByRole('button',{name:'Reveal answer'}).click();

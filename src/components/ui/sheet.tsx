@@ -1,26 +1,65 @@
 'use client';
 
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { IconButton } from './icon';
 
-export function Sheet({ title, onClose, busy, children }: {
-  title: string; onClose: () => void; busy?: boolean; children: ReactNode;
+export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, returnFocus, swipe, onBackdrop }: {
+  title: string; onClose: () => void; busy?: boolean; children: ReactNode; id?: string; wide?: boolean;
+  swipe?: boolean; onBackdrop?: boolean; bodyRef?: RefObject<HTMLDivElement|null>; returnFocus?: RefObject<HTMLElement|null>;
 }) {
   const element = useRef<HTMLDialogElement>(null);
   const heading = useId();
-  useEffect(() => {
+  const header = useRef<HTMLElement>(null);
+  const backdropPointer = useRef(false);
+  const dismiss = () => { if (!busy) onClose(); };
+  useLayoutEffect(() => {
     const dialog = element.current;
     if (!dialog) return;
-    const previous = document.activeElement;
+    const previous = returnFocus?.current ?? document.activeElement;
     dialog.showModal();
     return () => {
       dialog.close();
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus({ preventScroll: true });
+      if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected)
+        previous.focus({ preventScroll: true });
     };
-  }, []);
-  return <dialog ref={element} className="language-sheet" aria-labelledby={heading}
-    onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
-    <h2 id={heading}>{title}</h2>
-    {children}
-    <div className="wb-sheet-toast-anchor" role="status" aria-live="polite" aria-atomic="true"/>
+  }, [returnFocus]);
+  useEffect(() => {
+    const node=header.current, dialog=element.current;
+    if(!swipe||busy||!node||!dialog)return;
+    let start:{x:number;y:number;distance:number}|null=null;
+    const reset=()=>{start=null;dialog.style.removeProperty('--wb-sheet-drag');delete dialog.dataset.dragging;};
+    const begin=(event:TouchEvent)=>{
+      reset();
+      if(!matchMedia('(max-width: 699px)').matches||event.touches.length!==1||
+        (event.target instanceof Element&&event.target.closest('button,a,input')))return;
+      const touch=event.touches[0];start={x:touch.clientX,y:touch.clientY,distance:0};
+    };
+    const move=(event:TouchEvent)=>{
+      if(!start||event.touches.length!==1)return;
+      const touch=event.touches[0],dy=touch.clientY-start.y,dx=Math.abs(touch.clientX-start.x);
+      if(dy<0||dx>Math.max(12,dy)){reset();return;}
+      if(dy<8)return;
+      if(event.cancelable)event.preventDefault();
+      start.distance=dy;dialog.dataset.dragging='true';dialog.style.setProperty('--wb-sheet-drag',Math.min(dy,180)+'px');
+    };
+    const end=()=>{const close=(start?.distance??0)>=96;reset();if(close)onClose();};
+    node.addEventListener('touchstart',begin,{passive:true});
+    node.addEventListener('touchmove',move,{passive:false});
+    node.addEventListener('touchend',end);
+    node.addEventListener('touchcancel',reset);
+    return()=>{reset();node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);
+      node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',reset);};
+  },[busy,onClose,swipe]);
+  return <dialog ref={element} id={id} className="language-sheet wb-bottom-sheet" data-wide={wide||undefined} aria-labelledby={heading}
+    onPointerDown={event=>{backdropPointer.current=event.target===event.currentTarget;}}
+    onClick={event=>{if(onBackdrop&&backdropPointer.current&&event.target===event.currentTarget)dismiss();backdropPointer.current=false;}}
+    onCancel={event => { event.preventDefault(); dismiss(); }}>
+    <div className="wb-sheet-layout">
+      <header ref={header} className="wb-sheet-header" data-dictionary-drag-handle={swipe!==undefined||undefined}><h2 id={heading}>{title}</h2>
+        <IconButton icon="close" label="Close" variant="soft" disabled={busy} onClick={dismiss}/>
+      </header>
+      <div className="wb-sheet-body" ref={bodyRef}>{children}</div>
+      <div className="wb-sheet-toast-anchor" role="status" aria-live="polite" aria-atomic="true"/>
+    </div>
   </dialog>;
 }

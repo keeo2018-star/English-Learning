@@ -32,8 +32,8 @@ test.describe("Noted home", () => {
     expect(new Set(coreBoxes.map(box => Math.round(box!.width))).size).toBe(1);
     expect(new Set(coreBoxes.map(box => Math.round(box!.height))).size).toBe(1);
     const library = page.getByRole('main').getByRole('link', { name: 'Library', exact: true });
-    await expect(library).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-    await expect(library).toHaveCSS('border-top-width', '1px');
+    await expect(library).toHaveCSS('background-color', 'rgb(233, 233, 228)');
+    await expect(library).toHaveCSS('border-top-width', '0px');
     await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Library', exact: true })).toHaveCount(0);
     expect(reads).toBe(0);
     await expect(page.getByRole('progressbar')).toHaveCount(0);

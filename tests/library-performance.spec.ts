@@ -26,17 +26,16 @@ test.describe('Library search performance and reliability', () => {
     await page.setViewportSize({ width, height: 844 });
     const state = await setup(page);
     await page.goto('/library');
-    await expect(page.getByRole('status', { name: 'Library count' })).toHaveText('1000 items');
+    await expect(page.getByRole('status', { name: 'Library count' })).toHaveText('1000 saved items');
     await expect(page.locator('.word-row')).toHaveCount(30);
     expect(await page.locator('*').count()).toBeLessThan(1800);
-    await expect.poll(() => state.lookups.length).toBeGreaterThan(0);
-    expect(state.lookups.length).toBeLessThan(30);
+    expect(state.lookups).toHaveLength(0);
     const reads: string[] = [];
     page.on('request', request => { if (request.url().startsWith(cloudOrigin + '/rest/v1/words')) reads.push(request.url()); });
     await page.getByLabel('Search library').pressSequentially('needle');
     await expect(page.getByRole('heading', { name: 'needle', exact: true })).toBeVisible();
     await expect(page.locator('.word-row')).toHaveCount(1);
-    await expect(page.getByRole('status', { name: 'Library count' })).toHaveText('1 result · 1000 total items');
+    await expect(page.getByRole('status', { name: 'Library count' })).toHaveText('1 result');
     expect(reads).toHaveLength(0); // Typing searches the complete local index, not Supabase.
     await page.getByLabel('Search library').fill('');
     await expect(page.locator('.word-row')).toHaveCount(30);
@@ -60,8 +59,8 @@ test.describe('Library search performance and reliability', () => {
     await input.fill(''); await input.pressSequentially('caught off guard');
     await expect(input).toHaveValue('caught off guard');
     await expect(page.locator('.word-row')).toHaveCount(1);
-    await expect(page.locator('.word-row h2')).toHaveText('needle');
-    await input.fill('捕捉'); await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
+    await input.fill('捕捉'); await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     expect(await page.evaluate(() => (window as unknown as { stableSearchControl: { writes: number } }).stableSearchControl.writes)).toBe(0);
   });
@@ -83,7 +82,7 @@ test.describe('Library search performance and reliability', () => {
     for (const text of ['  ＮＥＥＤＬＥ  ', '捕捉', 'caught off guard']) {
       await search.fill(text);
       await expect(page.locator('.word-row')).toHaveCount(1);
-      await expect(page.locator('.word-row h2')).toHaveText('needle');
+      await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
     }
     await search.fill('nothing matches');
     await expect(page.getByText('No matching words. Try another search.', { exact: true })).toBeVisible();
@@ -94,12 +93,13 @@ test.describe('Library search performance and reliability', () => {
     const state = await setup(page, 3); await page.goto('/library');
     await page.getByLabel('Search library').fill('needle');
     await expect(page.locator('.word-row')).toHaveCount(1);
-    await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
     state.fail = true;
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(page.getByText(/Could not refresh. Showing your last loaded items/)).toBeVisible();
-    await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
     await expect(page.getByLabel('Search library')).toHaveValue('needle');
+    await page.getByRole('button', { name: 'Dictionary for needle', exact: true }).click();
     await page.getByRole('button', { name: 'Edit needle', exact: true }).click();
     await page.getByRole('textbox', { name: 'Meaning', exact: true }).fill('Unsaved edit stays here');
     const reads = state.reads;
@@ -107,9 +107,10 @@ test.describe('Library search performance and reliability', () => {
     await expect(page.getByRole('textbox', { name: 'Meaning', exact: true })).toHaveValue('Unsaved edit stays here');
     expect(state.reads).toBe(reads);
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
     state.fail = false;
     await page.getByRole('button', { name: 'Retry sync', exact: true }).click();
     await expect(page.getByText(/Could not refresh. Showing your last loaded items/)).toHaveCount(0);
-    await expect(page.locator('.word-row h2')).toHaveText('needle');
+    await expect(page.locator('.word-row [role=heading]')).toHaveText('needle');
   });
 });
