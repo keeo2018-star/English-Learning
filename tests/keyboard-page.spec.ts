@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { cloudUrl, mockCloud } from './helpers/cloud';
 
 for (const width of [320, 375, 390, 430]) {
   test(`Add hides navigation while the visual keyboard is open at ${width}px`, async ({ page }) => {
+    test.skip(!cloudUrl, 'Requires configured cloud fixture');
+    await mockCloud(page, route => route.fulfill({ json: [] }));
     await page.setViewportSize({ width, height: 844 });
     await page.addInitScript(() => {
       const viewport = window.visualViewport!;
