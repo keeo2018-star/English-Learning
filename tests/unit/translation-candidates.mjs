@@ -93,7 +93,7 @@ test('AI casing corrections require a common-word classification and a matching 
 });
 
 test('structured Gemini requests carry only the intended translation input for each scenario', async () => {
-  const aiStub = 'data:text/javascript,' + encodeURIComponent("export const AI_MODEL='fixture-model';export const aiConfigured=()=>true;");
+  const aiStub = 'data:text/javascript,' + encodeURIComponent("export const configuredAiModel=()=> 'fixture-model';export const aiConfigured=()=>true;");
   const parser = await compile('../../src/lib/translation-candidates.ts', {
     './collections': collections, './highlight': highlight,
   });

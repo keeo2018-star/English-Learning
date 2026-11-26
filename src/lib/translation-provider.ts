@@ -1,9 +1,9 @@
-import { AI_MODEL, aiConfigured } from './ai-provider';
+import { configuredAiModel, aiConfigured } from './ai-provider';
 import { parseTranslation, type TranslationInput } from './translation-candidates';
 
 export async function generateTranslation(input: TranslationInput, fetcher: typeof fetch = fetch) {
   if (!aiConfigured()) throw Error('AI translation is unavailable.');
-  const response = await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`, {
+  const response = await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${configuredAiModel()}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY! },
     signal: AbortSignal.timeout(18000),
