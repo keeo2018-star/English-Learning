@@ -1,12 +1,13 @@
 "use client";
 import {forwardRef,useLayoutEffect,useImperativeHandle,useRef,useState,type ComponentProps,type CompositionEvent,type KeyboardEvent,type Ref} from 'react';
-import {imeState,imeKeyBlocked} from '@/lib/ime';
+import {imeState,imeKeyBlocked,trackExplicitImeSubmit} from '@/lib/ime';
 type Field=HTMLInputElement|HTMLTextAreaElement;
 type Options<T extends Field>={value?:string;defaultValue?:string;onValueChange?:(value:string)=>void;onImeStateChange?:(active:boolean)=>void;onCompositionStart?:(event:CompositionEvent<T>)=>void;onCompositionUpdate?:(event:CompositionEvent<T>)=>void;onCompositionEnd?:(event:CompositionEvent<T>)=>void;onKeyDown?:(event:KeyboardEvent<T>)=>void};
 function useNativeIme<T extends Field>(props:Options<T>,ref:Ref<T>){
  const element=useRef<T>(null),[initial]=useState(()=>props.value??props.defaultValue??'');
  const delivered=useRef(initial);
  useImperativeHandle(ref,()=>element.current!,[]);
+ useLayoutEffect(()=>{const form=element.current?.form;return form?trackExplicitImeSubmit(form):undefined;},[]);
  useLayoutEffect(()=>{const el=element.current;if(!el||props.value===undefined||imeState(el).active)return;
   if(el.value!==props.value)el.value=props.value;delivered.current=props.value;
  },[props.value]);

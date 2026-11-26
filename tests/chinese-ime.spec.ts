@@ -63,3 +63,20 @@ test.describe('Existing Chinese and related meanings',()=>{test.skip(!cloudUrl,'
   const state=await setup(page);state.emptyFails=true;state.rows[0].meaning='a fortunate coincidence';await page.route('**/api/dictionary?*',route=>route.fulfill({json:{word:'fortunate coincidence',phonetics:[],chinese:[],english:[{definition:'a fortunate coincidence',partOfSpeech:'noun'}],examples:[],synonyms:[]}}));await page.route('**/api/related-words?*',route=>route.fulfill({json:{items:[{word:'fortunate coincidence',relation:'synonym'}],family:[],source:'Datamuse'}}));await page.goto('/library');await page.getByRole('button',{name:`Dictionary for ${sampleWord.word}`,exact:true}).click();await page.locator('summary').filter({hasText:'Related & Compare'}).click();await page.getByRole('region',{name:'Related Words'}).scrollIntoViewIfNeeded();await page.getByRole('button',{name:'Save fortunate coincidence',exact:true}).click();const field=page.getByLabel('Meaning for related word');await expect(field).toBeVisible();await start(field,'xing zuo yun shi');await submitWhileComposing(field);expect(state.posts).toHaveLength(1);await end(field,'星座运势');await page.getByRole('button',{name:'Save with meaning',exact:true}).click();await expect(page.getByRole('button',{name:'Saved fortunate coincidence',exact:true})).toBeVisible();expect(state.posts).toHaveLength(2);expect(state.posts[1].meaning).toBe('星座运势');
  });
 });
+
+for(const area of ['dictionary','add'] as const)test(`explicit ${area} Save immediately after composition commits once without waiting`,async({page})=>{
+ test.skip(!cloudUrl);const state=await setup(page);
+ const field=area==='dictionary'?await dictionary(page):await (async()=>{await page.goto('/add');await page.getByLabel('Word or phrase').fill('immediate capture');return page.getByLabel('Meaning',{exact:true});})();
+ await field.focus();await field.evaluate(async node=>{
+  const input=node as HTMLTextAreaElement;
+  input.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'li ji'}));
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(input,'立即保存');
+  input.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'立即保存'}));
+  // Let React commit the converted value, while staying inside the IME tail window.
+  await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+  const button=Array.from(input.form!.elements).find(el=>el instanceof HTMLButtonElement&&el.type==='submit') as HTMLButtonElement;
+  button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+ });
+ if(area==='dictionary'){await expect(page.getByRole('dialog').locator('aside p')).toHaveText('立即保存');expect(state.patches).toEqual([{meaning:'立即保存'}]);}
+ else{await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();expect(state.posts).toHaveLength(1);expect(state.posts[0].meaning).toBe('立即保存');}
+});
