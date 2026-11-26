@@ -3,6 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {cachedEnrichment,requestEnrichment} from '@/lib/ai-client';
 import type {DictionaryEnrichment,EnrichmentInput} from '@/lib/dictionary-enrichment';
+import {Button} from '@/components/ui/button';
 import {HighlightWord} from './highlight-word';
 import styles from './dictionary.module.css';
 
@@ -45,9 +46,9 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
         {notes.contexts.length>0&&<ul>{notes.contexts.map(context=><li key={context}>{context}</li>)}</ul>}
       </section>}
     </>:<><p>Send this expression and its learning settings to Gemini for comparisons and usage. Your saved notes and meaning stay private.</p>
-      <button className="text-button" type="button" disabled={busy} onClick={()=>void generate()}>
+      <Button variant="ghost" size="small" compactSurface disabled={busy} onClick={()=>void generate()}>
         {busy?'Preparing learning notes…':error?'Retry learning notes':'Generate learning notes'}
-      </button>
+      </Button>
     </>}
     {error&&<p role="status">{error}</p>}
   </section>;

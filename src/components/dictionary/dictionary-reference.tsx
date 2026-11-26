@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import type {DictionaryResult} from '@/lib/dictionary';
 import {Disclosure} from '@/components/ui/disclosure';
 import {HighlightWord} from './highlight-word';
@@ -18,6 +21,9 @@ export function DictionaryPronunciation({word,phonetics,showErrors=true,activeSt
   </div>;
 }
 export function DictionaryReferenceContent({result,word,hideChinese=false}:{result:DictionaryResult;word:string;hideChinese?:boolean}){
+  const [showAllExamples, setShowAllExamples] = useState(false);
+  const initialExampleCount = Math.min(2, Math.max(1, result.examples.length - 1));
+  const remainingExamples = result.examples.length - initialExampleCount;
   const groups=[
     ...(!hideChinese&&result.chinese.length?[{title:'Chinese definitions',entries:result.chinese.map(definition=>({definition,partOfSpeech:''}))}]:[]),
     ...(result.english.length?[{title:'English definitions',entries:result.english}]:[]),
@@ -36,8 +42,15 @@ export function DictionaryReferenceContent({result,word,hideChinese=false}:{resu
       {renderDefinitions(entries.slice(0,1))}
       {entries.length>1&&<Disclosure label={`More definitions (${entries.length-1})`}>{renderDefinitions(entries.slice(1),1)}</Disclosure>}
     </section>)}
-    {result.examples.length>0&&<section><h3>Examples</h3>{examples(result.examples.slice(0,1))}
-      {result.examples.length>1&&<Disclosure label={`More examples (${result.examples.length-1})`}>{examples(result.examples.slice(1))}</Disclosure>}
+    {result.examples.length>0&&<section><h3>Examples</h3>
+      {examples(showAllExamples ? result.examples : result.examples.slice(0, initialExampleCount))}
+      {remainingExamples>0&&<Button variant="ghost" size="small" compactSurface type="button"
+        className={styles.exampleDisclosure} aria-expanded={showAllExamples}
+        aria-label={showAllExamples ? 'Show fewer examples' : `Show all ${result.examples.length} examples`}
+        onClick={() => setShowAllExamples(value => !value)}>
+        {showAllExamples ? 'Show fewer examples' : `More examples (${remainingExamples})`}
+        <Icon name="chevronDown" size={16}/>
+      </Button>}
     </section>}
     {!groups.length&&!result.examples.length&&<p>No definitions or examples available for this entry.</p>}
     <small className={styles.credit}>Dictionary reference via UAPI.</small>
