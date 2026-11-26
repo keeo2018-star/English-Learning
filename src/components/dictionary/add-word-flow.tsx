@@ -376,7 +376,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       {word&&<h2 className={styles.previewTitle}>{word}</h2>}
       <button type="button" className={styles.editExpression} aria-label="Edit vocabulary" aria-expanded={editingExpression}
         onClick={()=>setEditingExpression(!editingExpression)} disabled={busy||resolving}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1 12-12-4-4L4 15z"/></svg>
+        <Icon name="pencil" />
       </button>
     </div>}
     {editingExpression&&<ImeTextarea aria-label="Vocabulary expression" rows={1} value={word} readOnly={busy||resolving}

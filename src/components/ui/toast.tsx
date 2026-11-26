@@ -11,7 +11,7 @@ export function Toast({ message, onDismiss }: { message: string; onDismiss: () =
     return () => clearTimeout(timer);
   }, [message, onDismiss]);
   return anchor ? createPortal(<div className="wb-toast">
-    <Icon name="check" size={17}/>
+    <Icon name="check" size={16}/>
     {message}
   </div>, anchor) : null;
 }

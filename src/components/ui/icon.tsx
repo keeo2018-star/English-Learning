@@ -19,8 +19,8 @@ const paths = {
 } as const;
 export type IconName = keyof typeof paths;
 
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
-  return <svg className="wb-svg-icon" aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
+export function Icon({ name, size = 20 }: { name: IconName; size?: 16 | 20 | 24 }) {
+  return <svg className="wb-svg-icon" data-icon-size={size} aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name]}/></svg>;
 }
 
