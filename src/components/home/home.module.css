@@ -38,10 +38,8 @@
 .actionCopy { display: grid; gap: 8px; min-width: 0; }
 .label { font-size: clamp(26px, 4vw, 36px); font-weight: var(--wb-medium); line-height: 1.1; letter-spacing: var(--wb-brand-tracking); }
 .description { max-width: 280px; font-size: 12px; line-height: 1.45; }
-.action svg { width: 24px; height: 24px; flex-shrink: 0; }
 .library { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; margin-top: 16px; border: 1px solid #ccc; border-radius: var(--wb-radius-small); color: var(--wb-black); min-height: 56px; }
 .library .label { font-size: 18px; }
-.library svg { width: 20px; height: 20px; }
 
 .today { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
   gap:var(--wb-space-3); padding:var(--wb-card-padding); margin-block:var(--wb-space-4);
@@ -52,7 +50,6 @@
 .action { padding:var(--wb-space-4); min-height:88px; gap:var(--wb-space-2); border-radius:var(--wb-radius-small); }
 .action .label { font-size:clamp(1.2rem,4vw,1.5rem); letter-spacing:-.03em; overflow-wrap:anywhere; }
 .actionCopy { gap:var(--wb-space-1); }
-.action svg { width:20px; height:20px; }
 .library { gap:var(--wb-space-3); }
 .random { display:inline-flex; min-height:var(--wb-touch); align-items:center; gap:var(--wb-space-2); margin-top:var(--wb-space-2); }
 @media(max-width:360px){ .action { padding:var(--wb-space-3); } }

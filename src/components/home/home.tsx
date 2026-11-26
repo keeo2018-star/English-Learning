@@ -30,10 +30,10 @@ export default function Home() {
           <span className={styles.actionCopy}>
             <span className={styles.label}>Add</span>
             <span id="home-add-description" className={styles.description}>Save new words.</span>
-          </span><Icon name="external" size={24}/>
+          </span><Icon name="external"/>
         </Link>
         <Link href="/discover" aria-label="Discover" aria-describedby="home-discover-description" className={`${styles.action} ${styles.discover}`}>
-          <span className={styles.actionCopy}><span className={styles.label}>Discover</span><span id="home-discover-description" className={styles.description}>Explore new words.</span></span><Icon name="external" size={24}/>
+          <span className={styles.actionCopy}><span className={styles.label}>Discover</span><span id="home-discover-description" className={styles.description}>Explore new words.</span></span><Icon name="external"/>
         </Link>
       </div>
       </TodayReview>
