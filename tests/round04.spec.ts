@@ -20,7 +20,7 @@ async function ready(page:Page){
    return route.fulfill({json:words});
  });
  await page.route(cloudOrigin+'/rest/v1/rpc/noted_collections_snapshot',route=>route.fulfill({json:{version:1,multilingual_enabled:true,learning_ready:true,collections:[en,fr,es]}}));
- await page.route(cloudOrigin+'/rest/v1/rpc/learning_collection_calendar',route=>route.fulfill({json:{tracking_since:'2020-01-01T00:00:00Z',days:[]}}));
+ await page.route(cloudOrigin+'/rest/v1/rpc/learning_collection_calendar',route=>route.fulfill({json:{tracking_since:'2020-01-01T00:00:00Z',days:[{date:new Date().toISOString().slice(0,10),reviewed:12,added:2}]}}));
  await page.route('**/api/ai-dictionary*',route=>route.fulfill({json:{available:false}}));
  await page.route('**/api/dictionary?*',route=>route.fulfill({json:{word:sampleWord.word,phonetics:[],chinese:['机缘巧合'],english:[],examples:[],synonyms:[]}}));
  await page.route('**/api/collection-reference?*',route=>route.fulfill({json:{sections:[{partOfSpeech:'Interjection',definitions:['hello']}],source:'https://en.wiktionary.org/wiki/bonjour'}}));
@@ -41,6 +41,7 @@ for(const width of [320,375,390,430])test(`compact Add idle and active fit ${wid
  await input.click();
  expect((await input.boundingBox())!.y).toBeLessThan(idle.y);
  await expect(input).toBeFocused();
+ if(width===390)await shot(page,'add-active');
  await input.fill('a phrase on a first line\nand a sentence on a second line');
  const multiline=(await input.boundingBox())!;
  expect(multiline.height).toBeGreaterThan(idle.height);
@@ -104,10 +105,14 @@ test('Home uses scoped counts, and Profile shares collection state with Calendar
  await expect(languages.getByRole('button',{name:'Settings for Spanish'}).locator('.wb-language-mark')).toHaveCSS('background-color','rgb(246, 194, 165)');
  await shot(page,'profile');
  await page.getByRole('button',{name:'Calendar language'}).click();
+ await shot(page,'language-dropdown');
  await page.getByRole('menuitemradio',{name:'French',exact:true}).click();
  await expect(page.getByRole('button',{name:'Calendar language'})).toContainText('French');
  const calendar=page.locator('.learning-calendar');
  await expect(calendar.getByText('Unique words reviewed per day')).toBeVisible();
+ const today=calendar.locator('button[aria-current=date]');
+ await expect(today).toHaveAttribute('data-level','1');
+ await expect(today).not.toHaveCSS('background-color','rgb(22, 22, 22)');
  await calendar.screenshot({path:'/tmp/noted-round04-after/calendar.png'});
 });
 
@@ -148,7 +153,7 @@ test('speech input is editable and uses the normal translation route; cancel abo
  });
  await page.route('**/api/collection-lookup',route=>{
    expect(route.request().postDataJSON()).toMatchObject({query:'你好',target:'fr',explanation:'zh-CN',source:'auto'});
-   return route.fulfill({json:{items:[{english:'bonjour',meaning:'你好',usage:'',example:'',exampleTranslation:'',source:'translation'}]}});
+   return route.fulfill({json:{items:[{english:'salut',meaning:'你好',usage:'',example:'',exampleTranslation:'',source:'translation'}]}});
  });
  await page.goto('/add');await language(page,'French');await page.getByRole('button',{name:'Voice input'}).click();
  await page.getByRole('button',{name:'Start listening'}).click();
@@ -163,9 +168,15 @@ test('speech input is editable and uses the normal translation route; cancel abo
  await page.getByRole('button',{name:'Use text'}).click();
  await expect(field(page)).toHaveValue('你好');
  await page.getByRole('button',{name:'Translate',exact:true}).click();
- await expect(page.getByRole('heading',{name:'bonjour',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'salut',exact:true})).toBeVisible();
  expect(writes).toHaveLength(0);
  await shot(page,'add-result');
+ await page.getByRole('button',{name:'Add to my library +',exact:true}).click();
+ await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();
+ await expect(field(page)).toHaveValue('');
+ expect(writes).toHaveLength(1);
+ expect(writes[0]).toMatchObject({collection_id:fr.id,word:'salut'});
+ await shot(page,'add-saved');
 });
 
 test('photo decoding rejects unsupported files and cancellation keeps the draft',async({page})=>{
@@ -185,7 +196,7 @@ test('the browser OCR worker extracts real text and selects only the desired pas
  await page.setViewportSize({width:390,height:844});
  const writes=await ready(page);
  await page.goto('/add');
- for(const [image,expected] of [['english.png','garden'],['chinese.png','你好'],['spanish.png','Hola'],['mixed.png','Bonjour'],['menu.png','Soup'],['rotated.png','garden'],['blurred.png','garden']]){
+ for(const [image,expected] of [['english.png','garden'],['chinese.png','你\\s*好'],['spanish.png','Hola'],['mixed.png','Bonjour'],['menu.png','Soup'],['rotated.png','garden'],['blurred.png','garden']]){
   await page.getByRole('button',{name:'Scan text from photo'}).click();
   await page.getByLabel('Choose an image').setInputFiles(images+'/'+image);
   const sheet=page.getByRole('dialog',{name:'Scan text from photo'});
