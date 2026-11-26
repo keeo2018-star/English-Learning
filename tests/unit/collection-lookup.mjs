@@ -9,3 +9,15 @@ test('French and Spanish meanings use their actual target locale and never the E
 test('Chinese learning saves characters, preserves English source meaning and encodes punctuation safely',async()=>{const query="I wouldn’t put it that way.";const result=await collectionLookup(query,'zh-CN','en','en',async url=>{assert.equal(new URL(url).searchParams.get('q'),query);assert.equal(new URL(url).searchParams.get('langpair'),'en|zh-CN');return response('我不会那样说。');});assert.equal(result[0].english,'我不会那样说。');assert.equal(result[0].meaning,query);});
 test('provider failures, quota, unsupported output scripts and empty/HTML results never become saved suggestions',async()=>{await assert.rejects(collectionLookup('额度检查','es','zh-CN','auto',async()=>Response.json({responseStatus:200,quotaFinished:true,responseData:{translatedText:'hola'}})),/unavailable/);await assert.rejects(collectionLookup('wrong Chinese output','zh-CN','en','en',async()=>response('still English')),/No usable/);await assert.rejects(collectionLookup('非法结果','fr','zh-CN','auto',async()=>response('<script>')),/unavailable/);await assert.rejects(collectionLookup('a failed network phrase','fr','en','fr',async()=>{throw Error('offline')}),/could not connect/);});
 test('English explanations use a verified English definition instead of repeating the query or inventing a gloss',async()=>{const result=await collectionLookup('fortuitous','en','en','en',async()=>Response.json({found:true,entry:{word:'fortuitous',english_definitions:[{part_of_speech:'adjective',definition:'Happening by chance.'}],definitions:[{meaning:'偶然的'}]}}));assert.equal(result[0].english,'fortuitous');assert.equal(result[0].meaning,'Happening by chance.');assert.equal(result[0].source,'dictionary');await assert.rejects(collectionLookup('missing verified gloss','en','en','en',async()=>Response.json({found:true,entry:{word:'missing verified gloss',definitions:[{meaning:'没有英语释义'}]}})),/No English definition/);});
+test('third-language input generates the target expression and explanation directly from the original input',async()=>{
+ const pairs=[];
+ const result=await collectionLookup('good morning','fr','zh-CN','auto',async url=>{
+  const params=new URL(url).searchParams;
+  assert.equal(params.get('q'),'good morning');
+  const pair=params.get('langpair');pairs.push(pair);
+  return response(pair==='en|fr'?'bonjour':'早上好');
+ });
+ assert.deepEqual(pairs,['en|fr','en|zh-CN']);
+ assert.equal(result[0].english,'bonjour');
+ assert.equal(result[0].meaning,'早上好');
+});

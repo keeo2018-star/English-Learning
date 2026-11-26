@@ -1,4 +1,5 @@
 "use client";
+import {Icon} from "@/components/ui/icon";
 import {Segments} from '@/components/ui/segments';
 import {Toast} from '@/components/ui/toast';
 import {vocabularyDetails, type VocabularyDetails} from './vocabulary-details';
@@ -29,7 +30,7 @@ import {
   ArrowIcon,
 } from "@/components/ui/primitives";
 import { LoadingState, StatePanel, Feedback } from "@/components/ui/states";
-import { SelectableLink, SelectableButton, SelectableToggle } from "@/components/ui/selection";
+import { SelectableLink, SelectableButton } from "@/components/ui/selection";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {captureKey,textLength,ITEM_TEXT_LIMIT,CONTEXT_TEXT_LIMIT,type AddOutcome} from './add-editor';
 import { DictionaryButton, WordPronunciation } from "@/components/dictionary/dictionary-sheet";
@@ -626,7 +627,7 @@ export default function Workspace({
         </div>
       )}
       <LearningHeader title={page==='add'?'Add.':page==='review'?'Review.':'Library.'} legacyTitle={page==='add'?'Add a word.':page==='review'?'Let’s make it stick.':'Library.'} enabled={learning.enabled} collections={learning.collections} active={collection} disabled={busy||!!editing||captureBusy} onSelect={selectCollection}/>
-      {page==='library'&&learning.enabled?<Link href={searchParams.get('review')==='random'?'/review?mode=random':'/review'} className="library-back">← Review</Link>:page !== "add" && (
+      {page==='library'&&learning.enabled?<Link href={searchParams.get('review')==='random'?'/review?mode=random':'/review'} className="library-back"><Icon name="left" size={16}/> Review</Link>:page !== "add" && (
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
           {page === "review" ? <Segments label="Review mode">
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
@@ -826,19 +827,21 @@ export default function Workspace({
                 )}
             </>
           )}
-          {page === "review" && words.length > 0 && (
-            <SelectableToggle className="review-auto-pronunciation" checked={autoPronunciation}
-              onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoChoice({key:pronunciationKey,enabled:event.target.checked});try{localStorage.setItem(pronunciationKey,event.target.checked?'on':'off');}catch{} }}>
+          {page === "review" && words.length > 0 && <div className="wb-review-utilities">
+            {!randomMode&&due.length>0&&<p role="status">{due.length} {due.length===1?'word':'words'} due</p>}
+            <label className="review-auto-pronunciation"><Icon name="volume" size={16}/>
+              <input type="checkbox" aria-label="Auto pronunciation" checked={autoPronunciation}
+                onChange={event => { if (event.target.checked) prepareReviewPronunciation(); setAutoChoice({key:pronunciationKey,enabled:event.target.checked});try{localStorage.setItem(pronunciationKey,event.target.checked?'on':'off');}catch{} }}/>
               Auto pronunciation
-            </SelectableToggle>
-          )}
+            </label>
+          </div>}
           {page === "review" &&
             (randomMode && randomQueue === null && words.length > 0 ? <LoadingState label="Opening review…" /> : card ? (
               <>
                 {randomMode ? <div className="review-progress wb-ui-text">
                   <span role="status" aria-label="Session progress">{reviewedCount} / {sessionTotal}</span>
                   <progress aria-label="Items reviewed" value={reviewedCount} max={Math.max(1, sessionTotal)} />
-                </div> : <p className="eyebrow" role="status">{due.length} {due.length === 1 ? "WORD" : "WORDS"} READY TO REVIEW</p>}
+                </div> : null}
                 <Card
                   key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
                   color={randomMode ? "coral" : collectionColor(card.id)}

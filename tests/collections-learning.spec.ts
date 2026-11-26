@@ -27,7 +27,6 @@ async function setup(page:Page,{many=false,one=false}={}){
  await page.route('**/api/collection-lookup',r=>{const body=r.request().postDataJSON();lookups.push(body);return r.fulfill({json:{items:[{english:body.query==='充分利用这个机会'?'profiter de cette occasion':body.query,meaning:body.explanation==='en'?'a greeting':'建议释义',usage:'',example:'',exampleTranslation:'',source:'translation'}]}});});
  return{collections,rows,inserts,ratings,lookups,calendars,dictionaryCalls:()=>dictionaryCalls,discoverCalls:()=>discoverCalls};
 }
-const switcher=(page:Page)=>page.getByRole('group',{name:'Learning language',exact:true});
 const languageTrigger=(page:Page)=>page.getByRole('button',{name:'Switch learning Collection',exact:true});
 const input=(page:Page)=>page.getByRole('combobox',{name:'Word or phrase',exact:true});
 async function choose(page:Page,name:string){await languageTrigger(page).click();await page.getByRole('menuitemradio',{name,exact:true}).click();await expect(languageTrigger(page)).toHaveAttribute('data-collection-name',name);await expect(page.getByText('Restoring your draft…')).toHaveCount(0);}
@@ -91,7 +90,8 @@ test('Profile settings persist independently and ordering stays separate from pr
  await expect(page.locator('.wb-language-row').first().locator('.wb-language-mark')).toHaveCSS('background-color','rgb(181, 212, 244)');
  await page.getByRole('button',{name:'Done ordering',exact:true}).click();
  expect(f.collections.find(c=>c.target_language==='en')!.proficiency_level).toBe('unspecified');
- await page.getByLabel('Calendar language',{exact:true}).selectOption(en.id);
+ await page.getByRole('button',{name:'Calendar language'}).click();
+ await page.getByRole('menuitemradio',{name:'English',exact:true}).click();
  await expect.poll(()=>f.calendars.at(-1)?.p_collection).toBe(en.id);
  await page.reload();
  await french.click();
@@ -126,17 +126,17 @@ for(const width of [320,375,390,430,768,1440])test(`compact headers, consistent 
  for(const [path,title,tab]of [['/add','Add.','Add'],['/review?mode=random','Review.','Review'],['/library','Library.','Review'],['/discover','Discover.','Discover'],['/auth','Profile.','Profile']]){
   await page.goto(path);await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();const header=page.locator('.learning-header');await expect(header).toHaveCSS('position','sticky');await expect(page.locator('.wb-masthead')).toHaveCount(0);await expect(page.locator('h1')).toHaveCount(1);
   const nav=page.getByRole('navigation',{name:'Main navigation'});await expect(nav.getByRole('link')).toHaveCount(5);const active=nav.getByRole('link',{name:tab,exact:true});await expect(active).toHaveAttribute('aria-current','page');await expect(active.locator('span').first()).toHaveCSS('background-color','rgb(22, 22, 22)');await expect(active.locator('span').first()).toHaveCSS('border-radius','50%');const paths=await nav.locator('svg path').evaluateAll(nodes=>nodes.map(node=>node.getAttribute('d')||''));if(!icons.length)icons=paths;else expect(paths).toEqual(icons);expect(paths[3]).toContain('M20 11a8');expect(paths[4]).toContain('M16 7');
-  if(path==='/library'){await page.locator('.word-row').last().scrollIntoViewIfNeeded();const y=(await header.boundingBox())!.y;expect(y).toBeGreaterThanOrEqual(0);expect(y).toBeLessThan(2);await page.getByRole('link',{name:'← Review',exact:true}).scrollIntoViewIfNeeded();}
+  if(path==='/library'){await page.locator('.word-row').last().scrollIntoViewIfNeeded();const y=(await header.boundingBox())!.y;expect(y).toBeGreaterThanOrEqual(0);expect(y).toBeLessThan(2);await page.locator('.library-back').scrollIntoViewIfNeeded();}
   if(path==='/auth')await expect(languageTrigger(page)).toHaveCount(0);else {await languageTrigger(page).click();await expect(page.getByRole('menuitemradio',{name:'French',exact:true})).toContainText('French');await page.keyboard.press('Escape');await expect(languageTrigger(page)).toBeFocused();}
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  }
  await page.screenshot({path:`/tmp/noted-compact-profile-${width}.png`,fullPage:true});
 });
 
-test('dropdown keyboard navigation and selecting the current language preserve the current review session',async({page})=>{test.skip(!cloudUrl);await setup(page,{many:true});await page.goto('/review?mode=random');await page.getByRole('button',{name:'Reveal answer',exact:true}).click();await page.getByRole('button',{name:'Sure',exact:true}).click();await expect(page.getByRole('progressbar',{name:'Items reviewed'})).toHaveAttribute('value','1');await choose(page,'English');await expect(page.getByRole('progressbar',{name:'Items reviewed'})).toHaveAttribute('value','1');await languageTrigger(page).click();await page.keyboard.press('ArrowDown');await expect(page.getByRole('menuitemradio',{name:'French',exact:true})).toBeFocused();await page.keyboard.press('Enter');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');await page.getByRole('link',{name:'Library',exact:true}).click();await expect(page.getByRole('heading',{name:'Library.',exact:true})).toBeVisible();await page.getByLabel('Search library',{exact:true}).fill('猫');await page.getByRole('link',{name:'← Review',exact:true}).click();await expect(page).toHaveURL(/review\?mode=random/);await page.getByRole('link',{name:'Library',exact:true}).click();await expect(page.getByLabel('Search library',{exact:true})).toHaveValue('猫');});
+test('dropdown keyboard navigation and selecting the current language preserve the current review session',async({page})=>{test.skip(!cloudUrl);await setup(page,{many:true});await page.goto('/review?mode=random');await page.getByRole('button',{name:'Reveal answer',exact:true}).click();await page.getByRole('button',{name:'Sure',exact:true}).click();await expect(page.getByRole('progressbar',{name:'Items reviewed'})).toHaveAttribute('value','1');await choose(page,'English');await expect(page.getByRole('progressbar',{name:'Items reviewed'})).toHaveAttribute('value','1');await languageTrigger(page).click();await page.keyboard.press('ArrowDown');await expect(page.getByRole('menuitemradio',{name:'French',exact:true})).toBeFocused();await page.keyboard.press('Enter');await expect(languageTrigger(page)).toHaveAttribute('data-collection-name','French');await page.getByRole('link',{name:'Library',exact:true}).click();await expect(page.getByRole('heading',{name:'Library.',exact:true})).toBeVisible();await page.getByLabel('Search library',{exact:true}).fill('猫');await page.locator('.library-back').click();await expect(page).toHaveURL(/review\?mode=random/);await page.getByRole('link',{name:'Library',exact:true}).click();await expect(page.getByLabel('Search library',{exact:true})).toHaveValue('猫');});
 
 test('compact Add remains usable at keyboard height and the language menu clears bottom navigation',async({page})=>{
- test.skip(!cloudUrl);await page.setViewportSize({width:390,height:430});await setup(page);await page.goto('/add');await choose(page,'French');await languageTrigger(page).click();const menu=await page.getByRole('menu',{name:'Learning Collections',exact:true}).boundingBox(),nav=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();expect(menu!.y+menu!.height).toBeLessThanOrEqual(nav!.y);await page.keyboard.press('Escape');await input(page).fill('Je ne le formulerais pas de cette manière, mais nous pouvons trouver une meilleure solution.');await page.getByLabel('Meaning',{exact:true}).fill('我会换一种说法；可以找到更好的解决方式。');const save=page.getByRole('button',{name:'Add to my library +',exact:true});await save.scrollIntoViewIfNeeded();const bounds=await save.boundingBox(),navigation=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(navigation!.y);await save.click();await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();await expect(input(page)).toBeFocused();const field=await input(page).boundingBox(),header=await page.locator('.learning-header').boundingBox();expect(field!.y).toBeGreaterThanOrEqual(header!.y+header!.height-1);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ test.skip(!cloudUrl);await page.setViewportSize({width:390,height:430});await setup(page);await page.goto('/add');await choose(page,'French');await languageTrigger(page).click();const menu=await page.getByRole('menu',{name:'Learning Collections',exact:true}).boundingBox(),nav=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();expect(menu!.y+menu!.height).toBeLessThanOrEqual(nav!.y);await page.keyboard.press('Escape');await input(page).fill('Je ne le formulerais pas de cette manière, mais nous pouvons trouver une meilleure solution.');await page.getByLabel('Meaning',{exact:true}).fill('我会换一种说法；可以找到更好的解决方式。');const save=page.getByRole('button',{name:'Add to my library +',exact:true});await save.scrollIntoViewIfNeeded();const bounds=await save.boundingBox(),navigation=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(navigation!.y);await save.click();await expect(page.getByText('Added to Library',{exact:true})).toBeVisible();await expect(input(page)).not.toBeFocused();const field=await input(page).boundingBox(),header=await page.locator('.learning-header').boundingBox();expect(field!.y).toBeGreaterThanOrEqual(header!.y+header!.height-1);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
 for(const cached of [false,true])test(`unverified legacy activation cannot enable multilingual controls (cached=${cached})`,async({page})=>{
@@ -167,7 +167,7 @@ test('AI candidates update all learning content without replacing notes or issui
  await page.goto('/add');
  await page.screenshot({path:'/tmp/noted-round03-after/add-empty.png'});
  await input(page).fill('荷花');
- await page.getByText('Translation context',{exact:false}).first().click();
+ await page.getByRole('button',{name:'Context',exact:true}).click();
  await page.getByRole('textbox',{name:'Translation context'}).fill('Pond plants');
  await page.screenshot({path:'/tmp/noted-round03-after/add-translation-context.png'});
  await page.getByRole('button',{name:'Translate with AI',exact:true}).click();
@@ -259,7 +259,7 @@ test('language identities stay consistent across pages and after reopening', asy
  await color('rgb(198, 180, 247)');
  await shot('english-selector');
  await shot('add-empty');
- await page.getByText('+ Add translation context',{exact:true}).click();
+ await page.getByRole('button',{name:'Context',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Translation context'})).toBeVisible();
  await shot('add-translation-context');
  await choose(page,'French');
@@ -271,7 +271,7 @@ test('language identities stay consistent across pages and after reopening', asy
  await languageTrigger(page).click();
  const selected=page.getByRole('menuitemradio',{name:'Spanish'});
  await expect(selected).toHaveAttribute('aria-checked','true');
- await expect(selected).toContainText('✓');
+ await expect(selected.locator('svg')).toHaveCount(1);
  await shot('language-menu');
  await page.keyboard.press('Escape');
  for(const [path,name] of [['/discover','discover'],['/review','review-empty'],['/library','library'],['/','home-spanish']]){

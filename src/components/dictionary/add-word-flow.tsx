@@ -1,4 +1,8 @@
 "use client";
+import {Icon,IconButton} from '@/components/ui/icon';
+import {Sheet} from '@/components/ui/sheet';
+import {PhotoInput} from './photo-input';
+import {SpeechInput} from './speech-input';
 import {Select} from '@/components/ui/select';
 import {inputLanguage,isOriginalEnglish,learningLanguages,targetText,type LearningCollection,type TargetLanguage} from '@/lib/collections';
 import {aiStatus,requestTranslation} from '@/lib/ai-client';
@@ -35,6 +39,11 @@ export function AddWordFlow(props: CollectionCapture&{
   return <SmartAddForm {...props} />;
 }
 function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,onDraftChange,onInteractionBusy }: CollectionCapture&{ busy: boolean;library?:{id:string;word:string}[]; onManualSubmit: (event: React.FormEvent<HTMLFormElement>,voice?:VoiceDraft,requestId?:string) => Promise<AddOutcome> }) {
+  const [inputFocused,setInputFocused]=useState(false),[contextExpanded,setContextExpanded]=useState(false);
+  const [method,setMethod]=useState<'photo'|'speech'|'paste'|null>(null),[inputError,setInputError]=useState('');
+  const [pendingPaste,setPendingPaste]=useState(''),[pasting,setPasting]=useState(false);
+  const pendingClipboard=useRef(0);
+  useEffect(()=>{const request=pendingClipboard;return()=>{request.current++;};},[]);
   const [voice,setVoice]=useState<VoiceDraft|null>(initialDraft?.voice||null),[voiceBusy,setVoiceBusy]=useState(false),[voiceOpen,setVoiceOpen]=useState(false),[pendingType,setPendingType]=useState<string|null>(null);
   const [query,setQuery]=useState(initialDraft?.query||''),[candidates,setCandidates]=useState<Candidate[]>(initialDraft?.candidates||[]),[resolving,setResolving]=useState(false),[resolveError,setResolveError]=useState(''),[aiAvailable,setAiAvailable]=useState(false),[exampleSource,setExampleSource]=useState<SearchItem['source']>(initialDraft?.exampleSource||'dictionary'),[suggestedExample,setSuggestedExample]=useState(initialDraft?.example||'');
   const queryVersion=useRef(0),queryAbort=useRef<AbortController|null>(null);
@@ -80,15 +89,38 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
   const extraction=extractExpression(query,selected.start,selected.end);
   const draftCallback=useRef(onDraftChange);useEffect(()=>{draftCallback.current=onDraftChange;},[onDraftChange]);
   useEffect(()=>{if(!composing)draftCallback.current?.({query,word,meaning,type,context,translationContext,candidateEdits,candidates,selectedId,ambiguous,manual:manual.current,voice,example:suggestedExample,exampleSource,source,request:request.current});},[query,word,meaning,type,context,translationContext,candidateEdits,candidates,selectedId,ambiguous,voice,suggestedExample,exampleSource,source,composing,attemptId]);
-  useEffect(()=>{onInteractionBusy?.(voiceBusy||composing);return()=>onInteractionBusy?.(false);},[voiceBusy,composing,onInteractionBusy]);
+  useEffect(()=>{onInteractionBusy?.(voiceBusy||composing||!!method);return()=>onInteractionBusy?.(false);},[voiceBusy,composing,method,onInteractionBusy]);
 
   useLayoutEffect(()=>{const el=meaningInput.current;if(!el||formIsComposing(el.form))return;const top=el.scrollTop;el.style.height='0px';const cap=Math.max(80,Math.min(200,(window.visualViewport?.height||innerHeight)*.25));el.style.height=Math.max(48,Math.min(el.scrollHeight+2,cap))+'px';el.style.overflowY=el.scrollHeight>cap?'auto':'hidden';el.scrollTop=top;},[meaning]);
   useEffect(()=>{const el=input.current;if(!el)return;const update=()=>{if(document.activeElement===el&&!formIsComposing(el.form))setSelected(old=>old.start===el.selectionStart&&old.end===el.selectionEnd?old:{start:el.selectionStart,end:el.selectionEnd})};document.addEventListener('selectionchange',update);el.addEventListener('select',update);el.addEventListener('pointerup',update);return()=>{document.removeEventListener('selectionchange',update);el.removeEventListener('select',update);el.removeEventListener('pointerup',update)};},[]);
   useEffect(()=>{let active=true;const generation=queryVersion;void aiStatus().then(value=>{if(active)setAiAvailable(value.available)});return()=>{active=false;queryAbort.current?.abort();generation.current++;};},[]);
   function invalidateQuery(){queryVersion.current++;queryAbort.current?.abort();setResolving(false);setResolveError('');}
   function changeQuery(next:string){
-    invalidateQuery();setQuery(next);clearCandidates();setSuggestedExample('');
-    changeWord(inputLanguage(next,target,source)!==target?'':next);
+    invalidateQuery();setQuery(next);setSource('auto');setInputError('');clearCandidates();setSuggestedExample('');
+    changeWord(inputLanguage(next,target)!==target?'':next);
+  }
+  function acceptAcquiredText(value:string){
+    const text=Array.from(value.trim()).slice(0,4000).join('');
+    if(!text)return;
+    changeQuery(text);setPasted(true);setPendingPaste('');setMethod(null);
+  }
+  async function paste(){
+    if(pasting)return;
+    setInputError('');
+    if(!navigator.clipboard?.readText){setInputError('Use the system Paste action in the text field.');return;}
+    const ticket=++pendingClipboard.current;
+    setPasting(true);
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    try {
+      const value=await Promise.race([
+        navigator.clipboard.readText(),new Promise<never>((_,reject)=>{timer=setTimeout(reject,8000);}),
+      ]);
+      if(ticket!==pendingClipboard.current)return;
+      if(!value.trim()){setInputError('Clipboard is empty or does not contain text.');return;}
+      if(input.current?.value.trim()){setPendingPaste(value);setMethod('paste');}
+      else acceptAcquiredText(value);
+    }catch{if(ticket===pendingClipboard.current)setInputError('Clipboard access is unavailable. Use the system Paste action in the text field.');}
+    finally{clearTimeout(timer);if(ticket===pendingClipboard.current)setPasting(false);}
   }
   function selectCandidate(item:Candidate){
     if(formIsComposing(input.current?.form)||!validTitle(item.english))return;
@@ -232,9 +264,9 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
     }
   }
   function reset() {
-    invalidateQuery();setQuery('');setEditingExpression(false);clearCandidates();setTranslationContext('');setSuggestedExample('');setExampleSource('dictionary');cancel.current(); request.current=null;setAttemptId('');version.current++; current.current = ''; manual.current = false;
+    invalidateQuery();input.current?.blur();setInputFocused(false);setContextExpanded(false);setQuery('');setInputError('');setEditingExpression(false);clearCandidates();setTranslationContext('');setSuggestedExample('');setExampleSource('dictionary');cancel.current(); request.current=null;setAttemptId('');version.current++; current.current = ''; manual.current = false;
     setVoice(null);setVoiceOpen(false);setContext('');setPasted(false);setExtracting(false);setSaveError('');setFailed(false);setRemoteDuplicate(false);resetSizing();setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
-    requestAnimationFrame(() => {const field=input.current;if(field?.getClientRects().length&&!formIsComposing(field.form)){if(window.matchMedia('(pointer: fine)').matches)field.focus({preventScroll:true});field.scrollIntoView({block:'nearest',behavior:'instant'});}});
+    requestAnimationFrame(() => {const field=input.current;if(field?.getClientRects().length&&!formIsComposing(field.form)){field.scrollIntoView({block:'nearest',behavior:'instant'});}});
   }
   function acceptExtraction(value:{expression:string;context:string}){changeQuery(value.expression);setContext(value.context);setType('expression');setPasted(false);setExtracting(false);setReplaceContext(null);setStatus('Expression extracted. Original text kept in My Context.');input.current?.focus({preventScroll:true});}
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -258,33 +290,66 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
           else if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void resolveQuery();}
 
   }
-  return <form className={`word-form ${styles.unified}`} aria-label="Add learning item" aria-busy={busy} onSubmit={submit} onReset={reset}>
+  const idle=!query.trim()&&!inputFocused&&!contextExpanded&&!translationContext.trim()&&!word&&!context&&!voice;
+  return <form className={`word-form wb-compact-add ${styles.unified}`} data-idle={idle} aria-label="Add learning item" aria-busy={busy} onSubmit={submit} onReset={reset}>
     <div className={styles.queryArea}><div className={styles.field}>
-      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder={collection?`Type in ${learningLanguages[target].label} or another language…`:'Type in English or Chinese…'} required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-has-value={!!query} data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
-        role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?`${id}-list`:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} aria-describedby={`${id}-help`} enterKeyHint="search" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-        onFocus={()=>{focused.current=true;if(items.length&&dismissed.current!==word)setOpen(true)}} onBlur={()=>{focused.current=false;setOpen(false)}}
+      <ImeTextarea ref={input} id={`${id}-word`} aria-label="Word or phrase" value={query} onValueChange={changeQuery} placeholder="A word, phrase or sentence…" required readOnly={busy} rows={1} style={{lineHeight:1.4}} data-adaptive-editor="true" data-has-value={!!query} data-scale={scale} className={`${styles.english} ${styles.queryInput}`}
+        role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={open?`${id}-list`:undefined} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} aria-describedby={`${id}-help`} enterKeyHint="go" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+        onFocus={()=>{setInputFocused(true);focused.current=true;if(items.length&&dismissed.current!==word)setOpen(true)}} onBlur={()=>{setInputFocused(false);focused.current=false;setOpen(false)}}
         onPaste={()=>{setPasted(true);setExtracting(false)}}
         onSelect={event=>{if(!formIsComposing(event.currentTarget.form))setSelected({start:event.currentTarget.selectionStart,end:event.currentTarget.selectionEnd})}}
         onImeStateChange={active=>{if(active){invalidateQuery();cancel.current();version.current++;setOpen(false);setItems([]);setActive(-1);}setComposing(active);}} onCompositionEnd={event=>{compositionEnded.current=event.timeStamp;setComposing(false)}}
         onKeyDown={keyDown}/>
       <div ref={mirror} className={styles.mirror} aria-hidden="true"/>
       <span ref={probe} className={styles.probe} data-scale="0" aria-hidden="true">&#8203;</span>
-      {query&&<button type="button" className={styles.clear} aria-label="Clear input" disabled={busy} onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();input.current?.focus({preventScroll:true});}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>}
+      {query&&<IconButton icon="close" label="Clear input" className={styles.clear} disabled={busy}
+        onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();}}/>}
+      <IconButton icon="right" label="Translate" variant="primary" className={styles.translate}
+        disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}/>
+
 
       {open&&<div className={styles.list} data-above={placement.above||undefined} style={{maxHeight:placement.height}} role="listbox" id={`${id}-list`} aria-label="English suggestions">{items.map((item,index)=><button key={item.word} id={`${id}-${index}`} role="option" aria-selected={active===index} tabIndex={-1} type="button" className={styles.option}
         onPointerDown={event=>beginOption(event,item)} onPointerUp={event=>finishOption(event,item)} onPointerCancel={()=>{touch.current=null}}
         onPointerMove={event=>{const start=touch.current;if(start&&Math.hypot(event.clientX-start.x,event.clientY-start.y)>=12)touch.current=null}}
-        onClick={event=>{if(ignoreClick.current&&event.detail!==0){ignoreClick.current=false;return;}choose(item)}}><span>{item.word}</span>{item.meaning&&<small>{item.meaning}</small>}</button>)}</div>}
+        onClick={event=>{if(ignoreClick.current&&event.detail!==0){ignoreClick.current=false;return;}choose(item)}}><span>{item.word}</span>{!item.word.toLowerCase().startsWith(query.toLowerCase())&&<small>Spelling suggestion</small>}{item.meaning&&<small>{item.meaning}</small>}</button>)}</div>}
     </div>
-    {query.trim()&&<div className={styles.resolveActions}><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}>{resolving?'Resolving…':chinese?'Translate':'Look up'}</button>{collection&&query.trim()&&<label className={styles.sourceChoice}><Select aria-label="Input language" title="Language of the text you typed" value={source} disabled={busy} onChange={event=>{const next=event.target.value as TargetLanguage|'auto';invalidateQuery();setSource(next);clearCandidates();setSuggestedExample('');changeWord(inputLanguage(query,target,next)===target?query:'');}}><option value="auto">Input: Auto</option>{Object.entries(learningLanguages).map(([code,lang])=><option key={code} value={code}>Input: {lang.label}</option>)}</Select></label>}{aiAvailable&&query.trim()&&<><button type="button" className="text-button" disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery(true)}>{selectedCandidate?'Regenerate with AI':'Translate with AI'}</button></>}</div>}
-
+    <div className={styles.toolbar} aria-label="Input methods" role="group">
+      <IconButton icon="clipboard" label="Paste from clipboard" variant="soft" disabled={busy||pasting} onClick={()=>void paste()}/>
+      <IconButton icon="camera" label="Scan text from photo" variant="soft" disabled={busy} onClick={()=>setMethod('photo')}/>
+      <IconButton icon="microphone" label="Voice input" variant="soft" disabled={busy} onClick={()=>setMethod('speech')}/>
+      <button className={`text-button ${styles.contextButton}`} aria-expanded={contextExpanded} aria-controls={`${id}-context`} type="button"
+        onClick={()=>setContextExpanded(value=>!value)}><Icon name={contextExpanded?'minus':'add'} size={16}/> Context</button>
+    </div>
+    {method==='photo'&&<PhotoInput replace={!!query.trim()} onClose={()=>setMethod(null)} onUse={acceptAcquiredText}/>}
+    {method==='speech'&&<SpeechInput replace={!!query.trim()} language={target} onClose={()=>setMethod(null)} onUse={acceptAcquiredText}/>}
+    {method==='paste'&&<Sheet title="Replace Add text?" onClose={()=>{setPendingPaste('');setMethod(null);}}>
+      <p>The clipboard text will replace the current input. Your personal note stays in the draft.</p>
+      <div className="language-sheet-fields"><button type="button" onClick={()=>acceptAcquiredText(pendingPaste)}>Replace Add text</button>
+      <button type="button" className="text-button" onClick={()=>setMethod(null)}>Cancel</button></div>
+    </Sheet>}
+    {pasting&&<p role="status">Reading clipboard…</p>}
+    {resolving&&<p role="status">Translating…</p>}
+    {inputError&&<p role="status" className={styles.meaningStatus}>{inputError}</p>}
     {resolveError&&<p role="alert" className={styles.saveError}>{resolveError}</p>}
-    <details className={styles.contextField}>
-      <summary>+ Add translation context</summary>
-      <ImeTextarea aria-label="Translation context" value={translationContext} onValueChange={value=>{invalidateQuery();setTranslationContext(value);}}
-        maxLength={500} rows={2} placeholder="Add context to get a more accurate translation…" readOnly={busy}/>
-      <small>{aiAvailable?'Translate with AI sends the input and translation context to Gemini.':'Basic lookup does not use translation context. AI is unavailable in this session.'}</small>
-    </details>
+    {contextExpanded&&<div id={`${id}-context`} className={styles.contextField}>
+      <label>Translation context <span>Optional</span>
+        <ImeTextarea aria-label="Translation context" value={translationContext} onValueChange={value=>{
+          invalidateQuery();setTranslationContext(value);
+          if(selectedCandidate?.source==='ai'){clearCandidates();setSuggestedExample('');if(!manual.current)changeWord('');}
+        }} maxLength={500} rows={2} placeholder="Describe the situation or intended meaning…" readOnly={busy}/>
+      </label>
+      <small>{aiAvailable?'Context helps Gemini interpret your meaning.':'Basic lookup does not use context. AI is unavailable in this session.'}</small>
+    </div>}
+    {query.trim()&&(aiAvailable||ambiguous||resolveError||candidates.length>0)&&<div className={styles.resolveActions}>
+      {aiAvailable&&<button type="button" className="text-button" disabled={busy||resolving} onClick={()=>void resolveQuery(true)}>{selectedCandidate?'Regenerate with AI':'Translate with AI'}</button>}
+      {(ambiguous||resolveError||candidates.length>0)&&<details className={styles.sourceChoice}>
+        <summary>Input language · {learningLanguages[inputLanguage(query,target,source)].label}</summary>
+        <Select aria-label="Input language" value={source} disabled={busy} onChange={event=>{
+          const next=event.target.value as TargetLanguage|'auto';invalidateQuery();setSource(next);clearCandidates();setSuggestedExample('');
+          if(!manual.current)changeWord(inputLanguage(query,target,next)===target?query:'');
+        }}><option value="auto">Detect automatically</option>{Object.entries(learningLanguages).map(([code,lang])=><option key={code} value={code}>{lang.label}</option>)}</Select>
+      </details>}
+    </div>}
     {resolveError&&<button type="button" className="text-button" onClick={()=>void resolveQuery(resolveWithAi.current)}>Retry lookup</button>}
     </div>
     {candidates.length>1&&<section className={styles.translationList} aria-label="Translations">

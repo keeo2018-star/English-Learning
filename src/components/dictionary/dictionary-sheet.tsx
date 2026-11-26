@@ -25,7 +25,8 @@ export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,sa
 }) {
     const [open, setOpen] = useState(false);
     const dialogId = useId();
-    return <><button type="button" className="secondary" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open ? dialogId : undefined} aria-haspopup="dialog" onClick={() => setOpen(value => !value)}>Dictionary <ArrowIcon /></button>{open && <DictionarySheet example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
+    const trigger = useRef<HTMLButtonElement>(null);
+    return <><button ref={trigger} type="button" className="secondary wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open ? dialogId : undefined} aria-haspopup="dialog" onClick={() => setOpen(value => !value)}>Dictionary <ArrowIcon /></button>{open && <DictionarySheet returnFocus={trigger} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
 }
 export function WordPronunciation({ word,language='en' }: { word: string;language?:TargetLanguage }) {
     const [phonetics, setPhonetics] = useState<DictionaryResult["phonetics"] | null>(null);
@@ -45,7 +46,8 @@ export function WordPronunciation({ word,language='en' }: { word: string;languag
     }, [word,language]);
     return <div ref={anchor} className={styles.wordPronunciation}>{language!=='en'?<PronunciationControl text={word} language={language}/>:phonetics && <DictionaryPronunciation word={word} phonetics={phonetics} showErrors={false} />}</div>;
 }
-function DictionarySheet({searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example }: {
+function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example }: {
+    returnFocus?:React.RefObject<HTMLButtonElement|null>;
     example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
     onSaveMeaning?: (meaning: string) => Promise<void>;
     dialogId: string;
@@ -120,14 +122,14 @@ function DictionarySheet({searchOnly=false, dialogId, word:rootWord, meaning:roo
     };
     const [result, setResult] = useState<DictionaryResult | null>(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
     useEffect(() => {
-        const element = dialog.current, previous = document.activeElement;
+        const element = dialog.current, previous = returnFocus?.current ?? document.activeElement;
         element?.showModal();
         if(searchOnly)element?.querySelector<HTMLTextAreaElement>('textarea[aria-label="Search English or Chinese"]')?.focus();else close.current?.focus();
         const overflow = document.body.style.overflow;
         document.body.style.overflow = "hidden";
         return () => { element?.close(); document.body.style.overflow = overflow; if (previous instanceof HTMLElement && previous.isConnected)
             previous.focus({ preventScroll: true }); };
-    }, [searchOnly]);
+    }, [searchOnly,returnFocus]);
     useEffect(() => {
         if(searchOnly||!englishReference)return;
         const controller = new AbortController();

@@ -91,8 +91,9 @@ test.describe('Discover',()=>{
     if(i<9)await expect(page.getByRole('progressbar',{name:'Discover batch progress'})).toHaveAttribute('value',String(i+1));
    }
    await expect(page.getByRole('heading',{name:'Nice work.'})).toBeVisible();await expect(page.getByText('You’ve explored 10 words.')).toBeVisible();
-   const stats=page.locator('dl');await expect(stats.locator('div').filter({hasText:'Saved'})).toHaveText('Saved3');await expect(stats.locator('div').filter({hasText:'Already known'})).toHaveText('Already known7');
-   if(batch===0)await page.screenshot({path:`/tmp/noted-discover-complete-${browserName}.png`});
+   const stats=page.locator('dl');await expect(stats.locator('div').filter({hasText:'New words saved'})).toHaveText('New words saved3');await expect(stats.locator('div').filter({hasText:'Already known'})).toHaveText('Already known7');
+   await expect(page.getByRole('region',{name:'Your new words'}).getByRole('link')).toHaveCount(3);
+   if(batch===0)await page.screenshot({path:`/tmp/noted-discover-complete-${browserName}.png`,fullPage:true});
    if(batch<2){
     const previous=f.state.daily!.id;
     if(batch===0)f.loseNextResponse();

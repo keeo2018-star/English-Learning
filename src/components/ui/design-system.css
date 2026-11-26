@@ -208,7 +208,7 @@
 .wb-selectable[data-selected="true"],
 a[aria-current="page"],
 a[aria-current="true"],
-button[aria-pressed="true"],
+button[aria-pressed="true"]:not(.calendar-day),
 [role="tab"][aria-selected="true"],
 [role="option"][aria-selected="true"],
 [role="radio"][aria-checked="true"],

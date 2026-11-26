@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Icon } from './icon';
 import { createPortal } from 'react-dom';
 
 export function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -10,7 +11,7 @@ export function Toast({ message, onDismiss }: { message: string; onDismiss: () =
     return () => clearTimeout(timer);
   }, [message, onDismiss]);
   return anchor ? createPortal(<div className="wb-toast">
-    <svg width="17" height="17" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m4 10 4 4 8-8"/></svg>
+    <Icon name="check" size={17}/>
     {message}
   </div>, anchor) : null;
 }

@@ -1196,3 +1196,35 @@ summary:focus-visible {
 .language-sheet-fields label, .wb-calendar-tools .calendar-language { margin: 0; }
 .review-card > .wb-state h2 { margin: 0 0 var(--wb-space-3); }
 .review-card > .wb-state > p { margin: 0 0 var(--wb-space-4); }
+
+.wb-app-frame > main:has(.wb-compact-add) { min-height:100%; display:flex; flex-direction:column; }
+.language-trigger.language-trigger { border-color:transparent; }
+.language-menu { width:max-content; min-width: min(180px,calc(100vw - 40px)); max-width:min(225px,calc(100vw - 40px)); }
+.learning-language[data-align="start"] .language-menu { inset-inline-start:0; inset-inline-end:auto; }
+.learning-language[data-align="start"] { max-width:100%; }
+.wb-icon-button.wb-icon-button { display:inline-grid; place-items:center; width:var(--wb-touch); min-width:var(--wb-touch); height:var(--wb-touch); min-height:var(--wb-touch); padding:0; border:0; border-radius:50%; box-shadow:none; }
+.wb-icon-button > span { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; }
+.wb-icon-button[data-variant="soft"] > span { background:var(--wb-grey); }
+.wb-icon-button[data-variant="primary"] > span { background:var(--wb-black); color:var(--wb-white); }
+.wb-icon-button:disabled { opacity:.55; }
+.wb-calendar-tools .language-trigger { min-height:48px; }
+.calendar-grid .calendar-day[aria-current="date"] { outline:1px solid var(--wb-black); outline-offset:-2px; }
+.calendar-grid .calendar-day[aria-pressed="true"] { border:2px solid var(--wb-black); }
+.calendar-legend > strong { flex-basis:100%; font-weight:600; }
+.wb-disclosure > summary { display:flex; align-items:center; justify-content:space-between; gap:var(--wb-space-2); list-style:none; }
+.wb-disclosure > summary::-webkit-details-marker { display:none; }
+.wb-disclosure[open] > summary svg { transform:rotate(180deg); }
+.wb-profile-settings { margin-block:var(--wb-section-gap); border-top:var(--wb-divider); padding-top:var(--wb-space-3); }
+.wb-profile-settings h2 { font-size:var(--wb-size-heading); margin:0 0 var(--wb-space-3); }
+.wb-acquisition p { margin:0; }
+.wb-acquisition-files { display:grid; gap:var(--wb-space-2); }
+.wb-acquisition picture img { display:block; max-width:100%; max-height:35dvh; object-fit:contain; }
+.wb-acquisition textarea { min-height:78px; }
+#app-content:focus:not(:focus-visible) { outline:none; }
+.wb-review-utilities { display:flex; align-items:center; justify-content:space-between; gap:var(--wb-space-2); flex-wrap:wrap; margin-block:var(--wb-space-2); }
+.wb-review-utilities p { margin:0; font-size:var(--wb-size-support); }
+.wb-review-utilities .review-auto-pronunciation { display:inline-flex; align-items:center; gap:var(--wb-space-1); min-height:var(--wb-touch); margin:0; font-size:var(--wb-size-small); }
+.review-auto-pronunciation input { accent-color:var(--wb-black); }
+.library-back,.wb-dictionary-action { display:inline-flex; align-items:center; gap:var(--wb-space-2); }
+.review-card .wb-dictionary-action { min-height:var(--wb-touch); }
+.review-card > h2 { margin-block:var(--wb-space-2) var(--wb-space-3); overflow-wrap:anywhere; }

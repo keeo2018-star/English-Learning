@@ -1,17 +1,19 @@
 "use client";
 import {Segments} from '@/components/ui/segments';
-import {Select} from '@/components/ui/select';
+import {LanguagePicker} from '@/components/ui/language-picker';
+import {collectionLanguageOptions} from '@/components/collections/learning-header';
+import {Icon,IconButton} from '@/components/ui/icon';
 import { useEffect, useState } from 'react';
 import {useCollections} from '@/lib/use-collections';
-import {learningLanguages} from '@/lib/collections';
 import { supabase } from '@/lib/supabase';
 import { activityLevel, activityScale, localDateKey, reviewCoverage, type ActivityMonth } from '@/lib/activity';
 import { SelectableButton } from '@/components/ui/selection';
 import type { LearningItem } from '@/lib/learning';
 export const DEMO_EVENTS_KEY = 'noted-demo-review-events-v1';
 const EMPTY_WORDS: LearningItem[] = [];
-export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, initiallyOpen = false }: { account: string; revision?: number; words?: LearningItem[]; initiallyOpen?: boolean }) {
-  const learning=useCollections(account==='local-demo'?null:account);
+export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, initiallyOpen = false, collections }: { collections?:ReturnType<typeof useCollections>; account: string; revision?: number; words?: LearningItem[]; initiallyOpen?: boolean }) {
+  const ownCollections=useCollections(collections||account==='local-demo'?null:account);
+  const learning=collections??ownCollections;
   const [filter,setFilter]=useState<string|null>(null);
   const selectedCollection=learning.enabled?learning.collections.find(c=>c.id===filter):undefined;
   const [open, setOpen] = useState(initiallyOpen);
@@ -92,17 +94,19 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
   const selectedData = data?.days.find(day => day.date === selected);
   const coverage = data ? reviewCoverage(selected, data.tracking_since, timezone) : 'unknown';
   return <details data-metric={metric} className="learning-calendar wb-ui-text" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>Learning calendar <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m4 6 4 4 4-4"/></svg></summary>
+    <summary>Learning calendar <Icon name="chevronDown" size={16}/></summary>
     {open && month && <div className="learning-calendar-content">
-      <div className="wb-calendar-tools">{learning.enabled&&learning.collections.length>1&&<label className="calendar-language"><Select aria-label="Calendar language" value={selectedCollection?.id||'all'} onChange={event=>setFilter(event.target.value==='all'?null:event.target.value)}><option value="all">All languages</option>{learning.collections.map(row=><option value={row.id} key={row.id}>{learningLanguages[row.target_language].label}{learning.collections.some(other=>other.id!==row.id&&other.target_language===row.target_language)?(row.explanation_language==='en'?' · EN':' · 中文'):''}</option>)}</Select></label>}
+      <div className="wb-calendar-tools">{learning.enabled&&learning.collections.length>1&&<LanguagePicker
+        options={[{id:'all',label:'All languages'},...collectionLanguageOptions(learning.collections)]}
+        value={selectedCollection?.id||'all'} label="Calendar language" align="start" onSelect={id=>setFilter(id==='all'?null:id)}/>}
       <Segments label="Calendar activity">
         <SelectableButton className="secondary" selected={metric === 'reviewed'} onClick={() => setMetric('reviewed')}>Reviewed</SelectableButton>
         <SelectableButton className="secondary" selected={metric === 'added'} onClick={() => setMetric('added')}>Added</SelectableButton>
       </Segments></div>
       <div className="calendar-month">
-        <button type="button" className="wb-icon-button" aria-label="Previous month" disabled={month <= '1970-01'} onClick={() => move(-1)}>←</button>
+        <IconButton icon="chevronLeft" label="Previous month" disabled={month <= '1970-01'} onClick={() => move(-1)}/>
         <h2>{first!.toLocaleDateString('en', { month: 'long', year: 'numeric' })}</h2>
-        <button type="button" className="wb-icon-button" aria-label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => move(1)}>→</button>
+        <IconButton icon="chevronRight" label="Next month" disabled={month >= today.slice(0, 7)} onClick={() => move(1)}/>
       </div>
       {!data && !error && <p role="status">Loading activity…</p>}
       {error && <div role="status"><p>{error}</p><button type="button" className="secondary" onClick={() => setRetry(n => n + 1)}>Try again</button></div>}
@@ -120,7 +124,7 @@ export function LearningCalendar({ account, revision = 0, words = EMPTY_WORDS, i
               disabled={date > today} onClick={() => setSelected(date)}>{i + 1}</button>;
           })}
         </div>
-        <div className="calendar-legend" aria-label={`${metric==='added'?'Added':'Reviewed'} activity scale`}>{activityScale(metric).map((label,index)=><span key={label}><span className="calendar-swatch" data-level={index} aria-hidden="true"/>{label}</span>)}</div>
+        <div className="calendar-legend" aria-label="Activity scale"><strong>{metric==='added'?'Words added per day':'Unique words reviewed per day'}</strong>{activityScale(metric).map((label,index)=><span key={label}><span className="calendar-swatch" data-level={index} aria-hidden="true"/>{label}</span>)}</div>
         <div className="calendar-day-summary" aria-live="polite" aria-atomic="true">
           <strong>{new Date(selected + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' })}</strong>
           <span>Reviewed: {coverage === 'unknown' ? 'Unavailable' : `${selectedData?.reviewed ?? 0}${coverage === 'partial' ? ' · partial day' : ''}`}</span>

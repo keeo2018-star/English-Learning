@@ -72,6 +72,13 @@ export function inputLanguage(text:string,target:TargetLanguage,source:TargetLan
   if(/\p{Script=Han}/u.test(text))return 'zh-CN';
   // Identify clear multiword patterns; isolated Latin cognates remain ambiguous.
   const markers={en:new Set(['the','of','this','that','would','wouldn’t',"wouldn't",'with','your','you','it','to','i','not']),fr:new Set(['je','ne','pas','cette','avec','vous','une','des','pour','les','de','le']),es:new Set(['esta','este','usted','hola','para','una','los','las','del','que','el'])};
+  const distinctive:Record<'en'|'fr'|'es',RegExp>={
+    en:/\b(?:hello|goodbye|thanks|thank you|good morning)\b/i,
+    fr:/\b(?:bonjour|bonsoir|salut|merci|au revoir|s’il vous plaît)\b/i,
+    es:/\b(?:hola|adiós|gracias|buenos días|buenas noches|por favor)\b/i,
+  };
+  const clear=Object.entries(distinctive).filter(([,pattern])=>pattern.test(text.trim()));
+  if(clear.length===1)return clear[0][0] as TargetLanguage;
   const tokens=text.toLowerCase().match(/[\p{Script=Latin}’']+/gu)||[];
   const scores=Object.entries(markers).map(([language,words])=>({language:language as TargetLanguage,score:new Set(tokens.filter(token=>words.has(token))).size})).sort((a,b)=>b.score-a.score);
   if(scores[0].score>=2&&scores[0].score>scores[1].score)return scores[0].language;

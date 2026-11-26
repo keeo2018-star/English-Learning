@@ -1,3 +1,4 @@
+import {Icon} from "./icon";
 import Link from "next/link";
 import type { ReactNode, CSSProperties } from "react";
 export type CardColor =
@@ -49,25 +50,9 @@ export function ArrowIcon({
 }: {
   direction?: "up-right" | "down-left";
 }) {
-  return (
-    <svg
-      className="wb-icon"
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      style={
-        direction === "down-left" ? { transform: "rotate(180deg)" } : undefined
-      }
-    >
-      <path
-        d="M6 18 18 6M6 6h12v12"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <span className="wb-icon" aria-hidden="true" style={direction==="down-left"?{transform:"rotate(180deg)"}:undefined}>
+    <Icon name="external" size={24}/>
+  </span>;
 }
 export function ArrowLink({
   href,

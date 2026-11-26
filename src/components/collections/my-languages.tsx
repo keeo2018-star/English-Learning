@@ -7,7 +7,8 @@ import { SwitchControl } from '@/components/ui/selection';
 import { Sheet } from '@/components/ui/sheet';
 import { Toast } from '@/components/ui/toast';
 import { supabase } from '@/lib/supabase';
-import { useCollections } from '@/lib/use-collections';
+import { Icon } from '@/components/ui/icon';
+import type { useCollections } from '@/lib/use-collections';
 import { learningLanguages, type LearningCollection, type TargetLanguage } from '@/lib/collections';
 
 const general = ['unspecified', 'beginner', 'intermediate', 'advanced'];
@@ -22,13 +23,8 @@ function levelLabel(level: string) {
   return level === 'unspecified' ? 'Level not set' : level.charAt(0).toUpperCase() + level.slice(1);
 }
 
-function Chevron() {
-  return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 4 4 4-4 4"/></svg>;
-}
-
-export function MyLanguages({ owner }: { owner: string }) {
-  const state = useCollections(owner);
-  const [busy, setBusy] = useState(false);
+export function MyLanguages({ owner, state }: { owner: string; state: ReturnType<typeof useCollections> }) {
+ const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [panel, setPanel] = useState<string | null>(null);
@@ -90,7 +86,7 @@ export function MyLanguages({ owner }: { owner: string }) {
     } finally { setBusy(false); }
   }
 
-  if (!state.collections.length) return null;
+
   const active = row?.id === state.active?.id;
   const name = row && learningLanguages[row.target_language].label;
 
@@ -102,6 +98,8 @@ export function MyLanguages({ owner }: { owner: string }) {
         {ordering ? 'Done ordering' : 'Edit order'}
       </button>}
     </div>
+    {!state.ready && <p role="status">Loading languages…</p>}
+    {state.ready && !state.collections.length && <p>Language settings are unavailable. <button type="button" className="text-button" onClick={state.refresh}>Try again</button></p>}
     <ul className="wb-language-list">
       {state.collections.map((item, index) => {
         const label = learningLanguages[item.target_language].label;
@@ -117,7 +115,7 @@ export function MyLanguages({ owner }: { owner: string }) {
           {state.enabled && !ordering
             ? <button className="wb-language-row" type="button" aria-haspopup="dialog"
                 aria-label={`Settings for ${label}`} aria-describedby={`language-details-${item.id}`} onClick={() => { setError(''); setPanel(item.id); }}>
-                {contents}<Chevron/>
+                {contents}<Icon name="chevronRight" size={16}/>
               </button>
             : <div className="wb-language-row">{contents}{ordering && index > 0 &&
                 <button className="text-button" type="button" disabled={busy}

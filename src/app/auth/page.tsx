@@ -116,10 +116,12 @@ function AuthForm() {
     <LearningHeader title="Profile." enabled={collections.enabled}/>
     {!collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}
     {message && <Feedback>{message}</Feedback>}
-    <MyLanguages key={"languages:"+user.id} owner={user.id}/>
-    <LearningCalendar key={user.id} account={user.id} initiallyOpen />
+    <MyLanguages key={"languages:"+user.id} owner={user.id} state={collections}/>
+    <LearningCalendar key={user.id} account={user.id} collections={collections} initiallyOpen />
+    <section aria-label="Settings" className="wb-profile-settings"><h2>Settings</h2>
     <AiSettings key={"ai:"+user.id} user={user}/>
     <p><Link href="/privacy">Privacy &amp; terms</Link></p>
+    </section>
     {collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}
   </AppShell>;
   return (

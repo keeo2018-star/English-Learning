@@ -46,3 +46,14 @@
 .summary > div { display: flex; gap: 8px; }
 .summary dt, .summary dd { margin: 0; }
 .summary dd { font-weight: 700; }
+.blue.completion { padding:var(--wb-space-4); }
+.completion h2 { margin:0 0 var(--wb-space-2); font-size:var(--wb-size-heading); }
+.completion p { margin:var(--wb-space-2) 0 var(--wb-space-3); }
+.options { margin:0 0 var(--wb-space-3); }
+.newWords { margin-top:var(--wb-section-gap); }
+.newWords h2 { font-size:var(--wb-size-heading); margin:0 0 var(--wb-space-2); }
+.newWords ul { margin:0; padding:0; list-style:none; }
+.newWords li { border-bottom:var(--wb-divider); }
+.newWords a { display:flex; gap:var(--wb-space-3); justify-content:space-between; align-items:center; padding-block:var(--wb-space-2); min-height:var(--wb-touch); }
+.newWords a > span { display:grid; gap:var(--wb-space-1); overflow-wrap:anywhere; }
+.newWords small { font-size:var(--wb-size-small); font-weight:400; }
