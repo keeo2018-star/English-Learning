@@ -1,6 +1,6 @@
-import {createHash} from 'node:crypto';
+import {createHash, randomUUID} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
-import {aiConfigured,generateAi} from '@/lib/ai-provider';
+import {AI_MODEL,aiConfigured,generateAi} from '@/lib/ai-provider';
 import {parseAiEntry,searchLanguage,searchText,type Direction} from '@/lib/bilingual-contract';
 export const maxDuration=30;
 const headers={'Cache-Control':'no-store'};
@@ -53,6 +53,24 @@ async function translate(request: Request, body: Record<string, unknown>) {
 }
 
 async function enrich(request:Request,body:Record<string,unknown>,cacheOnly=false){
+  const started = performance.now();
+  const diagnostic = process.env.VERCEL_ENV === 'preview' &&
+    process.env.VERCEL_GIT_COMMIT_REF === 'noted-round-05-1' &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') === 'https://ezwsibsijwnulfypvbha.supabase.co';
+  const requestId = diagnostic ? randomUUID() : undefined;
+  let stage = 'request_setup';
+  let category = 'unexpected_error';
+  let authenticated = false;
+  const {EnrichmentValidationError} = await import('@/lib/dictionary-enrichment');
+  const {EnrichmentProviderError} = await import('@/lib/dictionary-enrichment-provider');
+  function report(failureStage: string, errorCategory: string, upstreamStatus?: number, paths?: string[]) {
+    if (!requestId) return;
+    const metadata = { requestId, stage: failureStage, category: errorCategory, model: AI_MODEL,
+      durationMs: Math.round(performance.now() - started), upstreamStatus, paths };
+    console.warn('[noted.ai.enrichment]', JSON.stringify(metadata));
+    // Return the same safe metadata only to signed-in callers explicitly requesting staging diagnostics.
+    if (authenticated && request.headers.get('x-noted-diagnostic') === '1') return metadata;
+  }
   if(!aiConfigured())return Response.json({available:false,message:'AI learning notes are disabled.'},{headers});
   let c:Awaited<ReturnType<typeof client>>|undefined,hash='',lease='';
   try {
@@ -67,7 +85,9 @@ async function enrich(request:Request,body:Record<string,unknown>,cacheOnly=fals
     const partOfSpeech=typeof body.partOfSpeech==='string'&&/^[\p{L}\p{M} /-]{1,60}$/u.test(body.partOfSpeech)?body.partOfSpeech:'';
     const level=typeof body.level==='string'&&/^(A[12]|B[12]|C[12]|beginner|intermediate|advanced)$/.test(body.level)?body.level:'unspecified';
     const input={word,target,explanation,partOfSpeech,level} satisfies import('@/lib/dictionary-enrichment').EnrichmentInput;
+    stage = 'authentication';
     c=await client(request);
+    authenticated = true;
     hash=createHash('sha256').update('noted-dictionary-enrichment-v1:'+JSON.stringify(input)).digest('hex');
     if(cacheOnly){
       const hit=await c.from('noted_ai_entries').select('payload').eq('query_hash',hash).gt('expires_at',new Date().toISOString()).maybeSingle();
@@ -76,18 +96,40 @@ async function enrich(request:Request,body:Record<string,unknown>,cacheOnly=fals
       if(hit.data?.payload){try{result=parseEnrichment(hit.data.payload,input);}catch{/* Ignore expired-format or malformed cached data. */}}
       return Response.json({available:true,result},{headers});
     }
+    stage = 'quota_reservation';
     const reserved=await c.rpc('noted_ai_reserve',{p_hash:hash});
-    if(reserved.error)throw Error('AI quota unavailable');
+    if (reserved.error) {
+      category = 'reservation_rpc_failed';
+      throw Error('AI quota unavailable');
+    }
     const state=reserved.data;
     if(state.status==='cached')return Response.json({result:parseEnrichment(state.payload,input),cached:true},{headers});
     if(state.status!=='reserved')return Response.json({message:state.status==='pending'?'Learning notes are already being prepared. Try again shortly.':'AI request limit reached.'},{headers,status:state.status==='pending'?202:429});
     lease=state.lease;
+    stage = 'gemini_request';
     const result=await generateEnrichment(input);
+    stage = 'cache_write';
     const saved=await c.rpc('noted_ai_finish',{p_hash:hash,p_lease:lease,p_payload:result});
-    if(saved.error||saved.data!==true)throw Error('Could not save learning notes');
+    if (saved.error || saved.data !== true) {
+      stage = saved.error ? 'cache_write' : 'reservation_completion';
+      category = saved.error ? 'finish_rpc_failed' : 'lease_not_completed';
+      throw Error('Could not save learning notes');
+    }
     return Response.json({result},{headers});
-  }catch{
-    if(c&&hash&&lease)await c.rpc('noted_ai_fail',{p_hash:hash,p_lease:lease});
-    return Response.json({message:'AI learning notes are temporarily unavailable. Try again later.'},{status:503,headers});
+  } catch (error) {
+    const details = error instanceof EnrichmentProviderError
+      ? report(error.stage, error.category, error.upstreamStatus)
+      : error instanceof EnrichmentValidationError
+        ? report('structured_validation', 'invalid_learning_notes', 200, error.paths)
+        : report(stage, category);
+    if (c && hash && lease) {
+      try {
+        const failed = await c.rpc('noted_ai_fail', {p_hash:hash,p_lease:lease});
+        if (failed.error) report('reservation_failure', 'fail_rpc_failed');
+      } catch {
+        report('reservation_failure', 'fail_rpc_threw');
+      }
+    }
+    return Response.json({message:'AI learning notes are temporarily unavailable. Try again later.', diagnostic: details},{status:503,headers});
   }
 }
