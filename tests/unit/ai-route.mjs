@@ -34,7 +34,9 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
  const original={fetch:globalThis.fetch,key:process.env.GEMINI_API_KEY,flag:process.env.GEMINI_FREE_TIER_ENABLED};
  let cached=null,limited=false,modelCalls=0,failed=0,invalid=false;
  const hashes=[];
- globalThis.__notedAiClientTest={auth:{getUser:async()=>({data:{user:{id:'owner'}}})},rpc:async(name,args)=>{
+ const cacheQuery={select(){return this;},eq(column,hash){assert.equal(column,'query_hash');assert.equal(hash,hashes[0]);return this;},
+   gt(column){assert.equal(column,'expires_at');return this;},maybeSingle(){return Promise.resolve({data:{payload:cached}});}};
+ globalThis.__notedAiClientTest={auth:{getUser:async()=>({data:{user:{id:'owner'}}})},from:()=>cacheQuery,rpc:async(name,args)=>{
   if(name==='noted_ai_reserve'){hashes.push(args.p_hash);return{data:limited?{status:'limited'}:cached?{status:'cached',payload:cached}:{status:'reserved',lease:'lease'}};}
   if(name==='noted_ai_finish'){cached=args.p_payload;return{data:true};}
   if(name==='noted_ai_fail')failed++;
@@ -59,6 +61,14 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   assert.equal((await post()).status,200);
   const hit=await post();assert.equal(hit.status,200);assert.equal((await hit.json()).cached,true);
   assert.equal(modelCalls,1);assert.equal(hashes[0],hashes[1]);
+  const lookup=()=>route.GET(new Request('https://noted.test/api/ai-dictionary?mode=enrichment&q=bonjour&target=fr&explanation=zh-CN&level=A1',{headers:{Authorization:'Bearer test'}}));
+  const snapshot=await (await lookup()).json();
+  assert.equal(snapshot.available,true);
+  assert.equal(snapshot.result.collocations[0].expression,'dire bonjour');
+  assert.equal(hashes.length,2);assert.equal(modelCalls,1);
+  const goodCache=cached;cached={word:'unrelated'};
+  assert.equal((await (await lookup()).json()).result,null);
+  cached=goodCache;
   limited=true;assert.equal((await post({explanation:'en'})).status,429);assert.notEqual(hashes[1],hashes[2]);
   limited=false;cached=null;invalid=true;assert.equal((await post()).status,503);assert.equal(failed,1);
  }finally{globalThis.fetch=original.fetch;delete globalThis.__notedAiClientTest;

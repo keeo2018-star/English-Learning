@@ -11,11 +11,11 @@ export function PronunciationControl({ text, accent = 'UK', recording, phonetic,
   const { audio, play, status, available } = usePronunciation({ text, accent, recording, automatic,language });
   const loading = status === 'loading' || status === 'playing';
   return <span className={compact ? 'random-pronunciation' : styles.phonetic}>
-    <button type="button" className={compact ? 'secondary review-speaker' : 'secondary'}
+    <button type="button" className="wb-compact-control" data-icon-only={compact&&!label||undefined}
       aria-label={label || "Play pronunciation"} data-accent={accent}
       data-selected={activeStyle && loading || undefined} aria-pressed={activeStyle ? loading : undefined}
       aria-busy={loading} disabled={!available} onClick={play} title={`Play pronunciation (${language==='en'?accent:learningLanguages[language].label})`}>
-      {label ? <span>{label}</span> : !compact && <span>{language==='en'?accent:'Pronunciation'}</span>}<Icon name="volume" size={20}/>
+      <span><Icon name="volume" size={compact?20:16}/>{label||(!compact&&(language==='en'?accent:'Pronunciation'))}</span>
     </button>
     {phonetic && <span className="wb-learning-content">{phonetic}</span>}
     <audio ref={audio} hidden preload="none" src={recording || undefined} />

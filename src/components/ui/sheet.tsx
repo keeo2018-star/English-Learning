@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { IconButton } from './icon';
 
-export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, returnFocus, swipe, onBackdrop }: {
+export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, returnFocus, swipe, onBackdrop, portal, footer }: {
   title: string; onClose: () => void; busy?: boolean; children: ReactNode; id?: string; wide?: boolean;
-  swipe?: boolean; onBackdrop?: boolean; bodyRef?: RefObject<HTMLDivElement|null>; returnFocus?: RefObject<HTMLElement|null>;
+  portal?:boolean; footer?:ReactNode; swipe?: boolean; onBackdrop?: boolean; bodyRef?: RefObject<HTMLDivElement|null>; returnFocus?: RefObject<HTMLElement|null>;
 }) {
   const element = useRef<HTMLDialogElement>(null);
   const heading = useId();
@@ -50,7 +51,7 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     return()=>{reset();node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);
       node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',reset);};
   },[busy,onClose,swipe]);
-  return <dialog ref={element} id={id} className="language-sheet wb-bottom-sheet" data-wide={wide||undefined} aria-labelledby={heading}
+  const sheet = <dialog ref={element} id={id} className="language-sheet wb-bottom-sheet" data-wide={wide||undefined} aria-labelledby={heading}
     onPointerDown={event=>{backdropPointer.current=event.target===event.currentTarget;}}
     onClick={event=>{if(onBackdrop&&backdropPointer.current&&event.target===event.currentTarget)dismiss();backdropPointer.current=false;}}
     onCancel={event => { event.preventDefault(); dismiss(); }}>
@@ -59,7 +60,9 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
         <IconButton icon="close" label="Close" variant="soft" disabled={busy} onClick={dismiss}/>
       </header>
       <div className="wb-sheet-body" ref={bodyRef}>{children}</div>
+      {footer&&<footer className="wb-sheet-footer">{footer}</footer>}
       <div className="wb-sheet-toast-anchor" role="status" aria-live="polite" aria-atomic="true"/>
     </div>
   </dialog>;
+  return portal&&typeof document!=='undefined'?createPortal(sheet,document.body):sheet;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useRef,useState} from 'react';
-import {aiStatus,requestEnrichment} from '@/lib/ai-client';
+import {cachedEnrichment,requestEnrichment} from '@/lib/ai-client';
 import type {DictionaryEnrichment,EnrichmentInput} from '@/lib/dictionary-enrichment';
 import {HighlightWord} from './highlight-word';
 import styles from './dictionary.module.css';
@@ -12,11 +12,14 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
   const active=useRef<AbortController|null>(null);
+  const {word,target,explanation,level,partOfSpeech}=input;
   useEffect(()=>{
-    let mounted=true;
-    void aiStatus().then(status=>{if(mounted)setAvailable(status.available);});
-    return()=>{mounted=false;active.current?.abort();};
-  },[]);
+    const controller=new AbortController();
+    void cachedEnrichment({word,target,explanation,level,partOfSpeech},controller.signal).then(state=>{
+      if(!controller.signal.aborted){setAvailable(state.available);setNotes(state.result);}
+    }).catch(()=>{if(!controller.signal.aborted)setAvailable(false);});
+    return()=>{controller.abort();active.current?.abort();};
+  },[word,target,explanation,level,partOfSpeech]);
   async function generate(){
     if(active.current)return;
     const request=new AbortController();
@@ -27,9 +30,10 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
     finally{active.current=null;if(!request.signal.aborted)setBusy(false);}
   }
   if(available===null)return null;
-  return <section className={styles.learningNotes} aria-label="AI learning notes">
+  if(!available)return <p className={styles.learningAvailability}>AI learning notes are unavailable in this session.</p>;
+  return <section className={notes?styles.learningNotes:styles.learningAvailability} aria-label="AI learning notes">
     <h3>Learning notes</h3>
-    {!available?<p>AI learning notes are unavailable in this session.</p>:notes?<><small>AI-assisted suggestions</small>
+    {notes?<><small>AI-assisted suggestions</small>
       {notes.comparisons.length>0&&<section><h4>Similar but not the same</h4><dl>
         {notes.comparisons.map(item=><div key={item.expression}><dt>{item.expression}</dt><dd>{item.explanation}</dd></div>)}
       </dl></section>}

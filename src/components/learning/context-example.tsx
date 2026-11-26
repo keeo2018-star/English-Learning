@@ -38,6 +38,6 @@ export function ContextExample({item, owner, persist = true,lookup=true,language
       {details?.exampleSource==='ai'&&!details.highlight?text:<HighlightWord text={text} target={item.word} surface={details?.highlight} language={language}/>}
       {details?.exampleTranslation&&<small className="saved-learning-note">{details.exampleTranslation}</small>}
     </blockquote>}
-    {item.personal_note&&<p className="saved-learning-note"><strong>Personal note</strong> {item.personal_note}</p>}
+    {item.personal_note&&<p className="saved-learning-note wb-saved-note"><strong>Personal note</strong> {item.personal_note}</p>}
   </>;
 }

@@ -561,7 +561,7 @@ summary:focus-visible {
 .wb-destructive {
   background: var(--wb-black);
   color: var(--wb-white);
-  border: 2px solid var(--wb-black);
+  border: 1px solid var(--wb-black);
 }
 @media (min-width: 700px) {
   .wb-masthead {
@@ -945,7 +945,7 @@ summary:focus-visible {
 .calendar-legend > span { display:inline-flex;align-items:center;gap:4px; }
 .calendar-swatch { display:inline-block;width:14px;height:14px;border:1px solid #b7b7ae;border-radius:3px; }
 .calendar-grid .calendar-day[aria-current="date"] { font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
-.calendar-grid .calendar-day[aria-pressed="true"] { border: 2px solid var(--wb-black); }
+.calendar-grid .calendar-day[aria-pressed="true"] { border-color:var(--wb-black); font-weight:700; }
 .calendar-day-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; font-size: 14px; }
 .calendar-day-summary strong { flex-basis: 100%; }
 .calendar-note { color: #5b5b51; font-size: 12px; line-height: 1.6; margin-bottom: 0; }
@@ -1009,7 +1009,7 @@ summary:focus-visible {
 .review-card-tools .review-delete { display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;padding:12px;border:0;background:transparent;color:var(--wb-black);border-radius:var(--wb-radius-small); }
 
 /* One contiguous focus treatment for native IME fields; the Add title keeps its divider. */
-[data-ime-field]:focus-visible { outline:2px solid var(--wb-black);outline-offset:0;box-shadow:none;border-color:var(--wb-black); }
+[data-ime-field]:focus-visible { outline:2px solid #594574;outline-offset:-2px;border-color:transparent;box-shadow:none; }
 
 .wb-word-content h2.wb-learning-content { letter-spacing:normal; }
 /* A single compact masthead; account actions live in Profile. */
@@ -1209,7 +1209,7 @@ summary:focus-visible {
 .wb-icon-button:disabled { opacity:.55; }
 .wb-calendar-tools .language-trigger { min-height:48px; }
 .calendar-grid .calendar-day[aria-current="date"] { outline:1px solid var(--wb-black); outline-offset:-2px; }
-.calendar-grid .calendar-day[aria-pressed="true"] { border:2px solid var(--wb-black); }
+
 .calendar-legend > strong { flex-basis:100%; font-weight:600; }
 .wb-disclosure > summary { display:flex; align-items:center; justify-content:space-between; gap:var(--wb-space-2); list-style:none; }
 .wb-disclosure > summary::-webkit-details-marker { display:none; }
@@ -1233,8 +1233,8 @@ summary:focus-visible {
 .wb-svg-icon { flex: none; display: block; }
 #app-content:focus { outline: none; }
 .wb-app-frame { scroll-padding-block-start: var(--wb-learning-header-height); }
-.wb-icon-button.wb-icon-button:focus-visible { outline: 2px solid var(--wb-black); outline-offset: -2px; }
-.wb-select.wb-select:focus-visible { outline: 2px solid var(--wb-black); outline-offset: -2px; }
+.wb-icon-button.wb-icon-button:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 2px; }
+.wb-select.wb-select:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 2px; }
 .wb-bottom-sheet.language-sheet { border: 0; border-radius: 24px 24px 0 0; padding: 0; overflow: hidden; }
 .wb-bottom-sheet[data-wide] { width: min(100%, 680px); }
 .wb-bottom-sheet .wb-sheet-layout { display: flex; flex-direction: column; max-height: min(92dvh, calc(var(--wb-keyboard-viewport, 100dvh) - env(safe-area-inset-top, 0px))); }
@@ -1265,3 +1265,22 @@ summary:focus-visible {
 .wb-entry-management button { min-height:var(--wb-touch); }
 .library-tools.library-tools { background:transparent; border-radius:0; margin:0 0 12px; padding:0; }
 .library-tools input { border:1px solid var(--wb-black); border-radius:var(--wb-radius-small); min-height:44px; padding:8px 12px; }
+
+
+/* The dialog tracks the visual viewport independently of the background grid. */
+html[data-wb-modal-keyboard] .wb-app-navigation { visibility:hidden; }
+.wb-app:has(dialog[open]) .wb-app-frame, body:has(> dialog[open]) .wb-app-frame { overflow:hidden; }
+.wb-bottom-sheet.language-sheet { position:fixed; inset-block-end:var(--wb-sheet-bottom,0px); max-height:var(--wb-sheet-viewport,92dvh); text-align:start; }
+.wb-bottom-sheet .wb-sheet-layout { max-height:var(--wb-sheet-viewport,92dvh); }
+.wb-sheet-footer { flex:none; display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:8px var(--wb-page-gutter) max(10px,env(safe-area-inset-bottom)); background:var(--wb-offwhite); }
+html[data-wb-modal-keyboard] .wb-sheet-footer { padding-block-end:10px; }
+.wb-sheet-header .wb-icon-button > span { width:34px; height:34px; }
+.wb-compact-control.wb-compact-control { display:inline-grid; place-items:center; min-height:var(--wb-touch); min-width:var(--wb-touch); padding:0; border:0; background:none; color:var(--wb-black); box-shadow:none; }
+.wb-compact-control > span { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:32px; padding:4px 10px; border-radius:999px; background:var(--wb-grey); font-size:.875rem; line-height:1.2; }
+.wb-compact-control[data-selected=true] > span { background:var(--wb-black); color:var(--wb-white); }
+.wb-compact-control[data-icon-only=true] > span { min-height:36px; min-width:36px; padding:0; }
+[data-context-example]::before,[data-context-example]::after,.wb-bottom-sheet blockquote::before,.wb-bottom-sheet blockquote::after { content:none; }
+.wb-saved-note > strong { display:block; font-size:.8rem; font-weight:500; }
+.review-card :is([data-context-example],.wb-saved-note) { text-align:start; width:100%; }
+.review-card [data-context-example] { margin-block:12px; }
+.review-card:is(.wb-color-acid,.wb-color-green) .wb-word-highlight { background:var(--wb-white); }

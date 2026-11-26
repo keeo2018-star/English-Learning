@@ -11,22 +11,35 @@ export function KeyboardViewport() {
     const resize = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const editing = document.activeElement?.matches('textarea, input, [contenteditable="true"]');
-        if (editing && viewport.scale === 1 && viewport.height < shell.clientHeight && window.innerHeight > viewport.height) {
-          shell.style.setProperty('--wb-keyboard-viewport', `${viewport.height}px`);
-        } else if (!editing || viewport.scale !== 1 || window.innerHeight <= viewport.height) {
-          shell.style.removeProperty('--wb-keyboard-viewport');
-        } else if (shell.style.getPropertyValue('--wb-keyboard-viewport')) {
-          shell.style.setProperty('--wb-keyboard-viewport', `${viewport.height}px`);
+        const active = document.activeElement;
+        const editing = active?.matches('textarea, input:not([type=checkbox]):not([type=radio]), [contenteditable="true"]');
+        const root = document.documentElement;
+        const occlusion = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+        const modal = document.querySelector('dialog[open]') !== null;
+        const keyboard = !!editing && viewport.scale === 1 && window.innerHeight - viewport.height > 80;
+        root.toggleAttribute('data-wb-modal-keyboard', keyboard && modal);
+        if (keyboard && modal) {
+          root.style.setProperty('--wb-sheet-viewport', `${viewport.height}px`);
+          root.style.setProperty('--wb-sheet-bottom', `${occlusion}px`);
+        } else {
+          root.style.removeProperty('--wb-sheet-viewport');
+          root.style.removeProperty('--wb-sheet-bottom');
         }
+        if (keyboard && !modal) shell.style.setProperty('--wb-keyboard-viewport', `${viewport.height}px`);
+        else shell.style.removeProperty('--wb-keyboard-viewport');
       });
     };
     viewport.addEventListener('resize', resize);
+    viewport.addEventListener('scroll', resize);
     document.addEventListener('focusin', resize);
     document.addEventListener('focusout', resize);
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener('resize', resize);
+      viewport.removeEventListener('scroll', resize);
+      document.documentElement.removeAttribute('data-wb-modal-keyboard');
+      document.documentElement.style.removeProperty('--wb-sheet-viewport');
+      document.documentElement.style.removeProperty('--wb-sheet-bottom');
       document.removeEventListener('focusin', resize);
       document.removeEventListener('focusout', resize);
       shell.style.removeProperty('--wb-keyboard-viewport');

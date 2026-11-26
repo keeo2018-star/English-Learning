@@ -27,3 +27,13 @@ export async function requestEnrichment(input:import('./dictionary-enrichment').
   const {parseEnrichment}=await import('./dictionary-enrichment');
   return parseEnrichment(data.result,input);
 }
+
+export async function cachedEnrichment(input:import('./dictionary-enrichment').EnrichmentInput,signal:AbortSignal) {
+  const params=new URLSearchParams({mode:'enrichment',q:input.word,target:input.target,
+    explanation:input.explanation,level:input.level,partOfSpeech:input.partOfSpeech});
+  const response=await fetch('/api/ai-dictionary?'+params,{headers:await headers(),signal});
+  if(!response.ok)return {available:false,result:null};
+  const data=await response.json();
+  const {parseEnrichment}=await import('./dictionary-enrichment');
+  return {available:data.available===true,result:data.result?parseEnrichment(data.result,input):null};
+}
