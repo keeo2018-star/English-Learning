@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import {LanguagePicker} from '@/components/ui/language-picker';
 
 import { useCallback, useRef, useState, type FormEvent } from 'react';
@@ -139,8 +140,8 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
         </Select></label>
         <label>Approximate level<Select aria-label="Approximate level" key={target} name="level" defaultValue="beginner" disabled={busy}>{levelOptions(target)}</Select></label>
         {error && <p role="alert">{error}</p>}
-        <button disabled={busy}>{busy ? 'Adding…' : `Add ${learningLanguages[target].label}`}</button>
-        <button className="text-button" type="button" disabled={busy} onClick={close}>Cancel</button>
+        <Button type="submit" disabled={busy}>{busy ? 'Adding…' : `Add ${learningLanguages[target].label}`}</Button>
+        <Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
       </form>
     </Sheet>}
 
@@ -165,11 +166,11 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
           <option value="UK">UK</option><option value="US">US</option>
         </Select></label>}
         {active ? <p className="wb-supporting">Currently active</p> :
-          <button type="button" className="secondary" disabled={busy} onClick={() => { state.select(row.id); setNotice('Active language updated'); }}>
+          <Button variant="secondary" disabled={busy} onClick={() => { state.select(row.id); setNotice('Active language updated'); }}>
             Set as active language
-          </button>}
+          </Button>}
         {error && <p role="alert">{error}</p>}
-        <button type="button" disabled={busy} onClick={close}>Done</button>
+        <Button disabled={busy} onClick={close}>Done</Button>
       </div>
     </Sheet>}
     {error && !panel && <p role="alert">{error}</p>}

@@ -18,12 +18,30 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     const dialog = element.current;
     if (!dialog) return;
     const previous = returnFocus?.current ?? document.activeElement;
+    let pointer = !previous?.matches(':focus-visible');
+    const onPointer = () => { pointer = true; };
+    const onKey = () => { pointer = false; };
+    document.addEventListener('pointerdown', onPointer, true);
+    document.addEventListener('keydown', onKey, true);
     dialog.showModal();
     titleTarget.current?.focus({preventScroll:true});
     return () => {
+      document.removeEventListener('pointerdown', onPointer, true);
+      document.removeEventListener('keydown', onKey, true);
+      if (pointer && previous instanceof HTMLElement && previous.matches('button,a[href],[role=button]') && previous.isConnected) {
+        previous.dataset.wbPointerRestored = 'true';
+        const clear = () => {
+          delete previous.dataset.wbPointerRestored;
+          previous.removeEventListener('blur', clear);
+          previous.removeEventListener('keydown', clear, true);
+        };
+        previous.addEventListener('blur', clear, { once: true });
+        previous.addEventListener('keydown', clear, { once: true, capture: true });
+      }
       dialog.close();
-      if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected)
+      if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected) {
         previous.focus({ preventScroll: true });
+      }
     };
   }, [returnFocus]);
   useEffect(() => {

@@ -1,4 +1,5 @@
 "use client";
+import { Button } from './button';
 import { useEffect, useRef, useId } from "react";
 import { Pill } from "./primitives";
 export function ConfirmDialog({
@@ -52,23 +53,23 @@ export function ConfirmDialog({
       </p>
       {error&&<p role="alert">{error}</p>}
       <div className="actions">
-        <button
+        <Button
           ref={cancel}
           type="button"
-          className="secondary"
+          variant="secondary"
           disabled={busy}
           onClick={onCancel}
         >
           {entry?'Cancel':'Keep word'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="wb-destructive"
+          variant="destructive"
           disabled={busy}
           onClick={onConfirm}
         >
           {busy ? "Deleting…" : entry?"Delete":"Delete word"}
-        </button>
+        </Button>
       </div>
     </dialog>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 import {isOriginalEnglish,type LearningCollection} from '@/lib/collections';
 import {CollectionReference} from './collection-reference';
 import {PronunciationControl} from './pronunciation-control';
@@ -31,7 +32,7 @@ export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,sa
     const trigger = useRef<HTMLButtonElement>(null);
     const openEntry=()=>setOpen(true);
     return <>{browse ? <VocabularyRow expression={word} meaning={meaning} metadata={metadata} buttonRef={trigger} onClick={openEntry}/> :
-      <button ref={trigger} type="button" className="secondary wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open?dialogId:undefined} aria-haspopup="dialog" onClick={openEntry}>Dictionary <Icon name="chevronRight" size={16}/></button>}
+      <Button ref={trigger} variant="secondary" size="medium" className="wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open?dialogId:undefined} aria-haspopup="dialog" onClick={openEntry}>Dictionary <Icon name="chevronRight" size={16}/></Button>}
       {open && <DictionarySheet returnFocus={trigger} blockClose={blockClose} details={details} management={management} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
 }
 function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example,details,management,blockClose }: {
@@ -112,7 +113,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
     const formId=dialogId+'-meaning';
     const referenceHeadword=englishReference && error?.status===404 && /^([a-z]{2,})\s+\S/i.exec(word)?.[1];
     return <Sheet id={dialogId} portal title={editingMeaning?'Edit meaning':'Dictionary'} wide swipe={!editingMeaning&&!blockClose} onBackdrop bodyRef={dialog} busy={meaningBusy} returnFocus={returnFocus} onClose={requestClose}
-      footer={editingMeaning&&<><button type="button" className="secondary" disabled={meaningBusy} onClick={finishEditing}>Cancel</button><button type="submit" form={formId} disabled={meaningBusy}>{meaningBusy?'Saving…':'Save meaning'}</button></>}>
+      footer={editingMeaning&&<><Button variant="secondary" disabled={meaningBusy} onClick={finishEditing}>Cancel</Button><Button type="submit" form={formId} disabled={meaningBusy}>{meaningBusy?'Saving…':'Save meaning'}</Button></>}>
  {editingMeaning&&<form id={formId} className={styles.meaningEditor} onSubmit={saveMeaning} aria-label="Edit my meaning">
    <h3>{word}</h3>
    <label>My meaning<ImeTextarea aria-label="My meaning" lang={collection?.explanation_language==='en'?'en':'zh-Hans'} autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy}/></label>

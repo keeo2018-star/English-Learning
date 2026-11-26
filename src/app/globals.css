@@ -558,11 +558,6 @@ summary:focus-visible {
 .wb-dialog .actions button {
   flex: 1;
 }
-.wb-destructive {
-  background: var(--wb-black);
-  color: var(--wb-white);
-  border: 1px solid var(--wb-black);
-}
 @media (min-width: 700px) {
   .wb-masthead {
     padding: 32px 0;
@@ -714,7 +709,7 @@ summary:focus-visible {
   }
 }
 
-.wb-color-blue button:not(.secondary):not(.text-button):not(dialog button) {
+.wb-color-blue button:not(.wb-button):not(.secondary):not(.text-button):not(dialog button) {
   background: var(--wb-white);
   color: var(--wb-black);
 }
@@ -900,7 +895,6 @@ summary:focus-visible {
   max-width: 440px;
   margin: 24px auto 0;
 }
-.review-ratings button { min-height: 52px; padding: 14px 18px; }
 .wb-familiarity { display: inline-block; color: #54544f; font-size: 12px; line-height: 1.5; margin: 0 0 8px; }
 
 .wb-word-highlight {
@@ -1185,7 +1179,6 @@ summary:focus-visible {
   padding: 3px; border: var(--wb-divider); background: var(--wb-grey); border-radius: var(--wb-radius-pill); max-width: 100%;
 }
 .wb-segments .wb-selectable { min-height: var(--wb-touch); padding: 8px 12px; border: 0; border-radius: var(--wb-radius-pill); font-size: var(--wb-size-small); }
-.wb-icon-button.wb-icon-button { display: inline-grid; place-items: center; min-width: var(--wb-touch); min-height: var(--wb-touch); padding: var(--wb-space-2); border: var(--wb-border); background: transparent; color: var(--wb-black); }
 .wb-calendar-tools { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wb-space-2); }
 .wb-calendar-tools .calendar-language { min-width: 0; }
 .learning-calendar > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; }
@@ -1202,11 +1195,6 @@ summary:focus-visible {
 .language-menu { width:max-content; min-width: min(180px,calc(100vw - 40px)); max-width:min(225px,calc(100vw - 40px)); }
 .learning-language[data-align="start"] .language-menu { inset-inline-start:0; inset-inline-end:auto; }
 .learning-language[data-align="start"] { max-width:100%; }
-.wb-icon-button.wb-icon-button { display:inline-grid; place-items:center; width:var(--wb-touch); min-width:var(--wb-touch); height:var(--wb-touch); min-height:var(--wb-touch); padding:0; border:0; border-radius:50%; box-shadow:none; }
-.wb-icon-button > span { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; }
-.wb-icon-button[data-variant="soft"] > span { background:var(--wb-grey); }
-.wb-icon-button[data-variant="primary"] > span { background:var(--wb-black); color:var(--wb-white); }
-.wb-icon-button:disabled { opacity:.55; }
 .wb-calendar-tools .language-trigger { min-height:48px; }
 .calendar-grid .calendar-day[aria-current="date"] { outline:1px solid var(--wb-black); outline-offset:-2px; }
 
@@ -1225,15 +1213,13 @@ summary:focus-visible {
 .wb-review-utilities p { margin:0; font-size:var(--wb-size-support); }
 .wb-review-utilities .review-auto-pronunciation { display:inline-flex; align-items:center; gap:var(--wb-space-1); min-height:var(--wb-touch); margin:0; font-size:var(--wb-size-small); }
 .review-auto-pronunciation input { accent-color:var(--wb-black); }
-.library-back,.wb-dictionary-action { display:inline-flex; align-items:center; gap:var(--wb-space-2); }
-.review-card .wb-dictionary-action { min-height:var(--wb-touch); }
+.library-back { display:inline-flex; align-items:center; gap:var(--wb-space-2); }
 .review-card > h2 { margin-block:var(--wb-space-2) var(--wb-space-3); overflow-wrap:anywhere; }
 
 /* Shared control geometry and scroll boundaries. */
 .wb-svg-icon { flex: none; display: block; }
 #app-content:focus { outline: none; }
 .wb-app-frame { scroll-padding-block-start: var(--wb-learning-header-height); }
-.wb-icon-button.wb-icon-button:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 2px; }
 .wb-select.wb-select:focus-visible { outline: 2px solid var(--wb-black); outline-offset: 2px; }
 .wb-bottom-sheet.language-sheet { border: 0; border-radius: 24px 24px 0 0; padding: 0; overflow: hidden; }
 .wb-bottom-sheet[data-wide] { width: min(100%, 680px); }
@@ -1275,13 +1261,71 @@ html[data-wb-modal-keyboard] .wb-app-navigation { visibility:hidden; }
 .wb-bottom-sheet .wb-sheet-layout { max-height:var(--wb-sheet-viewport,92dvh); }
 .wb-sheet-footer { flex:none; display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; padding:8px var(--wb-page-gutter) max(10px,env(safe-area-inset-bottom)); background:var(--wb-offwhite); }
 html[data-wb-modal-keyboard] .wb-sheet-footer { padding-block-end:10px; }
-.wb-sheet-header .wb-icon-button > span { width:34px; height:34px; }
-.wb-compact-control.wb-compact-control { display:inline-grid; place-items:center; min-height:var(--wb-touch); min-width:var(--wb-touch); padding:0; border:0; background:none; color:var(--wb-black); box-shadow:none; }
-.wb-compact-control > span { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:32px; padding:4px 10px; border-radius:999px; background:var(--wb-grey); font-size:.875rem; line-height:1.2; }
-.wb-compact-control[data-selected=true] > span { background:var(--wb-black); color:var(--wb-white); }
-.wb-compact-control[data-icon-only=true] > span { min-height:36px; min-width:36px; padding:0; }
 [data-context-example]::before,[data-context-example]::after,.wb-bottom-sheet blockquote::before,.wb-bottom-sheet blockquote::after { content:none; }
 .wb-saved-note > strong { display:block; font-size:.8rem; font-weight:500; }
 .review-card :is([data-context-example],.wb-saved-note) { text-align:start; width:100%; }
 .review-card [data-context-example] { margin-block:12px; }
 .review-card:is(.wb-color-acid,.wb-color-green) .wb-word-highlight { background:var(--wb-white); }
+
+/* Shared native button geometry. Compact surfaces sit inside their own hit area. */
+.wb-button[data-button-variant] {
+  --button-height: 48px;
+  --button-padding: 20px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-block-size: var(--button-height);
+  padding: 4px var(--button-padding);
+  border: 1px solid transparent;
+  border-radius: var(--wb-radius-pill);
+  line-height: 1.2;
+  box-shadow: none;
+  translate: none;
+  scale: none;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.wb-button[data-button-size="medium"] { --button-height: 38px; --button-padding: 14px; }
+.wb-button[data-button-size="small"] { --button-height: 30px; --button-padding: 10px; }
+.wb-button[data-button-size="icon"] { --button-height: 34px; --button-padding: 0px; }
+.wb-button[data-button-variant="secondary"],
+.wb-button[data-button-variant="toggle"] { background: transparent; color: inherit; border-color: currentColor; }
+.wb-button[data-button-variant="ghost"],
+.wb-button[data-button-variant="icon"] { background: transparent; color: inherit; }
+.wb-button[data-button-variant="destructive"] { border-color: var(--wb-black); }
+.wb-color-blue .wb-button[data-button-variant="primary"]:not(dialog *) { background: var(--wb-white); color: var(--wb-black); }
+.wb-button[data-button-variant][aria-pressed="true"]:not([data-button-surface]) {
+  background: var(--wb-black);
+  border-color: var(--wb-black);
+  color: var(--wb-white);
+}
+.wb-button[data-button-variant]:focus-visible {
+  outline: 2px solid var(--wb-black);
+  outline-offset: 3px;
+}
+:is(button, a, [role="button"])[data-wb-pointer-restored="true"]:focus { outline: none; }
+.wb-button[data-wb-pointer-restored="true"][data-button-variant]:focus { outline: none; }
+.wb-button[data-button-variant]:is(:hover,:active) { translate: none; scale: none; }
+.wb-button[data-button-surface] {
+  min-block-size: var(--wb-touch);
+  min-inline-size: var(--wb-touch);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+.wb-button-surface {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wb-space-1);
+  min-block-size: var(--button-height);
+  padding-inline: var(--button-padding);
+  border-radius: inherit;
+  background: var(--wb-grey);
+}
+.wb-button[data-button-size="icon"] > .wb-button-surface { min-inline-size: var(--button-height); }
+.wb-icon-button[data-variant="neutral"] > .wb-button-surface { background: transparent; }
+.wb-icon-button[data-variant="primary"] > .wb-button-surface,
+.wb-button[data-button-surface][aria-pressed="true"] > .wb-button-surface { background: var(--wb-black); color: var(--wb-white); }
+.wb-button[data-button-variant].wb-dictionary-action { margin-inline: 0; }
+@media (prefers-reduced-motion: reduce) { .wb-button[data-button-variant] { transition: none; } }

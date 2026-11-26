@@ -14,7 +14,7 @@
 .choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .choices button { justify-content: flex-start; text-align: left; min-height: 52px; white-space: normal; overflow-wrap: anywhere; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
-.actions button, .blue button { min-height: 48px; }
+.actions button:not(:global(.wb-button)), .blue button:not(:global(.wb-button)) { min-height: 48px; }
 .blue .unknown { margin-top: 20px; }
 .progress { display: flex; align-items: center; gap: 16px; margin: 16px 0; font-size: 13px; }
 .progress span { white-space: nowrap; }

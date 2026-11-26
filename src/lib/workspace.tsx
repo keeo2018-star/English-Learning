@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 import {Icon,IconButton} from "@/components/ui/icon";
 import {Segments} from '@/components/ui/segments';
 import {Toast} from '@/components/ui/toast';
@@ -766,15 +767,14 @@ export default function Workspace({
                           />
                         </label>
                         <div className="actions">
-                          <button disabled={busy}>Save changes</button>
-                          <button
-                            type="button"
-                            className="secondary"
+                          <Button type="submit" disabled={busy}>Save changes</Button>
+                          <Button
+                            variant="secondary"
                             disabled={busy}
                             onClick={() => setEditing(null)}
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </form>
                     ):<div className="wb-entry-management">
@@ -836,14 +836,14 @@ export default function Workspace({
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>
-                        <SelectableButton selected={pendingRating === "sure"} disabled={busy}
+                        <SelectableButton selected={pendingRating === "sure"} variant="primary" disabled={busy}
                           onClick={() => void grade(card, "sure")}>Sure</SelectableButton>
                       </div>
                     </>
                   ) : (
-                    <button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
+                    <Button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
                       Reveal answer
-                    </button>
+                    </Button>
                   )}
                 </Card>
               </>

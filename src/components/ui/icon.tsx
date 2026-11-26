@@ -1,3 +1,4 @@
+import { Button } from './button';
 import type { ComponentProps } from 'react';
 
 const paths = {
@@ -26,7 +27,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 export function IconButton({ icon, label, variant = 'neutral', className = '', ...props }: ComponentProps<'button'> & {
   icon: IconName; label: string; variant?: 'neutral' | 'soft' | 'primary';
 }) {
-  return <button {...props} type="button" aria-label={label} className={`wb-icon-button ${className}`} data-variant={variant}>
-    <span><Icon name={icon}/></span>
-  </button>;
+  return <Button {...props} variant="icon" size="icon" compactSurface aria-label={label} className={`wb-icon-button ${className}`} data-variant={variant}>
+    <Icon name={icon}/>
+  </Button>;
 }

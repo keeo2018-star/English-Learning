@@ -1,3 +1,4 @@
+import { Button } from './button';
 import Link from 'next/link';
 import type { ComponentProps } from 'react';
 
@@ -17,8 +18,8 @@ export function SelectableLink({ selected, className = '', ...props }: Component
   return <Link {...props} className={`wb-selectable ${className}`} data-selected={selected || undefined}
     aria-current={selected ? 'page' : undefined} />;
 }
-export function SelectableButton({ selected, className = '', ...props }: ComponentProps<'button'> & { selected: boolean }) {
-  return <button type="button" {...props} className={`wb-selectable ${className}`} data-selected={selected || undefined}
+export function SelectableButton({ selected, className = '', variant = 'toggle', ...props }: ComponentProps<typeof Button> & { selected: boolean }) {
+  return <Button variant={variant} {...props} className={`wb-selectable ${className}`} data-selected={selected || undefined}
     aria-pressed={selected} />;
 }
 export function SelectableToggle({ children, checked, onChange, className = '' }: {

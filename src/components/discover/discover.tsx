@@ -1,4 +1,5 @@
 "use client";
+import { Button } from '@/components/ui/button';
 import {VocabularyRow} from '@/components/ui/vocabulary-row';
 import {DictionaryButton} from '@/components/dictionary/dictionary-sheet';
 import {Disclosure} from '@/components/ui/disclosure';
@@ -115,9 +116,9 @@ export default function Discover() {
  }).filter((item,index,items)=>items.findIndex(other=>data.daily?.responses[String(other.id)].library_id===data.daily?.responses[String(item.id)].library_id)===index)??[];
  return <AppShell active="Discover"><div className={styles.page}>
   <LearningHeader title="Discover." enabled={learning.enabled} collections={learning.collections} active={learning.active} disabled={busy} onSelect={id=>{if(id===learning.active?.id)return;generation.current++;working.current=false;pending.current=null;setData(null);setError('');stopPronunciation();learning.select(id);}}/>
-  {supported&&error && <div className={styles.error}><Feedback>{error}</Feedback><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</button>{setup && <Link href="/">Back to home</Link>}</div>}
+  {supported&&error && <div className={styles.error}><Feedback>{error}</Feedback><Button variant="secondary" disabled={busy} onClick={() => { const retry = pending.current; void perform(retry?.action || 'get', retry?.payload || {}); }}>Try again</Button>{setup && <Link href="/">Back to home</Link>}</div>}
   {supported&&data && !continuous && progress?.current && <Feedback>Continuous Discover needs a one-time database update. Your existing batch remains available.</Feedback>}
-  {supported&&data&&data.profile.assessment_status!=='pending'&&!assessment&&<Disclosure className={styles.options} label="Discover options"><div className={styles.actions}><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={()=>start(true)}>{data.profile.assessment_status==='completed'?'Retake vocabulary check':'Take vocabulary check'}</button><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={()=>void perform('get')}>Sync progress</button></div></Disclosure>}
+  {supported&&data&&data.profile.assessment_status!=='pending'&&!assessment&&<Disclosure className={styles.options} label="Discover options"><div className={styles.actions}><Button variant="secondary" disabled={busy} onClick={()=>start(true)}>{data.profile.assessment_status==='completed'?'Retake vocabulary check':'Take vocabulary check'}</Button><Button variant="secondary" disabled={busy} onClick={()=>void perform('get')}>Sync progress</Button></div></Disclosure>}
   {user&&learning.ready&&!supported?<Card><h2>More languages, soon.</h2><p>Discover for {learning.active?learningLanguages[learning.active.target_language].label:'this Collection'} isn’t available yet. You can add your own vocabulary and review it.</p><Link href="/add" className="wb-control">Add vocabulary</Link></Card>:user === undefined||!learning.ready ? <LoadingState label="Opening Discover…" /> : !user ? <Card className={styles.blue}>
    <h2>Your next words are waiting.</h2><p>Sign in to keep your vocabulary check and Discover progress in sync.</p><Link className="wb-control" href="/auth">Sign in</Link>
   </Card> : !data ? !error && <LoadingState label="Finding your place…" /> : <>
@@ -132,26 +133,26 @@ export default function Discover() {
    </section> : assessment?.status === 'completed' ? <Card className={styles.blue}>
     <p className="eyebrow">YOUR STARTING LEVEL</p><h2 ref={wordHeading} tabIndex={-1}>{levelLabel(assessment.estimated_level || 3)} · Estimated</h2><p>We’ll use this as a starting point and keep learning what works for you.</p>
     <p className={styles.note}>An approximate vocabulary recommendation level, not a certified measure of overall English proficiency.</p>
-    <button type="button" className="wb-control" disabled={busy} onClick={() => void perform('assessment_accept', { session_id: assessment.id })}>Discover my next words</button>
+    <Button disabled={busy} onClick={() => void perform('assessment_accept', { session_id: assessment.id })}>Discover my next words</Button>
    </Card> : data.profile.assessment_status === 'pending' ? <Card className={styles.blue}>
     <h2>Let’s find your level.</h2><p>A quick vocabulary check to find words worth learning. No pressure, no grades.</p><p className={styles.note}>16 questions · about 2–3 minutes</p>
-    <div className={styles.actions}><button type="button" className="wb-control" disabled={busy} onClick={() => start()}>Start vocabulary check</button><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => void perform('skip')}>Skip for now</button></div>
-   </Card> : !data.daily ? <button type="button" className="wb-control" disabled={busy} onClick={() => void perform('daily')}>Open next words</button> : item && progress ? <section aria-label="Discover batch">
+    <div className={styles.actions}><Button disabled={busy} onClick={() => start()}>Start vocabulary check</Button><Button variant="secondary" disabled={busy} onClick={() => void perform('skip')}>Skip for now</Button></div>
+   </Card> : !data.daily ? <Button disabled={busy} onClick={() => void perform('daily')}>Open next words</Button> : item && progress ? <section aria-label="Discover batch">
     <div className={styles.dailyHeader}><h2>{data.daily.items.length === 10 ? 'Your next 10.' : 'Your next picks.'}</h2><p>Picked for your current level.</p></div>
     <div className={styles.progress}><span>{progress.completed + 1} / {data.daily.items.length}</span><progress aria-label="Discover batch progress" value={progress.completed} max={Math.max(1, data.daily.items.length)} /></div>
     <Card className={`${styles.blue} wb-learning-card`} key={cardKey}>
      <h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{item.word}</h2><PronunciationControl text={item.word} accent="UK" compact />
-     {revealed !== cardKey ? <><p>Do you know this word?</p><button type="button" className="wb-control" onClick={() => setRevealed(cardKey)}>Reveal meaning</button></> : <>
+     {revealed !== cardKey ? <><p>Do you know this word?</p><Button onClick={() => setRevealed(cardKey)}>Reveal meaning</Button></> : <>
       <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p><ContextExample item={{...item,id:`discover:${item.id}`}} owner={user?.id || 'local-demo'} persist={false}/>
       <DictionaryButton word={item.word} meaning={item.meaning}/>
-      <div className={styles.actions}><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={() => respond('know')}>I know it</button><button type="button" className="wb-control" disabled={busy} onClick={() => respond('save')}>Save to Library</button></div>
+      <div className={styles.actions}><Button variant="secondary" disabled={busy} onClick={() => respond('know')}>I know it</Button><Button disabled={busy} onClick={() => respond('save')}>Save to Library</Button></div>
      </>}
     </Card>
    </section> : <Card className={`${styles.blue} ${styles.completion}`}>
     <h2 ref={wordHeading} tabIndex={-1}>{data.daily.items.length ? 'Nice work.' : data.daily.remaining_count ? 'More words are available.' : 'No new words left.'}</h2>
     {data.daily.items.length > 0 && <><p>You’ve explored {progress?.completed || 0} {(progress?.completed || 0) === 1 ? 'word' : 'words'}.</p>
      <dl className={styles.summary}><div><dt>New words saved</dt><dd>{newWords.length}</dd></div><div><dt>Already known</dt><dd>{Object.values(data.daily.responses).filter(response=>response.action==='know').length}</dd></div></dl></>}
-    {!continuous ? <div><p className={styles.note}>More words aren’t available right now. Your progress is saved.</p><button type="button" className="wb-control wb-control-outline" disabled={busy} onClick={()=>void perform("get")}>Retry</button></div> : data.daily.remaining_count === 0 ? <p>No new words are available in this collection. Your history is kept; no words will be repeated.</p> : <button type="button" className="wb-control" disabled={busy} onClick={nextBatch}>Discover 10 more</button>}
+    {!continuous ? <div><p className={styles.note}>More words aren’t available right now. Your progress is saved.</p><Button variant="secondary" disabled={busy} onClick={()=>void perform("get")}>Retry</Button></div> : data.daily.remaining_count === 0 ? <p>No new words are available in this collection. Your history is kept; no words will be repeated.</p> : <Button disabled={busy} onClick={nextBatch}>Discover 10 more</Button>}
     {!newWords.length&&<Link className="text-button" href="/library">Open Library</Link>}
    </Card>}
    {!item&&newWords.length>0&&<section aria-label="Your new words" className={styles.newWords}>
