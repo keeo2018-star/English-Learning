@@ -18,7 +18,7 @@ self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=a
 self.addEventListener('fetch',event=>{
  const request=event.request,url=new URL(request.url);if(request.method!=='GET'||url.origin!==self.location.origin)return;
  if(request.mode==='navigate'){
-  event.respondWith((async()=>{try{const response=await fetch(request);if(!response.ok&&response.status>=500)throw Error('Unavailable');return response;}catch{return (ROUTES.includes(url.pathname)?await caches.match(url.pathname,{cacheName:CACHE}):null)||await caches.match('/offline.html',{cacheName:CACHE})||Response.error();}})());
+  event.respondWith((async()=>{try{const response=await fetch(request,{cache:"no-cache"});if(!response.ok&&response.status>=500)throw Error('Unavailable');return response;}catch{return (ROUTES.includes(url.pathname)?await caches.match(url.pathname,{cacheName:CACHE}):null)||await caches.match('/offline.html',{cacheName:CACHE})||Response.error();}})());
   if(ROUTES.includes(url.pathname))event.waitUntil(warm(url.pathname).catch(()=>{}));
  }else if(url.pathname.startsWith('/_next/static/')||ASSETS.includes(url.pathname)&&!url.search){
   event.respondWith((async()=>{const cached=await caches.match(request);if(cached)return cached;const response=await fetch(request);if(response.ok){const cache=await caches.open(CACHE);await cache.put(url.href,response.clone());}return response;})());

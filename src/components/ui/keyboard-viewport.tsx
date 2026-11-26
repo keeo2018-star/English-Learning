@@ -19,8 +19,10 @@ export function KeyboardViewport() {
         const reduced = viewport.scale === 1 && window.innerHeight - viewport.height > 80;
         // A tap on the footer can blur the textarea before WebKit dispatches click.
         // Keep the button in place until the visual viewport actually recovers.
-        const keyboard = reduced && (!!editing || (modal && root.hasAttribute('data-wb-modal-keyboard')));
+        const mode = modal ? 'data-wb-modal-keyboard' : 'data-wb-page-keyboard';
+        const keyboard = reduced && (!!editing || root.hasAttribute(mode));
         root.toggleAttribute('data-wb-modal-keyboard', keyboard && modal);
+        root.toggleAttribute('data-wb-page-keyboard', keyboard && !modal);
         if (keyboard && modal) {
           root.style.setProperty('--wb-sheet-viewport', `${viewport.height}px`);
           root.style.setProperty('--wb-sheet-bottom', `${occlusion}px`);
@@ -41,6 +43,7 @@ export function KeyboardViewport() {
       viewport.removeEventListener('resize', resize);
       viewport.removeEventListener('scroll', resize);
       document.documentElement.removeAttribute('data-wb-modal-keyboard');
+      document.documentElement.removeAttribute('data-wb-page-keyboard');
       document.documentElement.style.removeProperty('--wb-sheet-viewport');
       document.documentElement.style.removeProperty('--wb-sheet-bottom');
       document.removeEventListener('focusin', resize);

@@ -17,7 +17,7 @@ export function forgetLibrary(owner: string) {
  try {
   if(localStorage.getItem('noted-offline-owner-v1')===owner)localStorage.removeItem('noted-offline-owner-v1');
   localStorage.removeItem(prefix+owner);
-  for(const key of Object.keys(localStorage))if(key.startsWith('noted-example-v1:')&&key.includes(JSON.stringify(owner)))localStorage.removeItem(key);
+  for(const key of Object.keys(localStorage))if(/^noted-example-v[12]:/.test(key)&&key.includes(JSON.stringify(owner)))localStorage.removeItem(key);
  } catch { /* Restricted storage. */ }
 }
 

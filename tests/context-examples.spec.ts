@@ -47,7 +47,8 @@ test('existing personal example wins without cloud backfill',async({page})=>{
  const personal='I found serendipity in my own story.';
  const f=await fixture(page,{example:personal});
  await page.goto('/library');
- await expect(page.locator('[data-context-example]')).toHaveText(personal);
+ await page.getByRole('button',{name:'Dictionary for '+sampleWord.word,exact:true}).click();
+ await expect(page.getByRole('dialog').locator('[data-context-example]')).toHaveText(personal);
  expect(f.writes()).toBe(0);
 });
 test('Expression receives a complete contextual example',async({page})=>{
@@ -63,7 +64,8 @@ test('Expression receives a complete contextual example',async({page})=>{
 });
 test('concurrent personal edit wins conditional update',async({page})=>{
  await fixture(page,{conflict:true});await page.goto('/library');
- await expect(page.locator('[data-context-example]')).toHaveText('My own example, edited on another device.');
+ await page.getByRole('button',{name:'Dictionary for '+sampleWord.word,exact:true}).click();
+ await expect(page.getByRole('dialog').locator('[data-context-example]')).toHaveText('My own example, edited on another device.');
 });
 test('dictionary failure leaves Review usable',async({page})=>{
  const f=await fixture(page,{fail:true});await page.goto('/review');

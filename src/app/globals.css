@@ -1266,7 +1266,9 @@ summary:focus-visible {
 
 
 /* The dialog tracks the visual viewport independently of the background grid. */
-html[data-wb-modal-keyboard] .wb-app-navigation { visibility:hidden; }
+html[data-wb-modal-keyboard] .wb-app-navigation,
+html[data-wb-page-keyboard] .wb-app-navigation .wb-navigation { visibility:hidden; }
+html[data-wb-page-keyboard] .wb-app-navigation .wb-navigation { display:none; }
 .wb-app:has(dialog[open]) .wb-app-frame, body:has(> dialog[open]) .wb-app-frame { overflow:hidden; }
 .wb-bottom-sheet.language-sheet { position:fixed; inset-block-end:var(--wb-sheet-bottom,0px); max-height:var(--wb-sheet-viewport,92dvh); text-align:start; }
 .wb-bottom-sheet .wb-sheet-layout { max-height:var(--wb-sheet-viewport,92dvh); }

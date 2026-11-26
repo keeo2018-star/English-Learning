@@ -31,7 +31,7 @@ test.describe('Discover',()=>{
   await page.reload();await expect(page.getByRole('heading',{name:'Let’s find your level.'})).toHaveCount(0);await expect(page.getByRole('heading',{name:dailyItems[1].word,exact:true})).toBeVisible();
   for(let i=1;i<10;i++){await page.getByRole('button',{name:'Reveal meaning'}).click();await page.getByRole('button',{name:'I know it',exact:true}).click();if(i<9)await expect(page.getByRole('heading',{name:dailyItems[i+1].word,exact:true})).toBeVisible();}
   await expect(page.getByRole('heading',{name:'Nice work.'})).toBeVisible();await expect(page.getByText('You’ve explored 10 words.')).toBeVisible();await expect(page.getByRole('button',{name:'Discover 10 more'})).toBeVisible();expect(f.library).toHaveLength(1);
-  await page.getByRole('link',{name:'Open Library'}).click();await expect(page.getByRole('heading',{name:dailyItems[0].word,exact:true})).toBeVisible();
+  await page.getByRole('link',{name:'Open Library'}).click();await expect(page.getByRole('button',{name:'Dictionary for '+dailyItems[0].word,exact:true})).toBeVisible();
  });
  test('a lost response retries without duplicate Library entries or progress',async({page})=>{
   const f=discoverFixture();f.ready();await mockDiscover(page,f);await page.goto('/discover');await page.getByRole('button',{name:'Reveal meaning'}).click();f.loseNextResponse();

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/', name: 'Noted', short_name: 'Noted',
     description: 'Your personal English learning notebook.',
     start_url: '/', scope: '/', display: 'standalone',
-    background_color: '#f5f4ef', theme_color: '#f5f4ef', lang: 'en',
+    background_color: '#f3f2ed', theme_color: '#f3f2ed', lang: 'en',
     prefer_related_applications: false,
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
