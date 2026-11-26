@@ -15,7 +15,7 @@ const guidance = [
 ].join(' ');
 
 export class EnrichmentUnavailable extends Error {
-  readonly category: 'quota' | 'timeout' | 'response';
+  readonly category: 'quota' | 'timeout' | 'response' | 'truncated';
 
   constructor(category: EnrichmentUnavailable['category']) {
     super('Learning notes unavailable');
@@ -32,7 +32,7 @@ export async function generateEnrichment(input:EnrichmentInput,fetcher:typeof fe
       systemInstruction:{parts:[{text:guidance}]},
       contents:[{role:'user',parts:[{text:JSON.stringify(input)}]}],
       generationConfig:{temperature:0.2,maxOutputTokens:1900,responseMimeType:'application/json',responseSchema:{
-        type:'OBJECT',required:['word','target','explanationLanguage'],properties:{word:string,target:string,explanationLanguage:string,
+        type:'OBJECT',required:['word','target','explanationLanguage'],properties:{word:{...string,enum:[input.word]},target:{...string,enum:[input.target]},explanationLanguage:{...string,enum:[input.explanation]},
           comparisons:phrases(4),collocations:phrases(5),contexts:{type:'ARRAY',maxItems:3,items:string},usage:string},
       }},
     }),
@@ -43,7 +43,10 @@ export async function generateEnrichment(input:EnrichmentInput,fetcher:typeof fe
   if(response.status===429)throw new EnrichmentUnavailable('quota');
   if(!response.ok)throw Error('AI learning notes are temporarily unavailable.');
   const payload=await response.json();
-  const raw=payload?.candidates?.[0]?.content?.parts?.map((part:{text?:string})=>part.text||'').join('');
+  const candidate=payload?.candidates?.[0];
+  if(candidate?.finishReason==='MAX_TOKENS')throw new EnrichmentUnavailable('truncated');
+  const raw=candidate?.content?.parts?.filter((part:{thought?:boolean})=>!part.thought)
+    .map((part:{text?:string})=>part.text||'').join('');
   try {
     return parseEnrichment(JSON.parse(raw||'null'),input);
   } catch {

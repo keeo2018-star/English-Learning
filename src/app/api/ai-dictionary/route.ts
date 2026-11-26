@@ -90,7 +90,7 @@ async function enrich(request:Request,body:Record<string,unknown>,cacheOnly=fals
   }catch(error){
     if(c&&hash&&lease)await c.rpc('noted_ai_fail',{p_hash:hash,p_lease:lease});
     if(error instanceof EnrichmentUnavailable){
-      const message={quota:'Learning notes reached the provider limit. Try again later.',timeout:'Learning notes timed out. Try again later.',response:'Learning notes could not be verified. Try again later.'}[error.category];
+      const message={quota:'Learning notes reached the provider limit. Try again later.',timeout:'Learning notes timed out. Try again later.',response:'Learning notes could not be verified. Try again later.',truncated:'Learning notes were incomplete. Try again later.'}[error.category];
       return Response.json({message},{status:error.category==='quota'?429:503,headers});
     }
     return Response.json({message:'AI learning notes are temporarily unavailable. Try again later.'},{status:503,headers});
