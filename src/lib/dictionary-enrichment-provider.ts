@@ -4,12 +4,15 @@ import {parseEnrichment,type EnrichmentInput} from './dictionary-enrichment';
 const string={type:'STRING'};
 const phrases=(maxItems:number)=>({type:'ARRAY',maxItems,items:{type:'OBJECT',required:['expression','explanation'],properties:{expression:string,explanation:string}}});
 export class EnrichmentProviderError extends Error {
-  constructor(
-    readonly stage: 'gemini_request' | 'gemini_response' | 'gemini_timeout' | 'json_parsing',
-    readonly category: string,
-    readonly upstreamStatus?: number,
-  ) {
+  readonly stage: 'gemini_request' | 'gemini_response' | 'gemini_timeout' | 'json_parsing';
+  readonly category: string;
+  readonly upstreamStatus?: number;
+
+  constructor(stage: EnrichmentProviderError['stage'], category: string, upstreamStatus?: number) {
     super('AI learning notes are temporarily unavailable.');
+    this.stage = stage;
+    this.category = category;
+    this.upstreamStatus = upstreamStatus;
   }
 }
 

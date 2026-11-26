@@ -17,8 +17,11 @@ export type DictionaryEnrichment = {
 };
 
 export class EnrichmentValidationError extends Error {
-  constructor(readonly paths: string[]) {
+  readonly paths: string[];
+
+  constructor(paths: string[]) {
     super('Invalid AI learning notes.');
+    this.paths = paths;
   }
 }
 
