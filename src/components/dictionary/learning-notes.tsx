@@ -27,10 +27,10 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
     catch(e){if(!request.signal.aborted)setError(e instanceof Error?e.message:'Could not generate learning notes.');}
     finally{active.current=null;if(!request.signal.aborted)setBusy(false);}
   }
-  if(!status)return <p className="wb-supporting" role="status">Checking learning notes…</p>;
+  if(!status)return <p className="wb-inline-status" role="status">Checking notes…</p>;
   return <section className={styles.learningNotes} aria-label="AI learning notes">
     <h3>Learning notes</h3>
-    {!status.available&&!notes?<p className="wb-supporting" role="status">{status.reason==='request'?'Couldn’t check AI availability.':status.reason==='quota'?'AI request limit reached.':'AI learning notes are not enabled. Dictionary reference remains available.'} <button type="button" className="text-button" onClick={()=>setCheck(n=>n+1)}>Check again</button></p>:notes?<><small>AI-assisted suggestions</small>
+    {!status.available&&!notes?<div className={styles.status} role="status"><span>{status.reason==='request'?'Couldn’t check AI availability.':status.reason==='quota'?'AI request limit reached.':'AI not enabled.'}</span><button type="button" className="text-button" onClick={()=>setCheck(n=>n+1)}>Check again</button></div>:notes?<><small>AI-assisted suggestions</small>
       {notes.comparisons.length>0&&<Disclosure label="Compare words"><dl>
         {notes.comparisons.map(item=><div key={item.expression}><dt>{item.expression}</dt><dd>{item.explanation}{item.coreMeaning&&<p><strong>Meaning:</strong> {item.coreMeaning}</p>}{item.register&&<p><strong>Tone:</strong> {item.register}</p>}{item.situation&&<p><strong>Use:</strong> {item.situation}</p>}{item.example&&<p>{item.example}</p>}</dd></div>)}
       </dl></Disclosure>}

@@ -1,4 +1,5 @@
 'use client';
+import {useInputModality} from '@/components/ui/use-input-modality';
 import {LanguagePicker} from '@/components/ui/language-picker';
 
 import { useCallback, useRef, useState, type FormEvent } from 'react';
@@ -25,6 +26,7 @@ function levelLabel(level: string) {
 }
 
 export function MyLanguages({ owner, state }: { owner: string; state: ReturnType<typeof useCollections> }) {
+ const inputModality=useInputModality();
  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -92,7 +94,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
   const active = row?.id === state.active?.id;
   const name = row && learningLanguages[row.target_language].label;
 
-  return <section aria-label="My Languages" className="my-languages">
+  return <section aria-label="My Languages" className="my-languages" data-input-modality={inputModality} data-ordering={ordering||undefined}>
     <div className="wb-section-heading">
       <h2>My Languages</h2>
       {state.enabled && state.collections.length > 1 && <button type="button" className="text-button"
@@ -115,7 +117,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
         </>;
         return <li key={item.id}>
           {state.enabled && !ordering
-            ? <button className="wb-language-row" type="button" aria-haspopup="dialog"
+            ? <button className="wb-language-row" data-active={item.id===state.active?.id||undefined} type="button" aria-haspopup="dialog"
                 aria-label={`Settings for ${label}`} aria-describedby={`language-details-${item.id}`} onClick={event => { opener.current=event.currentTarget; setError(''); setPanel(item.id); }}>
                 {contents}<Icon name="chevronRight" size={16}/>
               </button>
@@ -129,7 +131,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
       onClick={event => { opener.current=event.currentTarget; setError(''); setTarget('fr'); setPanel('add'); }}><Icon name="add" size={16}/> Add a language</button>}
 
     {panel === 'add' && <Sheet title="Add a language" busy={busy} onClose={close} returnFocus={opener}>
-      <form className="language-sheet-fields" onSubmit={create}>
+      <form className="language-sheet-fields wb-language-settings" onSubmit={create}>
         <label>Language to learn<Select aria-label="Language to learn" value={target} disabled={busy}
           onChange={event => setTarget(event.target.value as TargetLanguage)}>
           {Object.entries(learningLanguages).map(([code, lang]) => <option key={code} value={code}>{lang.label}</option>)}
@@ -145,7 +147,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
     </Sheet>}
 
     {row && <Sheet title="Language settings" busy={busy} onClose={close} returnFocus={opener}>
-      <div className="language-sheet-fields">
+      <div className="language-sheet-fields wb-language-settings">
         <p className="wb-sheet-identity"><LanguageMark language={row.target_language}/><strong>{name}</strong></p>
         <div className="wb-setting-field">Explanation language
           <LanguagePicker plain align="start" label={`Explanation language for ${name}`} value={row.explanation_language}

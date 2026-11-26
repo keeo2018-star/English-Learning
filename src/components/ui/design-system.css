@@ -43,6 +43,11 @@
   --wb-size-small: .8125rem;
   --wb-control-gap: var(--wb-space-2);
   --wb-section-gap: var(--wb-space-5);
+  --wb-reading-line-height: 1.5;
+  --wb-example-language-gap: 6px;
+  --wb-example-pair-gap: 20px;
+  --wb-definition-gap: var(--wb-space-3);
+  --wb-section-content-gap: var(--wb-space-3);
   --wb-nav-clearance: calc(112px + env(safe-area-inset-bottom, 0px));
   --wb-radius-card: var(--wb-learning-radius);
   --wb-radius-pill: 999px;

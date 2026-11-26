@@ -1,4 +1,5 @@
 "use client";
+import {VisibleReferenceExample} from '@/components/learning/reference-reading';
 import {Disclosure} from '@/components/ui/disclosure';
 import {contentIssues,primaryMeaning} from '@/lib/learning-quality';
 import {isOriginalEnglish,type LearningCollection} from '@/lib/collections';
@@ -82,6 +83,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         onClose();
     }
     useEffect(() => { if (editingMeaning) meaningInput.current?.focus({preventScroll:true}); }, [editingMeaning]);
+    const [visibleExample,setVisibleExample]=useState('');
     const [result, setResult] = useState<DictionaryResult | null>(null), [error, setError] = useState(""), [attempt, setAttempt] = useState(0);
     useEffect(() => {
         if(searchOnly||!englishReference)return;
@@ -101,16 +103,15 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         })();
         return () => controller.abort();
     }, [word, attempt,searchOnly,englishReference]);
-    function resetEntry(){stopPronunciation();setResult(null);setError('');setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
+    function resetEntry(){setVisibleExample('');stopPronunciation();setResult(null);setError('');setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
     function navigate(next:string){if(editingExample){setExampleError('Save or cancel your example first.');return;}if(savingMeaning.current||formIsComposing(dialog.current))return;if(blockClose){setCloseAlert(true);return;}if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus({preventScroll:true});return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});});}
     function back(){if(editingMeaning||editingExample)return;if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>dialog.current?.scrollTo({top}));}
     return <Sheet id={dialogId} title="Dictionary" wide swipe={!editingMeaning&&!editingExample&&!blockClose} onBackdrop bodyRef={dialog} busy={meaningBusy} returnFocus={returnFocus} onClose={requestClose}>
- {searchOnly?<BilingualSearch onSave={onRelatedSave} savedWords={savedWords}/>:<>
+ {searchOnly?<BilingualSearch onSave={onRelatedSave} savedWords={savedWords}/>:<div className={styles.content}>
  {trail.length>0&&<button type="button" className="text-button" onClick={back}>Back to {trail.length>1?trail[trail.length-2].word:rootWord}</button>}
  <h2 className={`${styles.hero} wb-learning-content`}>{word}</h2>
- {result&&result.english[0]?.partOfSpeech&&<p className="wb-supporting">{result.english[0].partOfSpeech}</p>}
  {!englishReference&&<PronunciationControl text={word} language={collection?.target_language}/>}
- {englishReference&&<DictionaryPronunciation word={word} phonetics={result?.phonetics??[]} activeStyle/>}
+ {englishReference&&<DictionaryPronunciation word={word} phonetics={result?.phonetics??[]} partOfSpeech={result?.english[0]?.partOfSpeech} activeStyle/>}
  {!trail.length&&(onSaveMeaning||meaning)&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">{onSaveMeaning?"My meaning":"Meaning"}</h3>{onSaveMeaning && !editingMeaning && <IconButton ref={editButton} icon="pencil" label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}/>}</div>
  {editingMeaning ? <form onSubmit={saveMeaning} aria-label="Edit my meaning">
@@ -121,7 +122,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  </aside>}
  {englishReference&&!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error}</Feedback><button type="button" className="wb-control" onClick={() => { setError(""); setResult(null); setAttempt(v => v + 1); }}>Try again</button></div>}
- {!trail.length&&details}
+ {!trail.length&&<VisibleReferenceExample.Provider value={setVisibleExample}>{details}</VisibleReferenceExample.Provider>}
  {!trail.length&&onSaveExample&&(editingExample?<form onSubmit={saveExample} aria-label="Edit example" className={styles.exampleEditor}>
  <label>Example sentence<ImeTextarea ref={exampleInput} value={exampleDraft} onValueChange={setExampleDraft} maxLength={3000} readOnly={meaningBusy} rows={3}/></label>
  <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy?'Saving…':'Save example'}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={()=>setEditingExample(false)}>Cancel</button></div>
@@ -129,18 +130,18 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  </form>:<button type="button" className="text-button" onClick={()=>{setExampleDraft(example||'');setExampleError('');setEditingExample(true);}}>{example?'Edit example':'Add an example'}</button>)}
  {!trail.length&&contentIssues({word,meaning,example}).length>0&&<Disclosure label="Check saved learning content"><p className="wb-supporting">Your original content is unchanged. Review the intended meaning and edit only if needed.</p><ul>{contentIssues({word,meaning,example}).map(issue=><li key={issue}>{issue}</li>)}</ul>{onSaveMeaning&&<button type="button" className="text-button" onClick={()=>{setDraft(meaning);setEditingMeaning(true);}}>Choose my meaning</button>}</Disclosure>}
  {closeAlert&&blockClose&&<p role="alert">Save or cancel your entry edit before closing.</p>}
- {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word} savedMeaning={meaning} savedExample={!trail.length?example:undefined} hasPrimaryExample={!trail.length&&!!details}/>}
+ {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word} savedMeaning={meaning} savedExample={!trail.length?example:undefined} visibleExample={visibleExample} hasPrimaryExample={!trail.length&&!!details}/>}
  {collection&&!englishReference&&<Disclosure label="Definitions / Other meanings" lazy><CollectionReference key={collection.target_language + ":" + word} word={word} language={collection.target_language}/></Disclosure>}
  {(!englishReference||!!result||!!error)&&<Disclosure label="Learning notes" lazy><LearningNotes key={JSON.stringify([word,collection?.id,collection?.explanation_language,result?.english[0]?.partOfSpeech,primaryMeaning(meaning)])}
    input={{word,target:collection?.target_language||'en',explanation:collection?.explanation_language||'zh-CN',
      level:collection?.proficiency_level||'unspecified',partOfSpeech:result?.english[0]?.partOfSpeech||'',meaning:primaryMeaning(meaning)}}/></Disclosure>}
  {englishReference&&<>
- <Disclosure label="Real-world examples" lazy><VideoContextSection key={"video:"+word} word={word} /></Disclosure>
+ <Disclosure label="Real-world examples" lazy unmountOnClose><VideoContextSection key={"video:"+word} word={word} /></Disclosure>
  {isOriginalEnglish(collection)&&<Disclosure label="Related & Compare" lazy><RelatedWords referenceReady={!!result||!!error} key={"related:"+word+meaning} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/></Disclosure>}</>}
 
 
  {!trail.length&&management}
- </>}
+ </div>}
  </Sheet>;
 }
 

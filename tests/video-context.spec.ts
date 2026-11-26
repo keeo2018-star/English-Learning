@@ -150,3 +150,7 @@ test.describe('In the Wild', () => {
     await expect(page.getByRole('link', { name: 'Google Privacy Policy', exact: true })).toHaveAttribute('href', 'https://policies.google.com/privacy');
   });
 });
+
+test('collapsing the outer reference section stops and removes an active video',async({page})=>{
+ test.skip(!cloudUrl);await page.route(officialScript,route=>route.fulfill({contentType:'application/javascript',body:widgetFixture}));await setup(page);await expand(page);await expect(page.locator('iframe')).toHaveCount(1);await page.locator('summary').filter({hasText:'Real-world examples'}).click();await expect(page.locator('iframe')).toHaveCount(0);expect(await page.evaluate(()=>(window as unknown as {videoCalls:unknown[]}).videoCalls)).toContainEqual(['close']);await page.locator('summary').filter({hasText:'Real-world examples'}).click();await expect(page.getByRole('button',{name:'Watch in context',exact:true})).toBeVisible();
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import {DefinitionList,BilingualExample} from '@/components/learning/reference-reading';
 import {selectExample} from '@/lib/example-quality';
 import {primaryMeaning} from '@/lib/learning-quality';
 import type {DictionaryResult} from '@/lib/dictionary';
@@ -8,37 +9,34 @@ import {HighlightWord} from './highlight-word';
 import {PronunciationControl} from './pronunciation-control';
 import styles from './dictionary.module.css';
 
-export function DictionaryPronunciation({word,phonetics,showErrors=true,activeStyle=false}:{
-  word:string;phonetics:DictionaryResult['phonetics'];showErrors?:boolean;activeStyle?:boolean;
+export function DictionaryPronunciation({word,phonetics,showErrors=true,activeStyle=false,partOfSpeech}:{
+  word:string;phonetics:DictionaryResult['phonetics'];showErrors?:boolean;activeStyle?:boolean;partOfSpeech?:string;
 }){
   const shared=phonetics.length>1&&phonetics[0].text&&phonetics.every(item=>item.text===phonetics[0].text);
-  return <div className={styles.pronunciation}>
-    {shared&&<small>{phonetics[0].text}</small>}
+  return <div className={styles.pronunciation} role="group" aria-label="Pronunciation and grammar">
+    {(partOfSpeech||shared)&&<span className={styles.pronunciationMeta}>{partOfSpeech&&<span className={styles.grammar}>{partOfSpeech}</span>}{shared&&<small>{phonetics[0].text}</small>}</span>}
+    <span className={styles.pronunciationControls}>
     {(phonetics.length?phonetics:[{accent:'UK',text:''},{accent:'US',text:''}]).map(item=><PronunciationControl
       key={item.accent} text={word} accent={item.accent==='US'?'US':'UK'} recording={item.audio||null}
       phonetic={shared?'':item.text} showErrors={showErrors} activeStyle={activeStyle}/>)}
+    </span>
   </div>;
 }
-export function DictionaryReferenceContent({result,word,hideChinese=false,savedMeaning='',savedExample,hasPrimaryExample=false}:{result:DictionaryResult;word:string;hideChinese?:boolean;savedMeaning?:string;savedExample?:string;hasPrimaryExample?:boolean}){
+export function DictionaryReferenceContent({result,word,hideChinese=false,savedMeaning='',savedExample,visibleExample='',hasPrimaryExample=false}:{result:DictionaryResult;word:string;hideChinese?:boolean;savedMeaning?:string;savedExample?:string;visibleExample?:string;hasPrimaryExample?:boolean}){
   const primary=selectExample(word,savedMeaning||result.chinese[0]||result.english[0]?.definition||'',result.examples);
-  const remaining=result.examples.filter(item=>item.source!==savedExample&&(hasPrimaryExample||item.source!==primary));
+  const displayKey=(value?:string)=>value?.normalize('NFC').replace(/\s+/g,' ').trim()||'';
+  const seen=new Set<string>();
+  const remaining=result.examples.filter(item=>{const source=displayKey(item.source),key=JSON.stringify([source,displayKey(item.translation)]);if(seen.has(key))return false;seen.add(key);return source!==displayKey(savedExample)&&source!==displayKey(visibleExample)&&(hasPrimaryExample||source!==displayKey(primary));});
   const groups=[
     ...(!hideChinese&&result.chinese.length?[{title:'Chinese definitions',entries:result.chinese.filter(definition=>definition.trim()!==savedMeaning.trim()).map(definition=>({definition,partOfSpeech:''}))}]:[]),
     ...(result.english.length?[{title:'English definitions',entries:result.english}]:[]),
-  ];
-  function renderDefinitions(entries:DictionaryResult['english'],start=0){
-    return <ol className={styles.definitions} start={start+1}>{entries.map(({definition,partOfSpeech},index)=><li key={index}>
-      {partOfSpeech&&<small>{partOfSpeech}</small>}<p className="wb-learning-content">{definition}</p>
-    </li>)}</ol>;
-  }
-  const examples=(rows:DictionaryResult['examples'])=>rows.map((example,index)=><blockquote data-dictionary-example key={index} className="wb-learning-content">
-    {example.source&&<p><HighlightWord text={example.source} target={word}/></p>}
-    {example.translation&&<p lang="zh">{example.translation}</p>}
-  </blockquote>);
+  ].filter(group=>group.entries.length>0);
+  const examples=(rows:DictionaryResult['examples'])=>rows.map((example,index)=><BilingualExample key={index} dictionary
+    source={<HighlightWord text={example.source} target={word}/>} translation={example.translation}/>);
   return <div className={styles.reference}>
     {!hasPrimaryExample&&primary&&examples(result.examples.filter(item=>item.source===primary).slice(0,1))}
     {!!groups.length&&<Disclosure label="Definitions / Other meanings">
-      {groups.map(({title,entries})=><section key={title}><h3>{title}</h3>{renderDefinitions(entries)}</section>)}
+      {groups.map(({title,entries})=><section key={title}><h3>{title}</h3>{entries.length>0&&<DefinitionList items={entries}/>}</section>)}
     </Disclosure>}
     {remaining.length>0&&<Disclosure label={`More examples (${remaining.length})`}><p className="wb-supporting">Other dictionary contexts may use a different sense. Your primary meaning: {primaryMeaning(savedMeaning)||'not selected'}.</p>{examples(remaining)}</Disclosure>}
     {!groups.length&&!result.examples.length&&<p>No definitions or examples available for this entry.</p>}

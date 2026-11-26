@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Feedback, LoadingState } from '@/components/ui/states';
+import { Feedback } from '@/components/ui/states';
+import {DefinitionList} from '@/components/learning/reference-reading';
 import type { TargetLanguage } from '@/lib/collections';
 
 type Reference = {
@@ -45,15 +46,12 @@ export function CollectionReference({ word, language }: { word: string; language
             setAttempt(value => value + 1);
         }}>Try again</button>
     </div>;
-    if (!reference) return <LoadingState label="Looking up dictionary reference…"/>;
+    if (!reference) return <p className="wb-inline-status" role="status">Loading reference…</p>;
     if (!reference.sections.length) return <p>No dictionary entry found for this word in this language.</p>;
 
-    return <section lang="en">
+    return <section className="wb-reference-reading" lang="en">
         <h3>Dictionary definitions in English</h3>
-        {reference.sections.map((section, index) => <div key={index}>
-            <h4>{section.partOfSpeech}</h4>
-            <ul>{section.definitions.map((definition, sense) => <li key={sense}>{definition}</li>)}</ul>
-        </div>)}
+        <DefinitionList items={reference.sections.flatMap(section=>section.definitions.map(definition=>({definition,partOfSpeech:section.partOfSpeech})))}/>
         <p><a href={reference.source} target="_blank" rel="noreferrer">Wiktionary contributors</a>
             {' · '}<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a>
         </p>

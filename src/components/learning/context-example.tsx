@@ -1,5 +1,6 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,useContext} from 'react';
+import {BilingualExample,VisibleReferenceExample} from './reference-reading';
 import {cachedExample,resolveExample,type ExampleItem} from '@/lib/context-examples';
 import {vocabularyDetails} from '@/lib/vocabulary-details';
 import {trustedSavedExample} from '@/lib/learning-quality';
@@ -29,14 +30,17 @@ export function ContextExample({item,owner,lookup=true,language='en',labelExampl
  },[identity,owner,item.id,item.word,item.meaning,lookup,trusted]);
  const text=trusted?item.example||'':resolved?.key===identity?resolved.text:'';
  const details=vocabularyDetails(item.learning_details,text,language);
+ const reportExample=useContext(VisibleReferenceExample);
+ useEffect(()=>{if(labelExample)reportExample?.(text);return()=>{if(labelExample)reportExample?.('');};},[labelExample,reportExample,text]);
  return <>
   <span ref={anchor} aria-hidden="true"/>
-  {text&&<blockquote className="wb-learning-content" data-context-example>
+  {text&&labelExample?<BilingualExample context sourceLanguage={language} label={(item.example_source==='ai'||details?.exampleSource==='ai')&&trusted?'AI-generated example':trusted?'Saved example':'Dictionary example'}
+    source={details?.exampleSource==='ai'&&!details.highlight?text:<HighlightWord text={text} target={item.word} surface={trusted?details?.highlight:undefined} language={language}/>} translation={trusted?details?.exampleTranslation:undefined} translationLanguage={details?.explanationLanguage==='en'?'en':'zh'}/>:text&&<blockquote className="wb-learning-content" data-context-example>
    {(item.example_source==='ai'||details?.exampleSource==='ai')&&trusted?<small className="ai-label">AI-generated example</small>:labelExample&&<small className="saved-learning-note">{trusted?'Saved example':'Dictionary example'}</small>}
    {details?.exampleSource==='ai'&&!details.highlight?text:<HighlightWord text={text} target={item.word} surface={trusted?details?.highlight:undefined} language={language}/>}
    {trusted&&details?.exampleTranslation&&<small className="saved-learning-note">{details.exampleTranslation}</small>}
   </blockquote>}
-  {labelExample&&item.example?.trim()&&!trusted&&<Disclosure label="Saved example · check meaning"><p className="wb-supporting">This example has not been confirmed for your meaning. Your original text is kept.</p><blockquote className="wb-learning-content">{item.example}</blockquote></Disclosure>}
+  {labelExample&&item.example?.trim()&&!trusted&&<Disclosure label="Saved example · check meaning"><p className="wb-supporting">This example has not been confirmed for your meaning. Your original text is kept.</p><BilingualExample sourceLanguage={language} source={item.example} translation={vocabularyDetails(item.learning_details,item.example,language)?.exampleTranslation}/></Disclosure>}
   {item.personal_note&&<Disclosure label="Personal note"><p className="saved-learning-note">{item.personal_note}</p></Disclosure>}
  </>;
 }
