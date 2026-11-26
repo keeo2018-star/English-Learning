@@ -10,6 +10,7 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
 }) {
   const element = useRef<HTMLDialogElement>(null);
   const heading = useId();
+  const titleTarget = useRef<HTMLHeadingElement>(null);
   const header = useRef<HTMLElement>(null);
   const backdropPointer = useRef(false);
   const dismiss = () => { if (!busy) onClose(); };
@@ -18,6 +19,7 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     if (!dialog) return;
     const previous = returnFocus?.current ?? document.activeElement;
     dialog.showModal();
+    titleTarget.current?.focus({preventScroll:true});
     return () => {
       dialog.close();
       if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected)
@@ -56,7 +58,7 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     onClick={event=>{if(onBackdrop&&backdropPointer.current&&event.target===event.currentTarget)dismiss();backdropPointer.current=false;}}
     onCancel={event => { event.preventDefault(); dismiss(); }}>
     <div className="wb-sheet-layout">
-      <header ref={header} className="wb-sheet-header" data-dictionary-drag-handle={swipe!==undefined||undefined}><h2 id={heading}>{title}</h2>
+      <header ref={header} className="wb-sheet-header" data-dictionary-drag-handle={swipe!==undefined||undefined}><h2 id={heading} ref={titleTarget} tabIndex={-1}>{title}</h2>
         <IconButton icon="close" label="Close" variant="soft" disabled={busy} onClick={dismiss}/>
       </header>
       <div className="wb-sheet-body" ref={bodyRef}>{children}</div>

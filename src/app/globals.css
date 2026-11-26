@@ -1240,6 +1240,7 @@ summary:focus-visible {
 .wb-bottom-sheet .wb-sheet-layout { display: flex; flex-direction: column; max-height: min(92dvh, calc(var(--wb-keyboard-viewport, 100dvh) - env(safe-area-inset-top, 0px))); }
 .wb-sheet-header { display:flex; flex:none; justify-content:space-between; align-items:center; gap:12px; padding:8px var(--wb-page-gutter); }
 .wb-sheet-header h2 { margin:0; font-size:1.125rem; }
+.wb-sheet-header h2:focus { outline:none; }
 .wb-sheet-body { min-height:0; overflow:auto; overscroll-behavior:contain; padding: 4px var(--wb-page-gutter) max(20px,env(safe-area-inset-bottom)); }
 .wb-sheet-body:focus-visible { outline: 2px solid var(--wb-black); outline-offset: -2px; }
 .wb-switch-row { display:flex; min-height:var(--wb-touch); align-items:center; justify-content:space-between; gap:var(--wb-space-2); margin:0; }

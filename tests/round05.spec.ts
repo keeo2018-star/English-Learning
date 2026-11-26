@@ -58,6 +58,9 @@ for(const width of [320,375,390,430,1024])test(`Library and Dictionary remain sc
  await row.click();
  const sheet=page.getByRole('dialog',{name:'Dictionary'});
  const close=sheet.getByRole('button',{name:'Close'});
+ await expect(sheet.getByRole('heading',{name:'Dictionary',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(close).toBeFocused();
  await expect(sheet.getByRole('heading',{name:'callous',exact:true})).toBeVisible();
  await expect(sheet.getByText('冷酷无情的',{exact:true}).first()).toBeVisible();
  expect((await close.locator('svg').boundingBox())!.width).toBe(20);
