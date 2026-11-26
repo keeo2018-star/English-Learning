@@ -1,8 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { mockCloud, cloudUrl, sampleWord, user } from './helpers/cloud';
 
 test.skip(!cloudUrl,'Requires public Supabase configuration');
 const sentence='Finding this book was pure serendipity.';
+async function exampleSentence(example: Locator) {
+ await expect(example).toBeVisible();
+ return example.evaluate(node => Array.from(node.childNodes)
+   .filter(child => !(child instanceof HTMLElement && child.tagName==='SMALL'))
+   .map(child => child.textContent).join('').trim());
+}
 async function fixture(page: Parameters<typeof mockCloud>[0], options: {example?:string;word?:string;meaning?:string;fail?:boolean;conflict?:boolean;persistFail?:boolean}={}) {
  let row={...sampleWord,example:options.example||'',word:options.word||sampleWord.word,meaning:options.meaning||'意外发现'};
  let writes=0,lookups=0;
@@ -48,7 +54,7 @@ test('existing personal example wins without cloud backfill',async({page})=>{
  const f=await fixture(page,{example:personal});
  await page.goto('/library');
  await page.getByRole('button',{name:'Dictionary for '+sampleWord.word,exact:true}).click();
- await expect(page.getByRole('dialog').locator('[data-context-example]')).toHaveText(personal);
+ expect(await exampleSentence(page.getByRole('dialog').locator('[data-context-example]'))).toBe(personal);
  expect(f.writes()).toBe(0);
 });
 test('Expression receives a complete contextual example',async({page})=>{
@@ -65,7 +71,7 @@ test('Expression receives a complete contextual example',async({page})=>{
 test('concurrent personal edit wins conditional update',async({page})=>{
  await fixture(page,{conflict:true});await page.goto('/library');
  await page.getByRole('button',{name:'Dictionary for '+sampleWord.word,exact:true}).click();
- await expect(page.getByRole('dialog').locator('[data-context-example]')).toHaveText('My own example, edited on another device.');
+ expect(await exampleSentence(page.getByRole('dialog').locator('[data-context-example]'))).toBe('My own example, edited on another device.');
 });
 test('dictionary failure leaves Review usable',async({page})=>{
  const f=await fixture(page,{fail:true});await page.goto('/review');
