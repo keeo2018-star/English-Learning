@@ -42,13 +42,13 @@ for(const width of [320,375,390,430,768])for(const fontSize of [16,20])test(`com
  test.skip(before);await page.setViewportSize({width,height:844});const state=await fixture(page);const sheet=await open(page);
  await page.addStyleTag({content:`html{font-size:${fontSize}px}`});
  const title=sheet.getByRole('heading',{name:'section',exact:true});await expect(title).toHaveCSS('letter-spacing','normal');
- const audio=sheet.getByRole('button',{name:'Play pronunciation',exact:true});const uk=(await audio.nth(0).boundingBox())!,us=(await audio.nth(1).boundingBox())!;expect(Math.abs(uk.y-us.y)).toBeLessThan(2);
+ const difference=await sheet.getByRole('group',{name:'Pronunciation and grammar'}).evaluate(el=>{const buttons=el.querySelectorAll('button[data-accent]');return Math.abs(buttons[0].getBoundingClientRect().y-buttons[1].getBoundingClientRect().y);});expect(difference).toBeLessThan(2);
  await summary(sheet,'Definitions / Other meanings').click();const list=sheet.locator('[data-definition-list]').filter({hasText:'One part of a larger whole.'});await expect(list.locator('li')).toHaveCount(3);
- const first=list.locator('li').first();const pos=await first.locator('[data-grammar]').evaluate(el=>{const r=el.getClientRects()[0];return{x:r.x,y:r.y};}),definition=await first.locator('[data-definition-text]').evaluate(el=>{const r=el.getClientRects()[0];return{x:r.x,y:r.y};});expect(Math.abs(pos.y-definition.y)).toBeLessThan(7);expect(definition.x).toBeGreaterThan(pos.x);
+ const alignment=await list.locator('li').first().evaluate(el=>{const pos=el.querySelector('[data-grammar]')!.getClientRects()[0],definition=el.querySelector('[data-definition-text]')!.getClientRects()[0];return{dy:Math.abs(pos.y-definition.y),dx:definition.x-pos.x};});expect(alignment.dy).toBeLessThan(7);expect(alignment.dx).toBeGreaterThan(0);
  await summary(sheet,'More examples').click();await expect(sheet.locator('[data-dictionary-example]')).toHaveCount(1);
  for(const pair of [sheet.locator('[data-context-example]'),sheet.locator('[data-dictionary-example]')]){
-  const english=pair.locator('[data-example-source]'),chinese=pair.locator('[data-example-translation]');await expect(chinese).toBeVisible();
-  const a=(await english.boundingBox())!,b=(await chinese.boundingBox())!;expect(b.y-a.y-a.height).toBeGreaterThanOrEqual(3);expect(b.y-a.y-a.height).toBeLessThanOrEqual(9);
+  const chinese=pair.locator('[data-example-translation]');await expect(chinese).toBeVisible();
+  const gap=await pair.evaluate(el=>{const a=el.querySelector('[data-example-source]')!.getBoundingClientRect(),b=el.querySelector('[data-example-translation]')!.getBoundingClientRect();return b.y-a.y-a.height;});expect(gap).toBeGreaterThanOrEqual(3);expect(gap).toBeLessThanOrEqual(9);
   expect(await pair.evaluate(el=>parseFloat(getComputedStyle(el).borderLeftWidth))).toBeGreaterThan(0);
  }
  expect(await sheet.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);expect(state.writes).toHaveLength(0);
