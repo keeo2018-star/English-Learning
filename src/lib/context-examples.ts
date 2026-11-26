@@ -1,5 +1,5 @@
 import { dictionaryReference } from './dictionary-client';
-import { selectExample } from './example-quality';
+import { selectReferenceExample } from './example-quality';
 import { supabase } from './supabase';
 import type { LearningItem } from './learning';
 export type ExampleItem = Pick<LearningItem, 'personal_note'|'learning_details'> & { example_source?:'ai'|'dictionary'|'personal'|null; id: string; word: string; meaning: string; example?: string | null };
@@ -12,13 +12,13 @@ async function limited<T>(work: () => Promise<T>) {
   else running++;
   try { return await work(); } finally { const next = waiting.shift(); if (next) next(); else running--; }
 }
-function key(owner: string, item: ExampleItem) { return 'noted-example-v1:' + JSON.stringify([owner,item.id,item.word,item.meaning,item.example ?? null]); }
+function key(owner: string, item: ExampleItem) { return 'noted-example-v2:' + JSON.stringify([owner,item.id,item.word,item.meaning,item.example ?? null]); }
 function read(cacheKey: string): Cached | null {
   try { const value = JSON.parse(localStorage.getItem(cacheKey) || 'null'); return value && typeof value.text === 'string' && value.text.length <= 360 && typeof value.at === 'number' ? value : null; } catch { return null; }
 }
 function remember(cacheKey: string, text: string) {
   try {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('noted-example-v1:'));
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('noted-example-v2:'));
     if (keys.length >= 300 && !localStorage.getItem(cacheKey)) {
       const oldest = keys.sort((a,b)=>(read(a)?.at||0)-(read(b)?.at||0))[0]; localStorage.removeItem(oldest);
     }
@@ -49,7 +49,7 @@ export function resolveExample(owner: string, item: ExampleItem, persistItem = t
   const task = limited(async () => {
     let text = cached;
     try {
-      text = cached || selectExample(item.word,item.meaning,(await dictionaryReference(item.word)).examples);
+      text = cached || selectReferenceExample(item.word,item.meaning,(await dictionaryReference(item.word)).examples);
       if (!text) { misses.set(cacheKey, Date.now()+300000); return ''; }
       // Cache before attempting cloud sync: a failed write must not lose the example.
       remember(cacheKey,text);

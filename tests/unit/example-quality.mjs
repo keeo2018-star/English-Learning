@@ -22,3 +22,14 @@ test('no fabricated Chinese / example: untranslated dictionary context is usable
  assert.equal(pick('serendipity','', 'Finding this book was pure serendipity.'),'Finding this book was pure serendipity.');
  assert.equal(selectExample('unknown','',[]),'');
 });
+
+test('automatic reference examples require a complete bilingual match to the saved sense',async()=>{
+ const {selectReferenceExample}=await import('../../src/lib/example-quality.ts');
+ const road={source:'They repaired the final segment of the road.',translation:'他们修好了最后一段路。'};
+ const paragraph={source:'This segment describes how the author grew up.',translation:'这个段落描述了作者是如何长大的。'};
+ assert.equal(selectReferenceExample('segment','段落',[road]),'');
+ assert.equal(selectReferenceExample('segment','段落',[road,paragraph]),paragraph.source);
+ assert.equal(selectReferenceExample('segment','n. 段落',[paragraph]),'');
+ assert.equal(selectReferenceExample('segment','段落',[{source:'the first segment of the article',translation:'文章的第一段落'}]),'');
+ assert.equal(selectReferenceExample('segment','段落',[{source:paragraph.source}]),'');
+});

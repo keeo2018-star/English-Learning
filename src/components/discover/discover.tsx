@@ -8,8 +8,7 @@ import {useCollections} from '@/lib/use-collections';
 import {learningLanguages} from '@/lib/collections';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import {resolveExample} from '@/lib/context-examples';
-import {ContextExample} from '@/components/learning/context-example';
+import {HighlightWord} from '@/components/dictionary/highlight-word';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { AppShell } from '@/components/ui/app-shell';
@@ -47,13 +46,7 @@ export default function Discover() {
    if (action === 'get' && next.profile.assessment_status !== 'pending' && !next.assessment && !next.daily) next = await run('daily');
    if (generation.current !== request || owner.current !== account) return;
    setData(next); pending.current = null;
-   // The existing RPC saves bank examples atomically. Only supplement an empty
-   // saved example; never replace its value or change scheduling/history.
-   if(action==='daily_response'&&payload.response==='save'&&payload.needs_example===true&&typeof payload.word==='string'){
-    void supabase.from('words').select('id,word,meaning,example').eq('user_id',account).eq('word',payload.word).limit(1).maybeSingle().then(({data: saved})=>{
-     if(saved&&!saved.example?.trim()&&owner.current===account)void resolveExample(account,saved);
-    });
-   }
+
   } catch (caught) {
    if (generation.current !== request || owner.current !== account) return;
    const failure = caught as { code?: string; message?: string };
@@ -97,7 +90,11 @@ export default function Discover() {
  useEffect(() => {
   if (previousCard.current && previousCard.current !== cardKey && wordHeading.current) {
    wordHeading.current.focus({ preventScroll: true });
-   wordHeading.current.closest('article')?.scrollIntoView({ block: 'nearest' });
+   const bounds = wordHeading.current.getBoundingClientRect();
+   const frame = wordHeading.current.closest('.wb-app-frame')?.getBoundingClientRect();
+   if (frame && (bounds.top < frame.top || bounds.bottom > frame.bottom)) {
+    wordHeading.current.scrollIntoView({ block: 'nearest' });
+   }
   }
   previousCard.current = cardKey;
  }, [cardKey]);
@@ -109,7 +106,7 @@ export default function Discover() {
   void perform('assessment_answer', { session_id: assessment.id, position: assessment.responses.length, item_id: assessment.question.id, answer_id: id });
  };
  const nextBatch = () => { if (data?.daily) void perform('next_batch', { set_id: data.daily.id }); };
- const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response, word:item.word, needs_example:!item.example?.trim() }); };
+ const respond = (response: 'know' | 'save') => { if (data?.daily && item) void perform('daily_response', { set_id: data.daily.id, item_id: item.id, response }); };
  const newWords=data?.daily?.items.filter(item=>{
   const response=data.daily?.responses[String(item.id)];
   return response?.action==='save'&&response.added&&!!response.library_id;
@@ -126,7 +123,7 @@ export default function Discover() {
     <div className={styles.progress}><span>{assessment.responses.length + 1} / 16</span><progress aria-label="Vocabulary check progress" value={assessment.responses.length} max={16} /></div>
     <Card className={`${styles.blue} wb-learning-card`} key={cardKey}><Pill>{posLabel(assessment.question.pos)}</Pill><h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{assessment.question.word}</h2>
      <PronunciationControl text={assessment.question.word} accent="UK" compact />
-     {assessment.question.example && <blockquote className="wb-learning-content">{assessment.question.example}</blockquote>}
+     {assessment.question.example && assessment.question.example_translation && <blockquote className="wb-learning-content">{assessment.question.example}</blockquote>}
      <p>What does this word mean?</p><div className={styles.choices} role="group" aria-label="Meaning choices">{assessment.question.choices.map((option, index) => <SelectableButton key={option.id} selected={choice?.key === cardKey && choice.id === option.id} className="wb-control wb-control-outline" disabled={busy} onClick={() => answer(option.id)}><span aria-hidden="true">{String.fromCharCode(65 + index)}.</span> {option.meaning}</SelectableButton>)}</div>
      <button type="button" className={`wb-control wb-control-outline ${styles.unknown}`} disabled={busy} onClick={() => answer(0)}>I don’t know</button>
     </Card><button type="button" className="text-button" disabled={busy} onClick={() => void perform('skip')}>Skip check and discover words</button>
@@ -143,7 +140,10 @@ export default function Discover() {
     <Card className={`${styles.blue} wb-learning-card`} key={cardKey}>
      <h2 ref={wordHeading} tabIndex={-1} className={`wb-learning-content ${styles.word}`}>{item.word}</h2><PronunciationControl text={item.word} accent="UK" compact />
      {revealed !== cardKey ? <><p>Do you know this word?</p><Button onClick={() => setRevealed(cardKey)}>Reveal meaning</Button></> : <>
-      <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p><ContextExample item={{...item,id:`discover:${item.id}`}} owner={user?.id || 'local-demo'} persist={false}/>
+      <Pill>{posLabel(item.pos)}</Pill><p ref={meaningParagraph} tabIndex={-1} className={`wb-learning-content ${styles.meaning}`}>{item.meaning}</p>{item.example && item.example_translation && <blockquote className={`wb-learning-content ${styles.reviewedExample}`}>
+       <p><HighlightWord text={item.example} target={item.word}/></p>
+       <p lang="zh-Hans">{item.example_translation}</p>
+      </blockquote>}
       <DictionaryButton word={item.word} meaning={item.meaning}/>
       <div className={styles.actions}><Button variant="secondary" disabled={busy} onClick={() => respond('know')}>I know it</Button><Button disabled={busy} onClick={() => respond('save')}>Save to Library</Button></div>
      </>}
