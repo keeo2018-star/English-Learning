@@ -98,7 +98,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  <h2 className={`${styles.hero} wb-learning-content`}>{word}</h2>
  {result&&result.english[0]?.partOfSpeech&&<p className="wb-supporting">{result.english[0].partOfSpeech}</p>}
  {!englishReference&&<PronunciationControl text={word} language={collection?.target_language}/>}
- {result && <DictionaryPronunciation word={word} phonetics={result.phonetics} activeStyle/>}
+ {englishReference&&<DictionaryPronunciation word={word} phonetics={result?.phonetics??[]} activeStyle/>}
  {!trail.length&&(onSaveMeaning||meaning)&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">{onSaveMeaning?"My meaning":"Meaning"}</h3>{onSaveMeaning && !editingMeaning && <IconButton ref={editButton} icon="pencil" label="Edit my meaning" onClick={() => { setDraft(meaning); setMeaningError(""); setMeaningSaved(false); setEditingMeaning(true); }}/>}</div>
  {editingMeaning ? <form onSubmit={saveMeaning} aria-label="Edit my meaning">
@@ -112,9 +112,9 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  {!trail.length&&details}
  {closeAlert&&blockClose&&<p role="alert">Save or cancel your entry edit before closing.</p>}
  {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word}/>}
- <LearningNotes key={JSON.stringify([word,collection?.id,result?.english[0]?.partOfSpeech])}
+ {(!englishReference||!!result||!!error)&&<LearningNotes key={JSON.stringify([word,collection?.id,result?.english[0]?.partOfSpeech])}
    input={{word,target:collection?.target_language||'en',explanation:collection?.explanation_language||'zh-CN',
-     level:collection?.proficiency_level||'unspecified',partOfSpeech:result?.english[0]?.partOfSpeech||''}}/>
+     level:collection?.proficiency_level||'unspecified',partOfSpeech:result?.english[0]?.partOfSpeech||''}}/>}
  {englishReference&&<>
  <VideoContextSection key={"video:"+word} word={word} />
  {isOriginalEnglish(collection)&&<RelatedWords referenceReady={!!result||!!error} key={"related:"+word} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/>}</>}

@@ -727,7 +727,7 @@ export default function Workspace({
                     onSaveMeaning={value=>saveDictionaryMeaning(w,value)} onRelatedSave={input=>saveRelated(input,entry)}
                     savedWords={collectionItems(allWords,entry||null,true).map(item=>item.word)}
                     details={<>
-                    <ContextExample item={w} owner={account} language={entry?.target_language} lookup={isOriginalEnglish(entry)}/>
+                    <ContextExample labelExample item={w} owner={account} language={entry?.target_language} lookup={isOriginalEnglish(entry)}/>
                     {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                     {reviewState(w)&&<p className="wb-supporting">Last review: {reviewState(w)?.last_rating==='sure'?'Sure':'Not sure'}</p>}
                     </>}
@@ -832,7 +832,7 @@ export default function Workspace({
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
                       <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)}/>
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} details={<ContextExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

@@ -4,7 +4,7 @@ import { cachedExample, resolveExample, type ExampleItem } from '@/lib/context-e
 import { vocabularyDetails } from '@/lib/vocabulary-details';
 import type { TargetLanguage } from '@/lib/collections';
 import { HighlightWord } from '@/components/dictionary/highlight-word';
-export function ContextExample({item, owner, persist = true,lookup=true,language='en'}: {item: ExampleItem; owner: string; persist?: boolean;lookup?:boolean; language?:TargetLanguage}) {
+export function ContextExample({item, owner, persist = true,lookup=true,language='en',labelExample=false}: {item: ExampleItem; owner: string; persist?: boolean;lookup?:boolean; labelExample?:boolean; language?:TargetLanguage}) {
   const anchor = useRef<HTMLSpanElement>(null);
   const identity = JSON.stringify([owner,item.id,item.word,item.meaning,item.example]);
   const [resolved,setResolved] = useState<{key:string;text:string}|null>(null);
@@ -33,7 +33,8 @@ export function ContextExample({item, owner, persist = true,lookup=true,language
     </p>}
     {details?.usage&&<p className="saved-learning-note">{details.usage}</p>}
     {text&&<blockquote className="wb-learning-content" data-context-example>
-      {(item.example_source==='ai'||details?.exampleSource==='ai')&&<small className="ai-label">AI-generated example</small>}
+      {(item.example_source==='ai'||details?.exampleSource==='ai')?<small className="ai-label">AI-generated example</small>:
+        labelExample&&<small className="saved-learning-note">{item.example?.trim()?'Saved example':'Dictionary example'}</small>}
       {details?.exampleSource==='ai'&&!details.highlight?text:<HighlightWord text={text} target={item.word} surface={details?.highlight} language={language}/>}
       {details?.exampleTranslation&&<small className="saved-learning-note">{details.exampleTranslation}</small>}
     </blockquote>}

@@ -83,6 +83,16 @@ for(const width of [320,375,390,430,1024])test(`Library and Dictionary remain sc
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
+test('a missing dictionary reference keeps saved content and the pronunciation actions',async({page})=>{
+ test.skip(!cloudUrl);await fixture(page);
+ await page.route('**/api/dictionary?*',route=>route.fulfill({status:404,json:{message:'Reference missing'}}));
+ await page.goto('/library');
+ await page.getByRole('button',{name:'Dictionary for callous'}).click();
+ const sheet=page.getByRole('dialog',{name:'Dictionary'});
+ await expect(sheet.getByText('Saved example',{exact:true})).toBeVisible();
+ await expect(sheet.getByText('冷酷无情的',{exact:true})).toBeVisible();
+ await expect(sheet.getByRole('button',{name:'Play pronunciation',exact:true})).toHaveCount(2);
+});
 test('Profile menus open above the sheet, Escape returns to the selector and close returns to the row',async({page})=>{
  test.skip(!cloudUrl);
  await page.setViewportSize({width:390,height:844});await fixture(page);await page.goto('/auth');
