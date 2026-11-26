@@ -36,10 +36,10 @@ for(const width of [320,375,390,430])test(`compact Add idle and active fit ${wid
  await page.setViewportSize({width,height:844});await ready(page);await page.goto('/add');
  const input=field(page);await expect(input).toBeVisible();
  const idle=(await input.boundingBox())!;
- expect(idle.height).toBeGreaterThanOrEqual(56);expect(idle.height).toBeLessThanOrEqual(60);expect(idle.y).toBeGreaterThan(170);
+ expect(idle.height).toBeGreaterThanOrEqual(56);expect(idle.height).toBeLessThanOrEqual(60);expect(idle.y).toBeLessThan(170);
  if(width===390)await shot(page,'add-idle');
  await input.click();
- expect((await input.boundingBox())!.y).toBeLessThan(idle.y);
+ expect(Math.abs((await input.boundingBox())!.y-idle.y)).toBeLessThan(2);
  await expect(input).toBeFocused();
  if(width===390)await shot(page,'add-active');
  await input.fill('a phrase on a first line\nand a sentence on a second line');
@@ -128,7 +128,7 @@ test('Dictionary returns focus to its trigger and keeps the revealed Review card
  await page.locator('#app-content').focus();
  await trigger.dispatchEvent('click');
  const dialog=page.getByRole('dialog');
- await expect(dialog.getByText('hello',{exact:true})).toBeVisible();
+ await dialog.locator('summary').filter({hasText:'Definitions / Other meanings'}).click();await expect(dialog.getByText('hello',{exact:true})).toBeVisible();
  const popupPromise=page.waitForEvent('popup');
  await dialog.getByRole('link',{name:'Wiktionary contributors'}).click();
  await (await popupPromise).close();

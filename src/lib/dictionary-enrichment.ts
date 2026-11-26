@@ -1,11 +1,13 @@
+import {senseEvidence,meaningParts,conflictingSense} from './learning-quality';
 export type EnrichmentInput = {
+  meaning?: string;
   word: string;
   target: string;
   explanation: 'en'|'zh-CN';
   level: string;
   partOfSpeech: string;
 };
-export type LearningPhrase = { expression: string; explanation: string };
+export type LearningPhrase = { expression: string; explanation: string; coreMeaning?:string; register?:string; situation?:string; example?:string };
 export type DictionaryEnrichment = {
   word: string;
   target: string;
@@ -44,7 +46,11 @@ export function parseEnrichment(raw:unknown,input:EnrichmentInput):DictionaryEnr
       const key=normalized(expression);
       if(!validScript||!explanation||seen.has(key))return [];
       seen.add(key);
-      return [{expression,explanation}];
+      const meaning=input.meaning||'';
+      if(comparison&&meaning&&(!senseEvidence(meaning,explanation+' '+String(item.coreMeaning||''),'',input.word)||meaningParts(meaning).some(part=>conflictingSense(meaning,part))))return [];
+      const extra:Partial<LearningPhrase>=comparison?{coreMeaning:explains(item.coreMeaning),register:explains(item.register),situation:explains(item.situation),example:plain(item.example,280)}:{};
+      if(extra.example&&(!extra.example.toLocaleLowerCase().includes(expression.toLocaleLowerCase())||/[<>]/.test(extra.example)))delete extra.example;
+      return [{expression,explanation,...Object.fromEntries(Object.entries(extra).filter(([,value])=>!!value))}];
     }).slice(0,comparison?4:5);
   }
   const comparisons=phrases(data.comparisons,true);

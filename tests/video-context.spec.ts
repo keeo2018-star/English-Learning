@@ -21,6 +21,7 @@ async function setup(page: Page, word = 'caught off guard', wide = true) {
   await page.route('**/api/dictionary?*', route => route.fulfill({ json: { word, phonetics: [{ accent: 'UK', text: '/test/' }], chinese: [], english: [], examples: [], synonyms: [] } }));
   await page.goto('/library');
   await page.getByRole('button', { name: `Dictionary for ${word}` }).click();
+  await page.locator('summary').filter({hasText:'Real-world examples'}).click();
 }
 async function expand(page: Page) {
   await page.getByRole('button', { name: 'Watch in context', exact: true }).click();
@@ -99,14 +100,16 @@ test.describe('In the Wild', () => {
     await expect(preview.locator('svg')).toBeVisible();
     // The reference preview is intentionally compact; the actual official player below stays >=200px.
     const previewHeight = await preview.evaluate(element => element.getBoundingClientRect().height);
-    expect(previewHeight).toBeGreaterThanOrEqual(160);
-    expect(previewHeight).toBeLessThanOrEqual(220);
+    expect(previewHeight).toBeGreaterThanOrEqual(56);
+    expect(previewHeight).toBeLessThanOrEqual(112);
     await page.screenshot({ path: `/tmp/noted-video-card-preview-${width}.png` });
     await page.getByRole('button', { name: 'Watch in context', exact: true }).click();
     await page.getByRole('button', { name: 'Agree & load video', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Replay', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Open YouGlish' })).toHaveCount(0);
     expect(await page.locator('iframe').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(200);
+    const close=page.getByRole('dialog').getByRole('button',{name:'Close',exact:true});const bounds=(await close.boundingBox())!;
+    expect(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('button[aria-label="Close"]'),{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2})).toBe(true);
     expect(await page.locator('iframe').evaluate(element => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(200);
     expect(await page.getByRole('dialog').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.screenshot({ path: `/tmp/noted-video-${width}.png` });

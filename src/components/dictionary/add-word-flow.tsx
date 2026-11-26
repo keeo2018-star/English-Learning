@@ -1,4 +1,6 @@
 "use client";
+import {Disclosure} from '@/components/ui/disclosure';
+import {senseEvidence} from '@/lib/learning-quality';
 import {Icon,IconButton} from '@/components/ui/icon';
 import {Sheet} from '@/components/ui/sheet';
 import {DictionaryButton} from './dictionary-sheet';
@@ -101,7 +103,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
     changeWord(inputLanguage(next,target)!==target?'':next);
   }
   function acceptAcquiredText(value:string){
-    const text=Array.from(value.trim()).slice(0,4000).join('');
+    const text=value.trim();
     if(!text)return;
     changeQuery(text);setPasted(true);setPendingPaste('');setMethod(null);
   }
@@ -304,7 +306,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       <div ref={mirror} className={styles.mirror} aria-hidden="true"/>
       <span ref={probe} className={styles.probe} data-scale="0" aria-hidden="true">&#8203;</span>
       {query&&<IconButton icon="close" label="Clear input" className={styles.clear} disabled={busy}
-        onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();}}/>}
+        onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();input.current?.focus({preventScroll:true});}}/>}
       <IconButton icon="right" label="Translate" variant="primary" className={styles.translate}
         disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}/>
 
@@ -339,7 +341,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
           if(selectedCandidate?.source==='ai'){clearCandidates();setSuggestedExample('');if(!manual.current)changeWord('');}
         }} maxLength={500} rows={2} placeholder="Describe the situation or intended meaning…" readOnly={busy}/>
       </label>
-      <small>{aiAvailable?'Context helps Gemini interpret your meaning.':'Basic lookup does not use context. AI is unavailable in this session.'}</small>
+      <small>{aiAvailable?'Context helps Gemini interpret your meaning.':'Context is kept in this draft. Basic lookup is available without AI.'}</small>
     </div>}
     {query.trim()&&(aiAvailable||ambiguous||resolveError||candidates.length>0)&&<div className={styles.resolveActions}>
       {aiAvailable&&<button type="button" className="text-button" disabled={busy||resolving} onClick={()=>void resolveQuery(true)}>{selectedCandidate?'Regenerate with AI':'Translate with AI'}</button>}
@@ -368,12 +370,8 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
     </section>}
     {(word||context||voice||editingExpression)&&<section className={`panel ${styles.preview}`} aria-label="Vocabulary card preview" data-empty={!query.trim()&&!meaning&&!context&&!voice||undefined}>
     <input type="hidden" name="word" value={word}/>
-    {selectedCandidate&&<p className={styles.meaningStatus}>{selectedCandidate.reference==='cc-cedict'?
-      <a href="https://www.mdbg.net/chinese/dictionary?page=cc-cedict" target="_blank" rel="noreferrer">CC-CEDICT dictionary match</a>
-      : selectedCandidate.source==='translation'?'Basic translation · Context and examples unavailable'
-      : selectedCandidate.source==='ai'?'AI translation':'Dictionary lookup'}</p>}
     {(word||editingExpression)&&<div className={styles.titleRow}>
-      {word&&<h2 className={styles.previewTitle}>{word}</h2>}
+      {word&&!overItem&&<h2 className={styles.previewTitle}>{word}</h2>}
       <button type="button" className={styles.editExpression} aria-label="Edit vocabulary" aria-expanded={editingExpression}
         onClick={()=>setEditingExpression(!editingExpression)} disabled={busy||resolving}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1 12-12-4-4L4 15z"/></svg>
@@ -384,8 +382,6 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
         invalidateQuery();manual.current=true;manualRevision.current++;changeWord(value);
         setSelectedId('');setSuggestedExample('');
       }}/>}
-    {(selectedCandidate?.partOfSpeech||selectedCandidate?.expressionType)&&<p className={styles.meaningStatus}>
-      {[selectedCandidate.partOfSpeech,selectedCandidate.expressionType].filter(Boolean).join(' · ')}</p>}
     {chinese&&!word&&<p className={styles.meaningStatus}>Translate to choose an entry in the learning language.</p>}
     <div id={`${id}-help`} className={styles.captureHelp}>
       {overItem?<span>Keep the learning item within 120 characters. {chinese?'Refine your query or choose a shorter target-language candidate; your original text is preserved.':/\s/u.test(word.trim())?'Extract a phrase below; your pasted text is preserved.':'Shorten it before saving; your text is preserved.'}</span>:null}
@@ -399,29 +395,34 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
 
       {status && <p className={styles.meaningStatus} role="status">{status}</p>}
     </div>
-    {selectedCandidate?.lemma&&selectedCandidate.lemma!==word&&<p className={styles.meaningStatus}>Dictionary form: {selectedCandidate.lemma}</p>}
-    {selectedCandidate?.usage&&<p className={styles.meaningStatus}>{selectedCandidate.usage}</p>}
-    {selectedCandidate&&word.trim()&&!overItem&&<DictionaryButton key={word} word={word} meaning={meaning} collection={collection} example={suggestedExample}/>}
-    <div className={styles.previewSettings}><div className={styles.typeControl}><Select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"} · Auto</option><option value="word">Word</option><option value="expression">Expression</option></Select></div><button type="button" className="text-button" disabled={busy||resolving||!validTitle(word)}
-      onClick={()=>void suggestMeaning()}>Suggest meaning</button></div>
-    {suggestedExample&&<blockquote className={styles.previewExample}>
+    {suggestedExample&&(exampleSource==='ai'||senseEvidence(meaning,selectedCandidate?.exampleTranslation||'',suggestedExample,word))&&<blockquote className={styles.previewExample}>
       {selectedCandidate?.source==='ai'&&!selectedCandidate.highlight?suggestedExample:
         <HighlightWord text={suggestedExample} target={word} surface={selectedCandidate?.highlight} language={target}/>}
       {selectedCandidate?.exampleTranslation&&<small>{selectedCandidate.exampleTranslation}</small>}
       {exampleSource==='ai'&&<small>AI-generated example</small>}</blockquote>}
-    {selectedCandidate&&!aiAvailable&&!suggestedExample&&<p className={styles.meaningStatus}>AI examples are unavailable in this session.</p>}
+    <div className={styles.previewSettings}>{word.trim()&&!overItem&&<DictionaryButton word={word} meaning={meaning} collection={collection} example={suggestedExample}/>}<div className={styles.typeControl}><Select id={`${id}-type`} aria-label="Content type" name="item_type" value={type} onChange={event => { const value=event.target.value;if(formIsComposing(input.current?.form))return;if(voice&&itemType({word,item_type:value==='auto'?null:value as 'word'|'expression'})==='word'){setPendingType(value);return;}version.current++;setAttemptId('');setType(value); }} disabled={busy||voiceBusy}><option value="auto">{expression?"Expression":"Word"}</option><option value="word">Word</option><option value="expression">Expression</option></Select></div><button type="button" className="text-button" disabled={busy||resolving||!validTitle(word)}
+      onClick={()=>void suggestMeaning()}>Suggest meaning</button></div>
+
     {selectedCandidate&&aiAvailable&&(!suggestedExample||!selectedCandidate.exampleTranslation)&&
       <button type="button" className="text-button" disabled={resolving||busy} onClick={()=>void resolveQuery(true)}>
         {selectedCandidate.source==='ai'?'Retry learning example':'Generate learning examples with AI'}</button>}
-    {word&&<label className={styles.personalNote}>Personal notes <span>Optional</span>
+    {word&&<Disclosure label="Add a note"><label className={styles.personalNote}>Personal note
       <ImeTextarea aria-label="My Context" name="personal_note" value={context}
         onValueChange={value=>{setAttemptId('');setContext(value);setSaveError('');setFailed(false)}}
         placeholder="Where did you come across this word?" rows={2} readOnly={busy}/>
       {overContext&&<small role="status">Shorten your note to 3000 characters before saving.</small>}
-    </label>}
+    </label></Disclosure>}
     <input type="hidden" name="example" value={suggestedExample}/>
+    {selectedCandidate&&<Disclosure label="Lookup details">    {selectedCandidate&&<p className={styles.meaningStatus}>{selectedCandidate.reference==='cc-cedict'?
+      <a href="https://www.mdbg.net/chinese/dictionary?page=cc-cedict" target="_blank" rel="noreferrer">CC-CEDICT dictionary match</a>
+      : selectedCandidate.source==='translation'?'Basic translation · Context and examples unavailable'
+      : selectedCandidate.source==='ai'?'AI translation':'Dictionary lookup'}</p>}
+    {selectedCandidate?.lemma&&selectedCandidate.lemma!==word&&<p className={styles.meaningStatus}>Dictionary form: {selectedCandidate.lemma}</p>}
+    {selectedCandidate?.usage&&<p className={styles.meaningStatus}>{selectedCandidate.usage}</p>}
+
+</Disclosure>}
     <input type="hidden" name="learning_details" value={JSON.stringify(learningDetails)??''}/>
-    {!expression&&<p className={styles.meaningStatus}>Voice notes are available for expressions. Change the content type to Expression to record one.</p>}
+
     {itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression'&&<details className={voiceStyles.draft} open={voiceOpen} onToggle={event=>setVoiceOpen(event.currentTarget.open)}><summary><Microphone/>Add a voice note</summary>{voiceOpen&&<VoiceDraftBox draft={voice} onDraft={value=>{setVoice(value);if(value)setType('expression');}} onBusy={setVoiceBusy} disabled={busy}/>}</details>}
     {pendingType!==null&&<VoiceConfirm title="Discard this draft recording?" description="Voice Notes are available only for Expressions. Keep Expression to retain this recording." confirmLabel="Discard and change type" busy={false} onCancel={()=>setPendingType(null)} onConfirm={()=>{setVoice(null);setType(pendingType);setPendingType(null);setVoiceOpen(false);}}/>}
     {replaceContext&&<VoiceConfirm title="Replace My Context?" description="Your existing context will be replaced by the complete text currently in the main input. The text stays unchanged until you confirm." confirmLabel="Use original text as context" busy={busy} onCancel={()=>setReplaceContext(null)} onConfirm={()=>acceptExtraction(replaceContext)}/>}

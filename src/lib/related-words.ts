@@ -1,3 +1,4 @@
+import {senseEvidence,conflictingSense} from './learning-quality';
 export type RelatedTerm={word:string;relation?:'synonym'|'antonym'|'related'};
 export type RelatedResult={items:RelatedTerm[];family:RelatedTerm[];source:'Datamuse'};
 export const vocabularyKey=(s:string)=>s.normalize('NFKC').replace(/[‘’]/g,"'").trim().replace(/\s+/g,' ').toLowerCase();
@@ -25,19 +26,10 @@ export async function lookupRelated(value:string,fetcher:typeof fetch=fetch):Pro
 }
 // Chinese stays in the browser: compare the saved sense with returned lexical data.
 export function relatedSenseMatches(meaning:string,chinese:string[],english:string[],relation?:string){
- if(relation==='antonym')return true; // Explicit lexical opposition, labelled in the UI.
- const han=(s:string)=>s.replace(/[^\p{Script=Han}]/gu,'').replace(/[的了是在和或与一个这那很地得以对为及并等某种]/g,'');
- const rawTarget=han(meaning.split(/[：:。]/)[0].replace(/我自己的|解释|意思|理解/g,''));
- const core=rawTarget.replace(/全面|整体|通常|一般|某种|一种|进行|当前|情况/g,'');
- const target=core.length>=2?core:rawTarget,translated=han(chinese.join(' '));
- if(target.length>=2&&translated.length){
-  const overlap=[...new Set(target)].filter(char=>translated.includes(char));
-  return overlap.length>=2||overlap.some(char=>!'评全面整体目意情况资源知事度量行定中人物用性化点'.includes(char));
- }
- if(target.length>=2)return relation==='synonym';
- const tokens=(s:string)=>s.toLowerCase().match(/[a-z]{3,}/g)?.filter(x=>!['the','and','for','with','that','this','from','into','something','someone','being','having'].includes(x))||[];
- const saved=tokens(meaning),definitions=new Set(tokens(english.join(' ')));
- return !saved.length||relation==='synonym'||saved.some(token=>definitions.has(token));
+ // An exact relation can still refer to another sense. Require positive meaning evidence.
+ if(!meaning.trim())return false;
+ if(relation==='antonym')return !conflictingSense(meaning,chinese.join(' '))&&senseEvidence(meaning,'',english.join(' '));
+ return chinese.some(text=>senseEvidence(meaning,text,english.join(' ')))||senseEvidence(meaning,'',english.join(' '));
 }
 export function relatedPreview(text:string){return Array.from(text.replace(/^(?:[a-z]+\.)\s*/i,'').split(/[：:。；;]/)[0].trim()).slice(0,44).join('');}
 

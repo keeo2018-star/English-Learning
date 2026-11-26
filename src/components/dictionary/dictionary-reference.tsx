@@ -1,5 +1,7 @@
 "use client";
 
+import {selectExample} from '@/lib/example-quality';
+import {primaryMeaning} from '@/lib/learning-quality';
 import type {DictionaryResult} from '@/lib/dictionary';
 import {Disclosure} from '@/components/ui/disclosure';
 import {HighlightWord} from './highlight-word';
@@ -17,9 +19,11 @@ export function DictionaryPronunciation({word,phonetics,showErrors=true,activeSt
       phonetic={shared?'':item.text} showErrors={showErrors} activeStyle={activeStyle}/>)}
   </div>;
 }
-export function DictionaryReferenceContent({result,word,hideChinese=false}:{result:DictionaryResult;word:string;hideChinese?:boolean}){
+export function DictionaryReferenceContent({result,word,hideChinese=false,savedMeaning='',savedExample,hasPrimaryExample=false}:{result:DictionaryResult;word:string;hideChinese?:boolean;savedMeaning?:string;savedExample?:string;hasPrimaryExample?:boolean}){
+  const primary=selectExample(word,savedMeaning||result.chinese[0]||result.english[0]?.definition||'',result.examples);
+  const remaining=result.examples.filter(item=>item.source!==savedExample&&(hasPrimaryExample||item.source!==primary));
   const groups=[
-    ...(!hideChinese&&result.chinese.length?[{title:'Chinese definitions',entries:result.chinese.map(definition=>({definition,partOfSpeech:''}))}]:[]),
+    ...(!hideChinese&&result.chinese.length?[{title:'Chinese definitions',entries:result.chinese.filter(definition=>definition.trim()!==savedMeaning.trim()).map(definition=>({definition,partOfSpeech:''}))}]:[]),
     ...(result.english.length?[{title:'English definitions',entries:result.english}]:[]),
   ];
   function renderDefinitions(entries:DictionaryResult['english'],start=0){
@@ -32,13 +36,11 @@ export function DictionaryReferenceContent({result,word,hideChinese=false}:{resu
     {example.translation&&<p lang="zh">{example.translation}</p>}
   </blockquote>);
   return <div className={styles.reference}>
-    {groups.map(({title,entries})=><section key={title}><h3>{title}</h3>
-      {renderDefinitions(entries.slice(0,1))}
-      {entries.length>1&&<Disclosure label={`More definitions (${entries.length-1})`}>{renderDefinitions(entries.slice(1),1)}</Disclosure>}
-    </section>)}
-    {result.examples.length>0&&<section><h3>Examples</h3>{examples(result.examples.slice(0,1))}
-      {result.examples.length>1&&<Disclosure label={`More examples (${result.examples.length-1})`}>{examples(result.examples.slice(1))}</Disclosure>}
-    </section>}
+    {!hasPrimaryExample&&primary&&examples(result.examples.filter(item=>item.source===primary).slice(0,1))}
+    {!!groups.length&&<Disclosure label="Definitions / Other meanings">
+      {groups.map(({title,entries})=><section key={title}><h3>{title}</h3>{renderDefinitions(entries)}</section>)}
+    </Disclosure>}
+    {remaining.length>0&&<Disclosure label={`More examples (${remaining.length})`}><p className="wb-supporting">Other dictionary contexts may use a different sense. Your primary meaning: {primaryMeaning(savedMeaning)||'not selected'}.</p>{examples(remaining)}</Disclosure>}
     {!groups.length&&!result.examples.length&&<p>No definitions or examples available for this entry.</p>}
     <small className={styles.credit}>Dictionary reference via UAPI.</small>
   </div>;

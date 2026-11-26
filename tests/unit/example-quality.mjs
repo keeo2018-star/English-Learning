@@ -18,7 +18,7 @@ test('preserves complete expression and avoids a clearly different translated se
  assert.equal(pick('bank','银行','We sat on the bank of the river.','我们坐在河岸上。'),'');
  assert.equal(selectExample('bank','银行',[{source:'We sat on the bank of the river.',translation:'我们坐在河岸上。'},{source:'She went to the bank to deposit money.',translation:'她去银行存钱。'}]),'She went to the bank to deposit money.');
 });
-test('no fabricated Chinese / example: untranslated dictionary context is usable',()=>{
- assert.equal(pick('serendipity','', 'Finding this book was pure serendipity.'),'Finding this book was pure serendipity.');
+test('untranslated context needs independent meaning evidence',()=>{
+ assert.equal(pick('serendipity','', 'Finding this book was pure serendipity.'),'');
  assert.equal(selectExample('unknown','',[]),'');
 });

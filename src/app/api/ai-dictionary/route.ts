@@ -65,9 +65,10 @@ async function enrich(request:Request,body:Record<string,unknown>){
       return Response.json({message:'Choose valid languages and confirm AI use.'},{status:400,headers});
     const partOfSpeech=typeof body.partOfSpeech==='string'&&/^[\p{L}\p{M} /-]{1,60}$/u.test(body.partOfSpeech)?body.partOfSpeech:'';
     const level=typeof body.level==='string'&&/^(A[12]|B[12]|C[12]|beginner|intermediate|advanced)$/.test(body.level)?body.level:'unspecified';
-    const input={word,target,explanation,partOfSpeech,level} satisfies import('@/lib/dictionary-enrichment').EnrichmentInput;
+    const meaning=typeof body.meaning==='string'?body.meaning.trim().slice(0,2000):'';
+    const input={word,target,explanation,partOfSpeech,level,meaning} satisfies import('@/lib/dictionary-enrichment').EnrichmentInput;
     c=await client(request);
-    hash=createHash('sha256').update('noted-dictionary-enrichment-v1:'+JSON.stringify(input)).digest('hex');
+    hash=createHash('sha256').update('noted-dictionary-enrichment-v2:'+JSON.stringify(input)).digest('hex');
     const reserved=await c.rpc('noted_ai_reserve',{p_hash:hash});
     if(reserved.error)throw Error('AI quota unavailable');
     const state=reserved.data;
@@ -78,8 +79,10 @@ async function enrich(request:Request,body:Record<string,unknown>){
     const saved=await c.rpc('noted_ai_finish',{p_hash:hash,p_lease:lease,p_payload:result});
     if(saved.error||saved.data!==true)throw Error('Could not save learning notes');
     return Response.json({result},{headers});
-  }catch{
+  }catch(error){
     if(c&&hash&&lease)await c.rpc('noted_ai_fail',{p_hash:hash,p_lease:lease});
-    return Response.json({message:'AI learning notes are temporarily unavailable. Try again later.'},{status:503,headers});
+    if(error instanceof Error&&error.name==='AiQuotaError')return Response.json({reason:'quota',message:'Gemini free quota is currently exhausted. Try again later.'},{status:429,headers});
+    if(error instanceof Error&&/no usable learning notes/.test(error.message))return Response.json({reason:'empty',message:'No useful learning notes were returned. Try a clearer meaning.'},{status:422,headers});
+    return Response.json({reason:'request',message:'AI learning notes are temporarily unavailable. Try again later.'},{status:503,headers});
   }
 }

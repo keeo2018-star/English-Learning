@@ -44,7 +44,7 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   assert.match(String(url),/^https:\/\/generativelanguage.googleapis.com/);
   modelCalls++;
   const payload=JSON.parse(options.body), input=JSON.parse(payload.contents[0].parts[0].text);
-  assert.deepEqual(Object.keys(input).sort(),['explanation','level','partOfSpeech','target','word']);
+  assert.deepEqual(Object.keys(input).sort(),['explanation','level','meaning','partOfSpeech','target','word']);
   assert.equal(payload.generationConfig.responseMimeType,'application/json');
   return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({
     word:input.word,target:input.target,explanationLanguage:input.explanation,
@@ -60,7 +60,7 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   const hit=await post();assert.equal(hit.status,200);assert.equal((await hit.json()).cached,true);
   assert.equal(modelCalls,1);assert.equal(hashes[0],hashes[1]);
   limited=true;assert.equal((await post({explanation:'en'})).status,429);assert.notEqual(hashes[1],hashes[2]);
-  limited=false;cached=null;invalid=true;assert.equal((await post()).status,503);assert.equal(failed,1);
+  limited=false;cached=null;invalid=true;assert.equal((await post()).status,422);assert.equal(failed,1);
  }finally{globalThis.fetch=original.fetch;delete globalThis.__notedAiClientTest;
   for(const [key,value] of Object.entries({GEMINI_API_KEY:original.key,GEMINI_FREE_TIER_ENABLED:original.flag})){
    if(value===undefined)delete process.env[key];else process.env[key]=value;

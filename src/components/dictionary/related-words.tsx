@@ -1,4 +1,5 @@
 "use client";
+import {selectExample} from '@/lib/example-quality';
 import {ImeInput} from '@/components/ui/ime-field';
 import {imeBlocksSubmit} from '@/lib/ime';
 import {useEffect,useMemo,useRef,useState} from 'react';
@@ -7,12 +8,12 @@ import {dictionaryReference} from '@/lib/dictionary-client';
 import {IconButton} from "@/components/ui/icon";
 import styles from './dictionary.module.css';
 export type RelatedInput={request_id?:string;word:string;meaning:string;example:string;item_type:'word'|'expression';example_source?:'ai'|'dictionary'|'personal'|null};
-type Info={meaning:string;example:string;chinese:string[];english:string[]};
+type Info={meaning:string;example:string;examples:import('@/lib/dictionary').DictionaryResult['examples'];chinese:string[];english:string[]};
 const cache=new Map<string,{items:RelatedTerm[];at:number}>(),meanings=new Map<string,Info>();
 async function information(term:string){
  const key=vocabularyKey(term),hit=meanings.get(key);if(hit)return hit;
  const d=await dictionaryReference(term);
- const info={meaning:d.chinese.find(x=>typeof x==='string'&&/[\u3400-\u9fff]/u.test(x))||'',example:d.examples.find(x=>x.source)?.source||'',chinese:d.chinese,english:d.english.map(x=>x.definition)};
+ const info={meaning:d.chinese.find(x=>typeof x==='string'&&/[\u3400-\u9fff]/u.test(x))||'',example:'',examples:d.examples,chinese:d.chinese,english:d.english.map(x=>x.definition)};
  if(meanings.size>=150)meanings.delete(meanings.keys().next().value!);meanings.set(key,info);return info;
 }
 export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=[],referenceReady}:{word:string;meaning?:string;synonyms:string[];onOpen:(word:string)=>void;onSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];referenceReady:boolean}){
@@ -21,16 +22,17 @@ export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=
  const scope=word+'\0'+meaning,scopeRef=useRef(scope);
  const known=useMemo(()=>new Set([...savedWords,...saved].map(vocabularyKey)),[savedWords,saved]);
  useEffect(()=>{alive.current=true;return()=>{alive.current=false}},[]);
- useEffect(()=>{const controller=new AbortController(),key=vocabularyKey(word),old=cache.get(key);
-  const accept=(next:RelatedTerm[])=>{if(!controller.signal.aborted){setItems(next);setPhase('ready');}};
-  if(old&&Date.now()-old.at<3600000){queueMicrotask(()=>accept(old.items));return()=>controller.abort();}
-  void fetch('/api/related-words?'+new URLSearchParams({word,v:'2'}),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d.items))throw Error();const next=d.items.filter((x:RelatedTerm)=>typeof x.word==='string');if(controller.signal.aborted)return;if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{items:next,at:Date.now()});accept(next);}).catch(()=>{if(!controller.signal.aborted)setPhase('error')});return()=>controller.abort();
+ useEffect(()=>{const controller=new AbortController(),timer=setTimeout(()=>{setPhase('error');controller.abort();},9000),key=vocabularyKey(word),old=cache.get(key);
+  const accept=(next:RelatedTerm[])=>{if(!controller.signal.aborted){clearTimeout(timer);setItems(next);setPhase('ready');}};
+  if(old&&Date.now()-old.at<3600000){queueMicrotask(()=>accept(old.items));return()=>{clearTimeout(timer);controller.abort();};}
+  void fetch('/api/related-words?'+new URLSearchParams({word,v:'2'}),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const d=await r.json();if(!Array.isArray(d.items))throw Error();const next=d.items.filter((x:RelatedTerm)=>typeof x.word==='string');if(controller.signal.aborted)return;if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{items:next,at:Date.now()});accept(next);}).catch(()=>{if(!controller.signal.aborted)setPhase('error')});return()=>{clearTimeout(timer);controller.abort();};
  },[word,attempt]);
  const all=useMemo<RelatedTerm[]>(()=>{const key=(text:string)=>relatedQuery(text)||vocabularyKey(text),seen=new Set([key(word)]);return [...items.filter(item=>item.relation==='synonym'||item.relation==='antonym'),...items.filter(item=>item.relation!=='synonym'&&item.relation!=='antonym'),...synonyms.map(word=>({word}))].filter(x=>relatedQuery(x.word)&&!componentOnly(word,x.word)&&!seen.has(key(x.word))&&!!seen.add(key(x.word))).slice(0,24)},[items,synonyms,word]);
  useEffect(()=>{if(!section.current||!referenceReady)return;const observer=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){setVisible(true);observer?.disconnect()}},{rootMargin:'100px'}):null;if(observer)observer.observe(section.current);else queueMicrotask(()=>setVisible(true));return()=>observer?.disconnect();},[phase,all.length,referenceReady]);
  useEffect(()=>{
-  if(!visible||phase==='loading')return;
+  if(!visible||phase!=='ready')return;
   let cancelled=false,next=0,complete=0,failures=0;
+  const timer=setTimeout(()=>{if(!cancelled){cancelled=true;setChecked(true);setChecking(false);setHasMore(false);setPhase('error');}},14000);
   const budget=Math.min(all.length,limit*2);
   const changed=scopeRef.current!==scope;scopeRef.current=scope;
   const publish=(values:RelatedTerm[])=>setAccepted(previous=>{
@@ -49,11 +51,11 @@ export function RelatedWords({word,meaning='',synonyms,onOpen,onSave,savedWords=
     complete++;
    }
   };
-  void Promise.all([worker(),worker()]).then(()=>{if(!cancelled){publish([...found.entries()].sort((a,b)=>a[0]-b[0]).slice(0,limit).map(([,item])=>item));setHasMore(complete<all.length||found.size>limit);setChecked(true);setChecking(false);}});
-  return()=>{cancelled=true;};
+  void Promise.all([worker(),worker()]).then(()=>{clearTimeout(timer);if(!cancelled){publish([...found.entries()].sort((a,b)=>a[0]-b[0]).slice(0,limit).map(([,item])=>item));setHasMore(complete<all.length||found.size>limit);setChecked(true);setChecking(false);}});
+  return()=>{cancelled=true;clearTimeout(timer);};
  },[all,limit,meaning,scope,visible,phase]);
- async function save(term:string){const key=vocabularyKey(term);if(!onSave||known.has(key)||inFlight.current.has(key))return;inFlight.current.add(key);setSaving(x=>[...x,key]);setMessage('');try{let info=meanings.get(key);if(!info){try{info=await information(term);}catch{/* Never invent a translation. */}}if(!alive.current)return;await onSave({word:term,meaning:needsMeaning===term?custom.trim():translations[key]||info?.meaning||'',example:info?.example||'',item_type:/\s/.test(term)?'expression':'word'});if(alive.current){setSaved(x=>[...x,term]);setNeedsMeaning('');setCustom('');}}catch(e){if(alive.current){const msg=e instanceof Error?e.message:'Could not save. Try again.';setMessage(msg);if(/meaning|23514/i.test(msg)){setNeedsMeaning(term);if(needsMeaning!==term)setCustom('');}}}finally{inFlight.current.delete(key);if(alive.current)setSaving(x=>x.filter(t=>t!==key))}}
- if(phase==='ready'&&checked&&!accepted.length)return null;
+ async function save(term:string){const key=vocabularyKey(term);if(!onSave||known.has(key)||inFlight.current.has(key))return;inFlight.current.add(key);setSaving(x=>[...x,key]);setMessage('');try{let info=meanings.get(key);if(!info){try{info=await information(term);}catch{/* Never invent a translation. */}}if(!alive.current)return;await onSave({word:term,meaning:needsMeaning===term?custom.trim():translations[key]||info?.meaning||'',example:info?selectExample(term,needsMeaning===term?custom.trim():translations[key]||info.meaning,info.examples):'',item_type:/\s/.test(term)?'expression':'word'});if(alive.current){setSaved(x=>[...x,term]);setNeedsMeaning('');setCustom('');}}catch(e){if(alive.current){const msg=e instanceof Error?e.message:'Could not save. Try again.';setMessage(msg);if(/meaning|23514/i.test(msg)){setNeedsMeaning(term);if(needsMeaning!==term)setCustom('');}}}finally{inFlight.current.delete(key);if(alive.current)setSaving(x=>x.filter(t=>t!==key))}}
+ if(phase==='ready'&&checked&&!accepted.length)return <p className="wb-supporting">No reliable connections for this meaning yet.</p>;
  return <section ref={section} className={styles.related} aria-label="Related Words"><h3>Related Words</h3>
   {(!accepted.length&&(phase==='loading'||checking||!checked))&&phase!=='error'&&<p role="status">Finding relevant connections…</p>}
   {phase==='error'&&<p className="wb-ui-text">Connections are unavailable. <button type="button" className="text-button" onClick={()=>{setPhase('loading');setAttempt(x=>x+1)}}>Try related words again</button></p>}

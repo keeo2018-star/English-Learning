@@ -35,7 +35,7 @@ async function fixture(page:Page,ai=false,due=true){
    if(route.request().method()==='GET')return route.fulfill({json:{available:ai}});
    calls.push(route.request().postDataJSON());
    return route.fulfill({json:{result:{word:'callous',target:'en',explanationLanguage:'zh-CN',
-     comparisons:[{expression:'insensitive',explanation:'强调没有顾及对方的感受。'}],
+     comparisons:[{expression:'insensitive',explanation:'冷酷无情，强调没有顾及对方的感受。'}],
      collocations:[{expression:'callous remark',explanation:'冷酷无情的话。'}],
      contexts:['谈论某人对别人的痛苦的反应。'],usage:'通常带有批评意味。'}}});
  });
@@ -62,16 +62,17 @@ for(const width of [320,375,390,430,1024])test(`Library and Dictionary remain sc
  await expect(sheet.getByText('冷酷无情的',{exact:true}).first()).toBeVisible();
  expect((await close.locator('svg').boundingBox())!.width).toBe(20);
  if(width===390)await shot(page,'dictionary');
- await sheet.getByText('More examples (1)',{exact:true}).click();
+ await sheet.locator('summary').filter({hasText:/More examples/}).click();
  await expect(sheet.getByText('They seemed callous.')).toBeVisible();
  expect(calls).toHaveLength(0);
  if(width===390)await shot(page,'dictionary-examples');
- await sheet.getByRole('button',{name:'Generate learning notes'}).click();
+ await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();
+ await sheet.locator('summary').filter({hasText:'Compare words'}).click();
  const notes=sheet.getByRole('region',{name:'AI learning notes'});
  await expect(notes.getByText('insensitive',{exact:true})).toBeVisible();
  await expect(notes.getByText('callous remark',{exact:true})).toBeVisible();
  await expect(notes.getByText('通常带有批评意味。')).toBeVisible();
- expect(calls).toEqual([{mode:'enrichment',consent:true,q:'callous',target:'en',explanation:'zh-CN',level:'A2',partOfSpeech:'adjective'}]);
+ expect(calls).toEqual([{mode:'enrichment',consent:true,q:'callous',target:'en',explanation:'zh-CN',level:'A2',partOfSpeech:'adjective',meaning:'冷酷无情的'}]);
  if(width===390){
    await notes.screenshot({path:`${directory||'/tmp'}/dictionary-learning-notes.png`});
    await shot(page,'library-details');
@@ -89,7 +90,7 @@ test('a missing dictionary reference keeps saved content and the pronunciation a
  await page.goto('/library');
  await page.getByRole('button',{name:'Dictionary for callous'}).click();
  const sheet=page.getByRole('dialog',{name:'Dictionary'});
- await expect(sheet.getByText('Saved example',{exact:true})).toBeVisible();
+ await expect(sheet.getByText('Saved example · check meaning',{exact:true})).toBeVisible();
  await expect(sheet.getByText('冷酷无情的',{exact:true})).toBeVisible();
  await expect(sheet.getByRole('button',{name:'Play pronunciation',exact:true})).toHaveCount(2);
 });

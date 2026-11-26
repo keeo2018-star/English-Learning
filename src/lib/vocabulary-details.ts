@@ -14,7 +14,7 @@ export type VocabularyDetails = {
   exampleTranslation?: string;
   highlight?: string;
   translationContext?: string;
-  exampleSource?: 'ai' | 'dictionary';
+  exampleSource?: 'ai' | 'dictionary' | 'personal';
   source?: 'ai' | 'dictionary' | 'translation';
   reference?: 'cc-cedict';
 };
@@ -32,7 +32,7 @@ export function vocabularyDetails(value: unknown, example: string, target: Targe
   if (typeof raw.sourceLanguage === 'string' && Object.hasOwn(learningLanguages, raw.sourceLanguage)) details.sourceLanguage = raw.sourceLanguage as TargetLanguage;
   if (raw.explanationLanguage === 'en' || raw.explanationLanguage === 'zh-CN') details.explanationLanguage = raw.explanationLanguage;
   if (raw.source === 'ai' || raw.source === 'translation' || raw.source === 'dictionary') details.source = raw.source;
-  if (example && (raw.exampleSource === 'ai' || raw.exampleSource === 'dictionary')) details.exampleSource = raw.exampleSource;
+  if (example && (raw.exampleSource === 'ai' || raw.exampleSource === 'dictionary' || raw.exampleSource === 'personal')) details.exampleSource = raw.exampleSource;
   if (raw.reference === 'cc-cedict') details.reference = raw.reference;
   if (raw.expressionType === 'word' || raw.expressionType === 'phrase' || raw.expressionType === 'sentence') details.expressionType = raw.expressionType;
   if (example && typeof raw.highlight === 'string' && raw.highlight.length <= 120 &&

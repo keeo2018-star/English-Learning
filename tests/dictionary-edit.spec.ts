@@ -56,7 +56,7 @@ test.describe('Dictionary quick editing and mobile dismissal', () => {
     await expect(dialog.locator('aside p')).toHaveText('即时修改的自定义解释');
     expect(state.writes).toEqual([{ meaning: '即时修改的自定义解释' }]);
     expect(state.entry()).toMatchObject({ word: sampleWord.word, due_at: sampleWord.due_at, interval_days: sampleWord.interval_days, example: sampleWord.example });
-    await expect(dialog.getByRole('heading', { name: 'English definitions', exact: true })).toBeVisible();
+    await dialog.locator('summary').filter({hasText:'Definitions / Other meanings'}).click();await expect(dialog.getByRole('heading', { name: 'English definitions', exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await page.goto('/library'); await page.reload();
     await expect(page.locator('.word-row').getByText('即时修改的自定义解释', { exact: true })).toBeVisible();
@@ -90,7 +90,7 @@ test.describe('Dictionary quick editing and mobile dismissal', () => {
     await drag(page, 130); await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await trigger.click();
-    await expect(dialog.getByRole('heading', { name: 'Examples', exact: true })).toBeVisible();
+    await dialog.locator('summary').filter({hasText:/More examples/}).click();await expect(dialog.locator('[data-dictionary-example]').first()).toBeVisible();
     await dialog.locator('.wb-sheet-body').evaluate(element => { element.scrollTop = 100; });
     await drag(page, 140, false); await expect(dialog).toBeVisible();
     await drag(page, 140); await expect(dialog).toHaveCount(0); // Sticky header can dismiss mid-reading.

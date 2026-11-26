@@ -92,7 +92,7 @@ npm run test:e2e
 
 Browser tests currently target unconfigured local demo mode: collecting, persistence across reloads, searching, revealing and scheduling cards, deletion, empty states, and mobile layout. Run them with the Supabase public variables unset at build time. Playwright starts a production server if port 3000 is unused. On minimal Linux machines, `npx playwright install --with-deps chromium` may be needed.
 
-Production: `npm run build` then `npm run start -- --hostname 0.0.0.0`. Review scheduling uses 10 minutes for another practice and the adaptive interval ladder documented above for successful recall. Due cards refresh every 30 seconds. There is no background worker or external AI service.
+Production: `npm run build` then `npm run start -- --hostname 0.0.0.0`. Review scheduling uses 10 minutes for another practice and the adaptive interval ladder documented above for successful recall. Due cards refresh every 30 seconds. No background worker is required. Optional Gemini assistance is explicitly gated and is not required for saving or reviewing.
 
 ## Live Supabase integration tests
 
@@ -146,7 +146,7 @@ For live deployed testing, securely supply one confirmed disposable test account
 
 `/add` saves through the existing Supabase/local flow. Smart Add may suggest an editable Chinese meaning; only the user's submitted form values are saved, and saved items are never updated by later suggestion responses. Review scheduling and ownership policies are unchanged. English-only capture needs the focused constraint migration described in SMART_ADD.md.
 
-Library items provide a **Dictionary** button. Review provides it after revealing the personal meaning. An accessible modal bottom sheet keeps **My meaning** separate from reference content. UK/US pronunciation, Chinese and English definitions, and up to three bilingual examples appear when available; synonyms are collapsed. Audio never autoplays and failure does not affect the item.
+Library items provide a **Dictionary** button. Review provides it after revealing the personal meaning. An accessible modal bottom sheet keeps **My meaning** separate from reference content. UK/US pronunciation and one sense-matched example appear when available. Definitions, alternative examples and supplementary learning content are expandable. Audio never autoplays and failure does not affect the item.
 
 `GET /api/dictionary?word=...` validates the English query, calls the fixed UAPI endpoint `https://uapis.cn/api/v1/dictionary/lookup`, and returns a bounded normalized result. The server has an eight-second upstream timeout and controlled 400/404/502 responses. Successful reference responses may be cached for an hour. Only HTTPS pronunciation URLs on UAPI's dictionary audio path are allowed. The browser requests pronunciation media directly from UAPI.
 
@@ -156,7 +156,7 @@ Checks: `node --test tests/unit/dictionary-provider.mjs` (Node 24), `npm run bui
 
 ## Learning-word highlights
 
-`HighlightWord` and `highlightParts` render selectable lime marks only in Dictionary reference definitions, examples and synonyms. Library and Review cards and personal meanings stay unhighlighted. Matching is case-insensitive and requires complete words/phrases, with Unicode-aware boundaries. Original text, case and whitespace are preserved. Inflections are not guessed. All dictionary content is rendered as React text, never injected HTML.
+`HighlightWord` and `highlightParts` render selectable lime marks only in Dictionary reference definitions, examples and synonyms. Vocabulary titles and personal meanings stay unhighlighted. Contextual examples may highlight an exact valid target match. Matching is case-insensitive and requires complete words/phrases, with Unicode-aware boundaries. Original text, case and whitespace are preserved. Inflections are not guessed. All dictionary content is rendered as React text, never injected HTML.
 
 `tests/review-audio.spec.ts` covers Due autoplay, next-card preload, one shared player, cache reuse on reload, blocked-playback recovery and stale-response cancellation. `playwright.iphone.config.ts` includes these checks with an iPhone WebKit profile. Physical iOS installation and native autoplay policy still need device testing.
 
@@ -180,3 +180,16 @@ Random Review reuses Library deletion with an explicit confirmation, retry-safe 
 Editable text fields preserve native Chinese IME preedit and guard candidate-confirmation keys from submission. See [IME_INPUT.md](IME_INPUT.md) for field coverage, regression checks and the remaining physical iPhone/PWA verification.
 
 Complete Expression pronunciation verifies the official whole-item recording endpoint even when lookup phonetics are empty, before using browser speech. Vocabulary titles use natural tracking independently of brand headings. See [EXPRESSION_PRONUNCIATION.md](EXPRESSION_PRONUNCIATION.md) for live endpoint findings, computed before/after measurements, fallback behavior and physical-device testing limits.
+
+
+## Learning content and compact dictionary (November 2026)
+
+Review derives a short primary meaning for display; the saved meaning remains intact. Example selection now requires positive evidence from that meaning, translation or context, rather than spelling alone. This conservative lexical check cannot resolve every sense: uncertain automatic examples are omitted. Explicit personal examples keep priority. Older examples with unknown provenance remain accessible under **Saved example · check meaning**. **Check learning content** identifies long or potentially mixed-sense entries without writing to Supabase.
+
+Dictionary exposes one contextual example and the personal meaning first. Definitions, other examples, learning notes, related vocabulary and real-world media are expandable. **Edit example** explicitly saves the user's replacement through the existing owner-scoped `words` update and records `learning_details.exampleSource = personal` where the existing column is available. No migration or automatic rewrite is part of this refinement. Successful automatic lookups use a versioned, owner/item/meaning-scoped offline cache; old unchecked example caches are not reused.
+
+The shared native dialog locks background scrolling, positions itself inside Visual Viewport bounds, scrolls only its body and keeps its header available. A compact **Done** action dismisses the editor keyboard. Chinese IME uses the existing native composition-safe fields. Physical iPhone Safari/PWA keyboard and microphone behavior still require real-device checks; WebKit emulation and a simulated Visual Viewport are not device verification.
+
+Learning notes remain optional and need the existing Gemini configuration and private AI database dependencies. This release does not install or enable them, introduce billing, or change RLS. Generation is deliberate, sense-grounded, bounded by timeouts and cached; configuration, quota, empty results and request errors have compact states. Related vocabulary is filtered by saved sense, with bounded lookup/checking phases and retry. AI comparisons are shown only when validated output supports the selected sense, and are labelled AI-assisted.
+
+Relevant UI regression coverage is in `tests/learning-quality-refinement.spec.ts`, `tests/chinese-ime.spec.ts`, `tests/collections-learning.spec.ts`, `tests/round04.spec.ts` and `tests/round05.spec.ts`; the iPhone WebKit configuration includes the new suites. Run the existing lint, typecheck, build and unit commands before the browser suites. Use an isolated mocked backend for UI checks; they do not establish live authenticated production writes or hardware behavior.

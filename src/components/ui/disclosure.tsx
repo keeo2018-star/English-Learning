@@ -1,11 +1,13 @@
-import type { ReactNode } from 'react';
+'use client';
+import { useState, type ReactNode } from 'react';
 import { Icon } from './icon';
 
-export function Disclosure({ label, children, className='' }:{
-  label:string; children:ReactNode; className?:string;
+export function Disclosure({ label, children, className='', lazy=false }:{
+  label:string; children:ReactNode; className?:string; lazy?:boolean;
 }) {
-  return <details className={`wb-disclosure ${className}`}>
+  const [opened,setOpened]=useState(false);
+  return <details className={`wb-disclosure ${className}`} onToggle={event=>setOpened(event.currentTarget.open)}>
     <summary>{label}<Icon name="chevronDown" size={16}/></summary>
-    {children}
+    {(!lazy||opened)&&children}
   </details>;
 }

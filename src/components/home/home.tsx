@@ -22,7 +22,6 @@ export default function Home() {
     <section className={`${styles.home} wb-ui-text`} aria-labelledby="home-title">
       <div className={styles.welcome}>
         <h1 id="home-title">Make room for<br /> new words.</h1>
-        <p className={styles.intro}>Keep a little. Come back for more.</p>
       </div>
       <TodayReview owner={owner} collection={learning.active} collectionReady={learning.ready && (!learning.enabled || !!learning.active)}>
       <div className={styles.actions}>

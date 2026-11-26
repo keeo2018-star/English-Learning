@@ -16,3 +16,14 @@ test('validates enrichment identity, scripts, contextual guidance and duplicate 
  assert.throws(()=>parseEnrichment({...result,explanationLanguage:'en'},input),/different/);
  assert.throws(()=>parseEnrichment({...result,comparisons:[],collocations:[],contexts:[],usage:''},input),/no usable/);
 });
+
+test('comparisons require the selected sense and retain validated usage details',()=>{
+ const input={word:'awkward',meaning:'尴尬，不自在',target:'en',explanation:'zh-CN',level:'B1',partOfSpeech:'adjective'};
+ const parsed=parseEnrichment({word:'awkward',target:'en',explanationLanguage:'zh-CN',comparisons:[
+  {expression:'embarrassed',explanation:'尴尬时更强调因自己的行为而窘迫。',coreMeaning:'尴尬，窘迫',register:'日常口语',situation:'因说错话而尴尬时',example:'I felt embarrassed after my mistake.'},
+  {expression:'financial',explanation:'银行贷款有关的术语。',coreMeaning:'金融的'},
+ ],usage:'用于令人不自在的场面。'},input);
+ assert.equal(parsed.comparisons.length,1);assert.equal(parsed.comparisons[0].expression,'embarrassed');assert.equal(parsed.comparisons[0].example,'I felt embarrassed after my mistake.');assert.equal(parsed.comparisons[0].register,'日常口语');
+ const noSense=parseEnrichment({word:'awkward',target:'en',explanationLanguage:'zh-CN',comparisons:[{expression:'clumsy',explanation:'手脚笨拙。'}],usage:'仅为一般用法。'},input);
+ assert.equal(noSense.comparisons.length,0);
+});

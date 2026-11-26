@@ -17,6 +17,8 @@ import {resolveExample} from "./context-examples";
 import {storedLibrary,pendingReviews,enqueueReview,storeReviewSession,storedReviewSession} from './offline-store';
 import {syncOfflineReviews} from './offline-sync';
 import {rememberLibrary,offlineLibrary,forgetLibrary,offlineIdentity,prepareOfflineIdentity} from "./offline-library";
+import {primaryMeaning,contentIssues,trustedSavedExample} from './learning-quality';
+import {Disclosure} from '@/components/ui/disclosure';
 import {ContextExample} from "@/components/learning/context-example";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "./supabase";
@@ -399,6 +401,22 @@ export default function Workspace({
       setMessage("Meaning updated.");
     } finally { saving.current = false; setBusy(false); }
   }
+  async function saveDictionaryExample(word:Word,value:string){
+    if(value.length>3000)throw Error('Keep the example within 3,000 characters.');
+    const details={...word.learning_details};delete details.highlight;delete details.exampleTranslation;
+    details.exampleSource='personal';
+    const changes={example:value,...('learning_details' in word?{learning_details:details}:{}),...('example_source' in word?{example_source:value?'personal':null}:{})};
+    if(saving.current)throw Error('A save is already in progress.');
+    saving.current=true;setBusy(true);++loadVersion.current;
+    try{
+      if(supabase){if(!user)throw Error('Please sign in first.');const owner=user.id;
+        const {data,error}=await supabase.from('words').update(changes).eq('id',word.id).eq('user_id',owner).select('*').single();
+        if(error)throw error;if(accountId.current!==owner)throw Error('Your account changed. Reopen this item.');
+        setWords(previous=>previous.map(item=>item.id===word.id?data:item));
+      }else persistLocal(allWords.map(item=>item.id===word.id?{...item,...changes} as Word:item));
+      setMessage('Example updated.');
+    }finally{saving.current=false;setBusy(false);}
+  }
   async function edit(e: React.FormEvent<HTMLFormElement>, word: Word) {
     e.preventDefault();
     if(imeBlocksSubmit(e.currentTarget,e.timeStamp))return;
@@ -407,6 +425,8 @@ export default function Workspace({
       word: String(form.get("word")).trim(),
       meaning: String(form.get("meaning")).trim(),
       example: String(form.get("example")).trim(),
+      ...('personal_note' in word?{personal_note:String(form.get('personal_note')||'').trim()||null}:{}),
+      ...('learning_details' in word && String(form.get('example')).trim()!==word.example?{learning_details:{...word.learning_details,exampleTranslation:undefined,highlight:undefined,exampleSource:'personal' as const}}:{}),
       ...('example_source' in word && String(form.get('example')).trim()!==word.example ? {example_source:String(form.get('example')).trim()?'personal' as const:null}:{}),
       ...(word.item_type !== undefined || String(form.get("item_type")) !== itemType(word)
         ? { item_type: String(form.get("item_type")) as "word" | "expression" } : {}),
@@ -538,7 +558,7 @@ export default function Workspace({
   },[deleting,page]);
   const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
   const direction = selectedDirection === 'reverse' && !card?.meaning.trim() ? 'forward' : selectedDirection;
-  const prompt = card ? direction === "context" ? contextPrompt(card) || card.word : direction === "reverse" ? card.meaning : card.word : "";
+  const prompt = card ? direction === "context" ? (trustedSavedExample(card)?contextPrompt(card):'') || card.word : direction === "reverse" ? primaryMeaning(card.meaning) : card.word : "";
   useEffect(() => {
     if (focusNextCard.current) {
       revealButton.current?.focus({ preventScroll: true });
@@ -597,6 +617,12 @@ export default function Workspace({
     const term = normalizeLibraryQuery(deferredQuery);
     return visibleEntries.filter(entry => !term || entry.text.includes(term)).map(entry => entry.word);
   }, [visibleEntries, deferredQuery]);
+  const qualityChecks=useMemo(()=>{
+    if(page!=='library')return [];
+    const checks:{id:string;word:string;issue:string}[]=[];
+    for(const item of words){const issue=contentIssues(item)[0];if(issue)checks.push({id:item.id,word:item.word,issue});if(checks.length>=12)break;}
+    return checks;
+  },[page,words]);
   const wordCount = useMemo(() => libraryIndex.filter(entry => entry.type === "word").length, [libraryIndex]);
   const visibleWords = visibleEntries;
   const currentPage = Math.min(libraryPage, Math.max(0, Math.ceil(matchingWords.length / LIBRARY_PAGE_SIZE) - 1));
@@ -715,6 +741,7 @@ export default function Workspace({
                 <p role="status" aria-label="Library count">{searchPending ? "Searching…" : deferredQuery.trim() ? `${matchingWords.length} ${matchingWords.length === 1 ? "result" : "results"}` : `${visibleWords.length} ${visibleWords.length === 1 ? "saved item" : "saved items"}`}</p>
                 <span>Words: {wordCount} · Expressions: {words.length - wordCount}</span>
               </div>
+              {qualityChecks.length>0&&<Disclosure label="Check learning content"><p className="wb-supporting">Some saved meanings are long or may contain different senses. Original data is unchanged. Open an entry to choose a meaning or edit its example.</p><ul>{qualityChecks.map(item=><li key={item.id}>{item.word}: {item.issue}</li>)}</ul></Disclosure>}
               <div className="library-filters"><Segments label="Library content type">
                 {([['all', 'All'], ['word', 'Words'], ['expression', 'Expressions']] as const).map(([type, label]) => <SelectableButton key={type} className="secondary" selected={typeFilter === type} onClick={() => { setTypeFilter(type); setLibraryPage(0); }}>{label}</SelectableButton>)}
               </Segments></div>
@@ -722,7 +749,7 @@ export default function Workspace({
               {displayedWords.map(w => {
                 const entry=entryCollection(w);
                 return <div className="word-row" key={w.id}>
-                  <DictionaryButton browse blockClose={editing===w.id} word={w.word} meaning={w.meaning} collection={entry}
+                  <DictionaryButton browse blockClose={editing===w.id} word={w.word} meaning={w.meaning} example={w.example} onSaveExample={value=>saveDictionaryExample(w,value)} collection={entry}
                     metadata={allLanguages&&entry?learningLanguages[entry.target_language].label:w.learning_details?.partOfSpeech}
                     onSaveMeaning={value=>saveDictionaryMeaning(w,value)} onRelatedSave={input=>saveRelated(input,entry)}
                     savedWords={collectionItems(allWords,entry||null,true).map(item=>item.word)}
@@ -765,6 +792,7 @@ export default function Workspace({
                             maxLength={3000}
                           />
                         </label>
+                        {'personal_note' in w&&<label>Personal note<ImeTextarea name="personal_note" defaultValue={w.personal_note||''} maxLength={3000}/></label>}
                         <div className="actions">
                           <button disabled={busy}>Save changes</button>
                           <button
@@ -829,10 +857,10 @@ export default function Workspace({
                   {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
                   {revealed === card.id ? (
                     <>
-                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? card.meaning || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
-                      {direction === "context" && <p className="wb-learning-content">{card.meaning}</p>}
+                      <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? primaryMeaning(card.meaning) || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
+                      {direction === "context" && <p className="wb-learning-content">{primaryMeaning(card.meaning)}</p>}
                       <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)}/>
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} onSaveExample={value=>saveDictionaryExample(card,value)} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>

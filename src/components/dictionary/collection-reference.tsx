@@ -23,7 +23,7 @@ export function CollectionReference({ word, language }: { word: string; language
     useEffect(() => {
         const controller = new AbortController();
         const params = new URLSearchParams({ word, language });
-        fetch(`/api/collection-reference?${params}`, { signal: controller.signal })
+        fetch(`/api/collection-reference?${params}`, { signal: AbortSignal.any([controller.signal,AbortSignal.timeout(10000)]) })
             .then(async response => {
                 if (!response.ok) throw new Error('Reference request failed');
                 const data: Reference = await response.json();

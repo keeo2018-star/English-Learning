@@ -51,3 +51,18 @@
 .learningNotes h4,.learningNotes dl,.learningNotes dd,.learningNotes p { margin:0 0 4px; }
 .learningNotes dt { font-weight:600; }
 .learningNotes dl > div + div { margin-top:8px; }
+
+:global(.wb-sheet-body) h2.hero { letter-spacing:normal;text-align:start; }
+.personal textarea { min-height:72px;scroll-margin-block:16px; }
+.personal form label { display:block;margin-bottom:12px; }
+.exampleEditor { margin-block:12px; }
+.exampleEditor label { display:grid;gap:8px; }
+.learningNotes { margin-block:8px;padding:0;border:0;background:transparent; }
+.learningNotes > h3 { display:none; }
+.related { margin-top:8px;border:0;padding:0; }
+.related > h3 { display:none; }
+.reference { gap:var(--wb-space-3); }
+.reference section+section { margin-top:16px; }
+
+:global(.wb-sheet-body) [data-context-example] { margin:12px 0;padding:0;border:0;font-size:1rem;line-height:1.6; }
+:global(.wb-sheet-body) [data-context-example]::before,:global(.wb-sheet-body) [data-context-example]::after { content:none; }

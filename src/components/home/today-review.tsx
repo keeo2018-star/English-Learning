@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/icon';
 import { supabase } from '@/lib/supabase';
-import { collectionItems, isOriginalEnglish, type LearningCollection } from '@/lib/collections';
+import { collectionItems, isOriginalEnglish, learningLanguages, type LearningCollection } from '@/lib/collections';
 import { offlineLibrary } from '@/lib/offline-library';
 import { DEMO_STORAGE_KEY, itemType, type LearningItem } from '@/lib/learning';
 import { prepareReviewPronunciation, stopPronunciation } from '@/lib/pronunciation';
@@ -65,6 +65,7 @@ export function TodayReview({ owner, collection, collectionReady, children }: {
   return <>
     <section className={styles.today} aria-labelledby="today-review-title">
       <div><h2 id="today-review-title">Today’s review</h2>
+        {collection&&<small className="wb-supporting">{learningLanguages[collection.target_language].label}</small>}
         {signedOut?<p>Sign in to see your review queue.</p>:!collectionReady||!current?<p role="status">Checking your words…</p>:counts?
           <p>{counts.due?<><strong className={styles.dueCount}>{counts.due}</strong> {counts.due===1?'word':'words'} due</>:
             counts.total?'All caught up. No words due right now.':'Add your first word to start reviewing.'}

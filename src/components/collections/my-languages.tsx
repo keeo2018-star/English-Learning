@@ -21,7 +21,7 @@ function levelOptions(language: TargetLanguage) {
 }
 
 function levelLabel(level: string) {
-  return level === 'unspecified' ? 'Level not set' : level.charAt(0).toUpperCase() + level.slice(1);
+  return level === 'unspecified' ? 'Set level' : level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 export function MyLanguages({ owner, state }: { owner: string; state: ReturnType<typeof useCollections> }) {
@@ -109,7 +109,7 @@ export function MyLanguages({ owner, state }: { owner: string; state: ReturnType
           <LanguageMark language={item.target_language}/>
           <span className="wb-language-row-copy">
             <strong>{label}{item.id===state.active?.id&&<small>Active</small>}</strong>
-            <small id={`language-details-${item.id}`}>{levelLabel(item.proficiency_level)} · {item.explanation_language === 'en' ? 'English' : 'Chinese'} explanations
+            <small id={`language-details-${item.id}`}>{item.proficiency_level==='unspecified'?<span className="wb-inline-action">Set level</span>:levelLabel(item.proficiency_level)} · {item.explanation_language === 'en' ? 'English' : 'Chinese'} explanations
               </small>
           </span>
         </>;

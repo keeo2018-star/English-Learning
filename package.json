@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test": "node --test --experimental-test-isolation=none tests/unit/*.mjs"
+    "test": "node --import ./tests/helpers/resolve-ts.mjs --test --experimental-test-isolation=none tests/unit/*.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

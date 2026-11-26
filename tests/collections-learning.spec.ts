@@ -51,7 +51,7 @@ test('Chinese resolves to French, manual meanings survive stale lookup, and Fren
  });await page.getByRole('button',{name:'Dictionary for profiter de cette occasion',exact:true}).click();
  const reference=page.getByRole('dialog');
  await expect(reference).toContainText('把握这个机会');
- await expect(reference).toContainText('Take advantage of this opportunity.');
+ await reference.locator('summary').filter({hasText:'Definitions / Other meanings'}).click();await expect(reference).toContainText('Take advantage of this opportunity.');
  await expect(reference.getByRole('link',{name:'Wiktionary contributors'})).toBeVisible();expect(f.dictionaryCalls()).toBe(before);expect(f.lookups.some(request=>request.target==='fr')).toBe(true);
 });
 
@@ -177,7 +177,7 @@ test('AI candidates update all learning content without replacing notes or issui
  await expect(page.locator('mark')).toHaveText('lotuses');
  await expect(page.locator('mark')).toHaveCSS('background-color','rgb(193, 255, 50)');
  await page.screenshot({path:'/tmp/noted-round03-after/add-candidates.png'});
- await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
+ await page.locator('summary').filter({hasText:'Add a note'}).click();await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
  await page.getByRole('button',{name:/lotus flower/}).click();
  await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('莲花的花朵');
  await expect(page.locator('mark')).toHaveText('lotus flower');
@@ -195,13 +195,13 @@ test('AI candidates update all learning content without replacing notes or issui
  await page.reload();
  await page.getByRole('button',{name:'Dictionary for lotus flower'}).click();
  await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
- await expect(page.getByText('Private note', {exact:false})).toBeVisible();
+ await page.locator('summary').filter({hasText:'Personal note'}).click();await expect(page.getByText('Private note', {exact:false})).toBeVisible();
  await expect(page.getByRole('dialog').locator('mark').first()).toHaveText('lotus flower');
  fixture.rows.splice(0,3);
  await page.goto('/review?mode=random');
  await page.getByRole('button',{name:'Reveal answer'}).click();
  await expect(page.getByText('她拍下了一朵莲花。')).toBeVisible();
- await expect(page.getByText('Private note', {exact:false})).toBeVisible();
+ await page.locator('summary').filter({hasText:'Personal note'}).click();await expect(page.getByText('Private note', {exact:false})).toBeVisible();
  expect(calls).toBe(1);
 });
 
@@ -241,7 +241,7 @@ test('older schemas keep the complete unsaved draft when note storage is unavail
  await page.goto('/add');
  await input(page).fill('personal vocabulary');
  await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('个人词汇');
- await page.getByRole('textbox',{name:'My Context'}).fill('Keep this draft');
+ await page.locator('summary').filter({hasText:'Add a note'}).click();await page.getByRole('textbox',{name:'My Context'}).fill('Keep this draft');
  await page.getByRole('button',{name:/Add to my library/}).click();
  await expect(page.getByRole('alert').filter({hasText:'Learning details storage is not ready'})).toBeVisible();
  await expect(input(page)).toHaveValue('personal vocabulary');
