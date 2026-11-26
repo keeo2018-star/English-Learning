@@ -21,3 +21,14 @@ test('third-language input generates the target expression and explanation direc
  assert.equal(result[0].english,'bonjour');
  assert.equal(result[0].meaning,'早上好');
 });
+test('a failed direct explanation can fall back through the selected target language',async()=>{
+ const result=await collectionLookup('bonsoir','en','zh-CN','auto',async url=>{
+  const pair=new URL(url).searchParams.get('langpair');
+  if(pair==='fr|en')return response('Good evening');
+  if(pair==='fr|zh-CN')return new Response(null,{status:503});
+  assert.equal(pair,'en|zh-CN');
+  return response('晚上好');
+ });
+ assert.equal(result[0].english,'Good evening');
+ assert.equal(result[0].meaning,'晚上好');
+});

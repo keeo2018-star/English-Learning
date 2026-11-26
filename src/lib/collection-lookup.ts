@@ -33,7 +33,11 @@ export async function collectionLookup(input:string,target:TargetLanguage,explan
   if(unmatchedParentheses(title))throw Error('No reliable translation was returned. Your draft is kept.');
   if(!targetText(title,target))throw Error('No usable result in the selected learning language was returned.');
   // Use the detected source for the meaning to avoid compounding errors by round-tripping through the target.
-  const meaning=await translate(query,language,explanation);
+  let meaning:string;
+  if(language!==target&&language!==explanation&&target!==explanation){
+   const direct=await translate(query,language,explanation).catch(()=>'');
+   meaning=targetText(direct,explanation)?direct:await translate(title,target,explanation);
+  }else meaning=await translate(query,language,explanation);
   if(!targetText(meaning,explanation))throw Error('No reliable meaning in the explanation language was returned. You can enter your own.');
   return [{english:title,meaning,usage:'',example:'',exampleTranslation:'',source:'translation' as const}];
  })().then(items=>{if(cache.size>=100)cache.delete(cache.keys().next().value!);cache.set(key,{expires:Date.now()+3600000,items});return items;}).finally(()=>pending.delete(key));pending.set(key,task);return task;
