@@ -34,10 +34,18 @@ test.describe('Integrated Add title and Random Review deletion',()=>{
   const state=await setup(page);await page.goto('/review?mode=random');await page.getByRole('button',{name:'Delete entry',exact:true}).click();const dialog=page.getByRole('dialog');await expect(dialog).toContainText('caught off guard');await expect(dialog).toContainText('removed from your library');await dialog.getByRole('button',{name:'Cancel',exact:true}).click();expect(state.deletes).toHaveLength(0);await expect(page.locator('.review-card h2')).toHaveText('caught off guard');await expect(page.getByRole('button',{name:'Delete entry'})).toBeFocused();
   await page.getByRole('button',{name:'Delete entry'}).click();await dialog.getByRole('button',{name:'Delete',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.locator('.review-card h2')).toHaveText('vocabulary1');await expect(page.getByRole('button',{name:'Reveal answer',exact:true})).toBeFocused();await expect(page.getByRole('status',{name:'Session progress'})).toHaveText('0 / 2');expect(state.ratings).toBe(0);expect(state.items.some(item=>item.word==='caught off guard')).toBe(false);
   await page.reload();await expect(page.locator('.review-card h2')).toHaveText('vocabulary1');const queue=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).queue,reviewSessionKey(user.id));expect(queue).toHaveLength(2);
-  await page.goto('/library');await expect(page.getByRole('button',{name:'Delete caught off guard',exact:true})).toHaveCount(0);await expect(page.getByRole('status',{name:'Library count'})).toHaveText('2 items');
+  await page.goto('/library');await expect(page.getByRole('button',{name:'Delete caught off guard',exact:true})).toHaveCount(0);await expect(page.getByRole('status',{name:'Library count'})).toHaveText('2 saved items');
  });
- test('deleting the last card shows completion and never creates a review response',async({page})=>{
-  const state=await setup(page,1);await page.goto('/review?mode=random');await page.getByRole('button',{name:'Delete entry'}).click();await page.getByRole('dialog').getByRole('button',{name:'Delete',exact:true}).click();await expect(page.getByRole('heading',{name:'Review complete.'})).toBeVisible();await expect(page.getByText('0 items reviewed.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Start another review',exact:true})).toBeFocused();expect(state.items).toHaveLength(0);expect(state.ratings).toBe(0);await page.reload();await expect(page.getByRole('heading',{name:'Review complete.'})).toBeVisible();
+ test('deleting the last card offers Add and never creates a review response',async({page})=>{
+  const state=await setup(page,1);
+  await page.goto('/review?mode=random');
+  await page.getByRole('button',{name:'Delete entry'}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'Delete',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Make room for your first word.'})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Add your first word'})).toBeFocused();
+  expect(state.items).toHaveLength(0);expect(state.ratings).toBe(0);
+  await page.reload();
+  await expect(page.getByRole('link',{name:'Add your first word'})).toBeVisible();
  });
  test('failed deletion keeps the same entry and dialog available for retry',async({page})=>{
   const state=await setup(page);state.fail=true;await page.goto('/review?mode=random');await page.getByRole('button',{name:'Delete entry'}).click();const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Delete',exact:true}).click();await expect(dialog.getByRole('alert')).toContainText('Could not delete');await expect(page.locator('.review-card h2')).toHaveText('caught off guard');expect(state.items).toHaveLength(3);expect(state.ratings).toBe(0);state.fail=false;await dialog.getByRole('button',{name:'Delete',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.locator('.review-card h2')).toHaveText('vocabulary1');expect(state.ratings).toBe(0);

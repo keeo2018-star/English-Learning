@@ -533,7 +533,7 @@ export default function Workspace({
   useEffect(()=>{
     if(deleting||!deleteFocusPending.current)return;
     deleteFocusPending.current=false;
-    if(page==='review')(revealButton.current||document.querySelector<HTMLButtonElement>('.review-completion button'))?.focus({preventScroll:true});
+    if(page==='review')(revealButton.current||document.querySelector<HTMLElement>('.review-completion button, .review-card a[href="/add"]'))?.focus({preventScroll:true});
     else librarySearch.current?.focus({preventScroll:true});
   },[deleting,page]);
   const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
