@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {aiConfigured,generateAi} from '@/lib/ai-provider';
+import {EnrichmentUnavailable} from '@/lib/dictionary-enrichment-provider';
 import {parseAiEntry,searchLanguage,searchText,type Direction} from '@/lib/bilingual-contract';
 export const maxDuration=30;
 const headers={'Cache-Control':'no-store'};
@@ -86,8 +87,12 @@ async function enrich(request:Request,body:Record<string,unknown>,cacheOnly=fals
     const saved=await c.rpc('noted_ai_finish',{p_hash:hash,p_lease:lease,p_payload:result});
     if(saved.error||saved.data!==true)throw Error('Could not save learning notes');
     return Response.json({result},{headers});
-  }catch{
+  }catch(error){
     if(c&&hash&&lease)await c.rpc('noted_ai_fail',{p_hash:hash,p_lease:lease});
+    if(error instanceof EnrichmentUnavailable){
+      const message={quota:'Learning notes reached the provider limit. Try again later.',timeout:'Learning notes timed out. Try again later.',response:'Learning notes could not be verified. Try again later.'}[error.category];
+      return Response.json({message},{status:error.category==='quota'?429:503,headers});
+    }
     return Response.json({message:'AI learning notes are temporarily unavailable. Try again later.'},{status:503,headers});
   }
 }
