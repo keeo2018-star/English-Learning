@@ -16,7 +16,10 @@ export function KeyboardViewport() {
         const root = document.documentElement;
         const occlusion = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
         const modal = document.querySelector('dialog[open]') !== null;
-        const keyboard = !!editing && viewport.scale === 1 && window.innerHeight - viewport.height > 80;
+        const reduced = viewport.scale === 1 && window.innerHeight - viewport.height > 80;
+        // A tap on the footer can blur the textarea before WebKit dispatches click.
+        // Keep the button in place until the visual viewport actually recovers.
+        const keyboard = reduced && (!!editing || (modal && root.hasAttribute('data-wb-modal-keyboard')));
         root.toggleAttribute('data-wb-modal-keyboard', keyboard && modal);
         if (keyboard && modal) {
           root.style.setProperty('--wb-sheet-viewport', `${viewport.height}px`);

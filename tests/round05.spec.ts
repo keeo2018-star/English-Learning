@@ -190,6 +190,9 @@ for(const width of [320,375,390,430])test(`meaning editor stays above the simula
  expect((await editor.getByRole('button',{name:'Save meaning'}).boundingBox())!.y).toBeLessThan(360);
  expect((await editor.getByRole('button',{name:'Cancel',exact:true}).boundingBox())!.y).toBeLessThan(360);
  if(width===390)await shot(page,'meaning-simulated-keyboard');
+ await input.blur();
+ await expect(page.locator('.wb-app-navigation')).toHaveCSS('visibility','hidden');
+ expect((await editor.getByRole('button',{name:'Cancel',exact:true}).boundingBox())!.y).toBeLessThan(360);
  await editor.getByRole('button',{name:'Cancel',exact:true}).click();
  await viewportSize(844);
  await expect(dictionary.getByRole('button',{name:'Edit my meaning'})).toBeFocused();
