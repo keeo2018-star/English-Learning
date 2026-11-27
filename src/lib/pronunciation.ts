@@ -230,7 +230,7 @@ async function speak(request: Request, text: string, accent: Accent,language:Tar
   const identity=(voice:SpeechSynthesisVoice)=>voice.voiceURI||voice.name||voice.lang;
   const choose=(catalog:SpeechSynthesisVoice[])=>language==='en'?selectEnglishVoice(catalog,locale):catalog.filter(v=>v.lang.toLowerCase().replaceAll('_','-').split('-')[0]===locale.toLowerCase().split('-')[0]).sort((a,b)=>Number(b.lang===locale)-Number(a.lang===locale))[0];
   const nextVoice=()=>choose(voiceCatalog().filter(v=>!tried.has(identity(v))));
-  const blocked=()=>{clearTimeout(timer);if(!active(request))return;permissionBlocked=true;request.speech=undefined;try{synth.cancel();}catch{}request.retry=()=>{request.retry=undefined;void speak(request,text,accent)};request.report('blocked');};
+  const blocked=()=>{clearTimeout(timer);if(!active(request))return;permissionBlocked=true;request.speech=undefined;try{synth.cancel();}catch{}request.retry=()=>{request.retry=undefined;void speak(request,text,accent,language)};request.report('blocked');};
   const launch=(voice?:SpeechSynthesisVoice)=>{
     if(!active(request))return;clearTimeout(timer);attempts++;started=false;
     // Cancel a stalled queued utterance before retrying; its callbacks cannot end this attempt.
@@ -296,7 +296,7 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
   if (!active(request)) return;
   let fallbackStarted = false;
   let startTimer:ReturnType<typeof setTimeout>|undefined;
-  const remove = () => { clearTimeout(startTimer);audio.removeEventListener('ended', ended); audio.removeEventListener('error', failed); };
+  const remove = () => { clearTimeout(startTimer);audio.removeEventListener('ended', ended); audio.removeEventListener('error', mediaError); };
   const ended = () => { if (!fallbackStarted) finish(request, 'idle'); };
   const failed = () => {
     if (fallbackStarted || !active(request)) return;
@@ -304,8 +304,11 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
     remove(); audio.pause();discardRecording(source!);if(candidate)unavailableCandidate(source!);
     void speak(request, title, accent);
   };
+  // A gesture-blocked recording remains available for an explicit retry.
+  // A late native error from the previous source must not switch it to speech.
+  const mediaError = () => { if (audio.error && !request.retry) failed(); };
   audio.addEventListener('ended', ended);
-  audio.addEventListener('error', failed);
+  audio.addEventListener('error', mediaError);
   request.cleanups.push(remove);
   if (audio.src !== playableSource) { audio.preload = 'auto'; audio.src = playableSource; }
   releaseRecordingFiles();
@@ -330,8 +333,8 @@ export async function pronounce({ owner, text, accent = 'UK', recording, audio, 
     }, rejected);
   };
   const rejected = (error: unknown) => {
-    clearTimeout(startTimer);if (!active(request)) return;
-    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+    clearTimeout(startTimer);if (!active(request) || fallbackStarted) return;
+    if ((error as {name?: string} | null)?.name === 'NotAllowedError') {
       if (sharedReview) { reviewAutoplayBlocked = true; reviewPlaybackUnlocked = false; }
       request.retry = playRecording;
       report('blocked');

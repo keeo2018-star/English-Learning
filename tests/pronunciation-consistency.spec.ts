@@ -2,8 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { mockCloud, cloudUrl, sampleWord } from './helpers/cloud';
 
 type Entry = { kind: string; src?: string; text?: string; voice?: string; lang?: string; rate?: number; pitch?: number; volume?: number; overlap?: boolean };
-async function setup(page: Page, recorded: boolean) {
-  await page.addInitScript(() => {
+async function setup(page: Page, recorded: boolean, blockAutoplay = false) {
+  await page.addInitScript(({ blockAutoplay }) => {
+    let blocked = blockAutoplay;
     Math.random = () => .5;
     const events: Entry[] = [];
     let active: string | null = null;
@@ -31,6 +32,7 @@ async function setup(page: Page, recorded: boolean) {
     } });
     HTMLMediaElement.prototype.play = function () {
       if (this.src.startsWith('data:audio/')) return Promise.resolve();
+      if (blocked) { blocked = false; return Promise.reject(new DOMException('Tap required', 'NotAllowedError')); }
       events.push({ kind: 'audio', src: this.src, rate: this.playbackRate,
         volume: this.volume, overlap: !!active }); active = this.src;
       return Promise.resolve();
@@ -39,7 +41,7 @@ async function setup(page: Page, recorded: boolean) {
       events.push({ kind: 'pause', src: this.src }); if (active === this.src) active = null;
     };
     Object.assign(window, { pronunciationLog: events });
-  });
+  }, { blockAutoplay });
   const word = recorded ? 'hello' : 'Take it easy.';
   await mockCloud(page, route => route.fulfill({ json: [{ ...sampleWord, word }] }));
   const audio = 'https://uapis.cn/api/v1/dictionary/audio?accent=uk&word=hello';
@@ -52,8 +54,9 @@ async function setup(page: Page, recorded: boolean) {
   wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
   wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32);
   wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(1600, 40);
-  await page.route('https://uapis.cn/api/v1/dictionary/audio?*', route => route.fulfill({ contentType: 'audio/wav', body: wav }));
-  return word;
+  const fixture = { contentType: 'audio/wav', body: wav };
+  await page.route('https://uapis.cn/api/v1/dictionary/audio?*', route => route.fulfill(fixture));
+  return { word, fixture };
 }
 const plays = (page: Page) => page.evaluate(() => (window as unknown as { pronunciationLog: Entry[] }).pronunciationLog.filter(event => event.kind === 'audio' || event.kind === 'speech'));
 
@@ -61,7 +64,7 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
   test(`${recorded ? 'recordings' : 'deterministic speech fallback'} stay identical across all pronunciation controls (${width}px)`, async ({ page }) => {
     test.skip(!cloudUrl, 'Requires mocked account data');
     await page.setViewportSize({ width, height: 844 });
-    const word = await setup(page, recorded);
+    const { word } = await setup(page, recorded);
     await page.goto('/library');
     await page.locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(1);
@@ -97,7 +100,7 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
 
 test('Random Review preloads the next recording and reuses lookup results without replay on reveal', async ({ page }) => {
   test.skip(!cloudUrl, 'Requires mocked account data');
-  await setup(page, true);
+  const { fixture } = await setup(page, true);
   await page.addInitScript(() => {
     Math.random = () => .5;
     const loads: string[] = [];
@@ -110,7 +113,7 @@ test('Random Review preloads the next recording and reuses lookup results withou
   ] }));
   const lookups: string[] = [];
   const files: string[] = [];
-  await page.route('**/api/pronunciation?*', route => { files.push(new URL(route.request().url()).searchParams.get('source')!); return route.fulfill({ status: 503 }); });
+  await page.route('**/api/pronunciation?*', route => { files.push(new URL(route.request().url()).searchParams.get('source')!); return route.fulfill(fixture); });
   await page.route('**/api/dictionary?*', route => {
     const word = new URL(route.request().url()).searchParams.get('word')!;
     lookups.push(word);
@@ -124,22 +127,18 @@ test('Random Review preloads the next recording and reuses lookup results withou
   expect(await plays(page)).toHaveLength(1);
   await page.getByRole('button', { name: 'Sure', exact: true }).click();
   await expect.poll(async () => (await plays(page)).length).toBe(2);
-  expect((await plays(page))[1].src).toContain('accent=us&word=world');
+  const log = await plays(page);
+  expect(log.every(event => event.kind === 'audio' && event.src?.startsWith('blob:'))).toBe(true);
+  expect(log[1].src).not.toBe(log[0].src);
+  expect(files).toEqual(expect.arrayContaining([expect.stringContaining('accent=us&word=hello'), expect.stringContaining('accent=us&word=world')]));
   expect(lookups.filter(word => word === 'world')).toHaveLength(1);
   expect((await plays(page)).every(event => !event.overlap)).toBe(true);
 });
 
 test('blocked autoplay keeps dictionary audio for manual replay instead of switching voices', async ({ page }) => {
   test.skip(!cloudUrl, 'Requires mocked account data');
-  await setup(page, true);
-  await page.addInitScript(() => {
-    let blocked = true;
-    const play = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function () {
-      if (blocked) { blocked = false; return Promise.reject(new DOMException('Tap required', 'NotAllowedError')); }
-      return play.call(this);
-    };
-  });
+  const { fixture } = await setup(page, true, true);
+  await page.route('**/api/pronunciation?*', route => route.fulfill(fixture));
   await page.goto('/review?mode=random');
   await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toHaveAttribute('aria-busy', 'false');
   await expect(page.getByText('Tap the speaker to try pronunciation again.')).toHaveCount(0);
@@ -147,4 +146,6 @@ test('blocked autoplay keeps dictionary audio for manual replay instead of switc
   await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
   await expect.poll(async () => (await plays(page)).length).toBe(1);
   expect((await plays(page))[0].kind).toBe('audio');
+  await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+  expect(await plays(page)).toHaveLength(1);
 });
