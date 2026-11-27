@@ -56,6 +56,12 @@ test('compact Dictionary controls and shared vocabulary typography at 320px',asy
   await preview.getByRole('textbox',{name:'Vocabulary expression'}).fill('a shorter expression');
   await expect(preview.getByRole('heading',{name:'a shorter expression'})).toBeVisible();
   if(!baseline){
+    await preview.getByRole('textbox',{name:'Meaning',exact:true}).fill('我的释义');
+    await page.getByRole('button',{name:'Clear input',exact:true}).click();
+    await expect(input).toHaveValue('');
+    await expect(input).toBeFocused();
+    await input.fill('another expression');
+    await expect(preview.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('我的释义');
     await input.fill(short);
     await expect(preview.getByText('Already in your Library')).toBeVisible();
     await expect(preview.getByRole('link',{name:'View existing item'})).toBeVisible();

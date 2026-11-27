@@ -305,7 +305,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       <div ref={mirror} className={styles.mirror} aria-hidden="true"/>
       <span ref={probe} className={styles.probe} data-scale="0" aria-hidden="true">&#8203;</span>
       {query&&<IconButton icon="close" label="Clear input" className={styles.clear} disabled={busy}
-        onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();}}/>}
+        onPointerDown={event=>event.preventDefault()} onClick={()=>{if(formIsComposing(input.current?.form))return;changeQuery('');setPasted(false);setExtracting(false);resetSizing();input.current?.focus({preventScroll:true});}}/>}
       <IconButton icon="right" label="Translate" variant="primary" className={styles.translate}
         disabled={busy||resolving||!query.trim()} onClick={()=>void resolveQuery()}/>
 
