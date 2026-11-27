@@ -177,6 +177,7 @@ test('AI candidates update all learning content without replacing notes or issui
  await expect(page.locator('mark')).toHaveText('lotuses');
  await expect(page.locator('mark')).toHaveCSS('background-color','rgb(193, 255, 50)');
  await page.screenshot({path:'/tmp/noted-round03-after/add-candidates.png'});
+ await page.locator('summary').filter({hasText:'Personal notes'}).click();
  await page.getByRole('textbox',{name:'My Context'}).fill('Private note');
  await page.getByRole('button',{name:/lotus flower/}).click();
  await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('莲花的花朵');
@@ -241,6 +242,7 @@ test('older schemas keep the complete unsaved draft when note storage is unavail
  await page.goto('/add');
  await input(page).fill('personal vocabulary');
  await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('个人词汇');
+ await page.locator('summary').filter({hasText:'Personal notes'}).click();
  await page.getByRole('textbox',{name:'My Context'}).fill('Keep this draft');
  await page.getByRole('button',{name:/Add to my library/}).click();
  await expect(page.getByRole('alert').filter({hasText:'Learning details storage is not ready'})).toBeVisible();
