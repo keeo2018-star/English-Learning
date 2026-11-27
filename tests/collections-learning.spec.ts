@@ -372,3 +372,25 @@ test('Review keeps loading distinct from an empty collection', async ({page}) =>
  } finally {release();}
  await expect(page.getByRole('button',{name:'Reveal answer'})).toBeVisible();
 });
+
+test('Dictionary offers one compact pronunciation control in French, Spanish and Chinese', async ({page}) => {
+  test.skip(!cloudUrl);
+  await page.setViewportSize({width:320,height:844});
+  const fixture=await setup(page);
+  fixture.rows.push({...sampleWord,id:ID(13),word:'hola',meaning:'你好',collection_id:es.id});
+  await page.route('**/api/collection-reference?*', route=>route.fulfill({json:{items:[]}}));
+  await page.goto('/library');
+  for(const [language,word] of [['French','chat'],['Spanish','hola'],['Simplified Chinese','你好']]){
+    await choose(page,language);
+    await page.getByRole('button',{name:'Dictionary for '+word,exact:true}).click();
+    const sheet=page.getByRole('dialog',{name:'Dictionary'});
+    const control=sheet.getByRole('button',{name:'Play pronunciation',exact:true});
+    await expect(control).toHaveCount(1);
+    await expect(control).toHaveText('Pronunciation');
+    await expect(sheet.locator('[data-accent]')).toHaveCount(0);
+    const bounds=await control.boundingBox();
+    expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    expect(await sheet.evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);
+    await sheet.getByRole('button',{name:'Close',exact:true}).click();
+  }
+});

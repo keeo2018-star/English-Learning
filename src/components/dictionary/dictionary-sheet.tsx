@@ -2,7 +2,6 @@
 import { Button } from '@/components/ui/button';
 import {isOriginalEnglish,type LearningCollection} from '@/lib/collections';
 import {CollectionReference} from './collection-reference';
-import {PronunciationControl} from './pronunciation-control';
 import {ImeTextarea} from '@/components/ui/ime-field';
 import {imeBlocksSubmit,formIsComposing} from '@/lib/ime';
 import { useEffect, useId, useRef, useState } from "react";
@@ -123,9 +122,8 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  {searchOnly?<BilingualSearch onSave={onRelatedSave} savedWords={savedWords}/>:<>
  {trail.length>0&&<button type="button" className="text-button" onClick={back}>Back to {trail.length>1?trail[trail.length-2].word:rootWord}</button>}
  <h2 className={`${styles.hero} wb-learning-content`}>{word}</h2>
- {result&&result.english[0]?.partOfSpeech&&<p className="wb-supporting">{result.english[0].partOfSpeech}</p>}
- {!englishReference&&<PronunciationControl text={word} language={collection?.target_language}/>}
- {englishReference&&<DictionaryPronunciation word={word} phonetics={result?.phonetics??[]} activeStyle/>}
+ <DictionaryPronunciation word={word} language={collection?.target_language}
+   partOfSpeech={result?.english[0]?.partOfSpeech} phonetics={result?.phonetics??[]} activeStyle/>
  {!trail.length&&(onSaveMeaning||meaning)&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">{onSaveMeaning?"My meaning":"Meaning"}</h3>{onSaveMeaning && !editingMeaning && <IconButton ref={editButton} icon="pencil" label="Edit my meaning" onClick={beginEditing}/>}</div>
  <p className="wb-learning-content">{meaning}</p>{meaningSaved&&<span role="status" className={styles.savedNote}>Meaning saved.</span>}

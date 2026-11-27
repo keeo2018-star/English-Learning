@@ -323,7 +323,20 @@ button[aria-pressed="true"]:not(.calendar-day),
   border-radius: var(--wb-learning-radius);
   text-align: center;
 }
-.wb-learning-card > h2.wb-learning-content {
+.wb-vocabulary-title {
+  font-family: var(--wb-font);
+  font-size: var(--wb-learning-word-size);
+  font-weight: var(--wb-bold);
+  line-height: var(--wb-leading-display);
+  letter-spacing: normal;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wb-vocabulary-title[data-long] { font-size: clamp(1.75rem, 5vw, 3.25rem); }
+.wb-learning-card > h2.wb-learning-content:not(.wb-vocabulary-title) {
   font-size: var(--wb-learning-word-size);
   line-height: var(--wb-leading-display);
   letter-spacing: normal;

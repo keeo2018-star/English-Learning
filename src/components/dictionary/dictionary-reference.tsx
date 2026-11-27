@@ -3,21 +3,26 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import type { TargetLanguage } from '@/lib/collections';
 import type {DictionaryResult} from '@/lib/dictionary';
 import {Disclosure} from '@/components/ui/disclosure';
 import {HighlightWord} from './highlight-word';
 import {PronunciationControl} from './pronunciation-control';
 import styles from './dictionary.module.css';
 
-export function DictionaryPronunciation({word,phonetics,showErrors=true,activeStyle=false}:{
-  word:string;phonetics:DictionaryResult['phonetics'];showErrors?:boolean;activeStyle?:boolean;
+export function DictionaryPronunciation({word,phonetics,showErrors=true,activeStyle=false,partOfSpeech,language='en'}:{
+  word:string;phonetics:DictionaryResult['phonetics'];showErrors?:boolean;activeStyle?:boolean;partOfSpeech?:string;language?:TargetLanguage;
 }){
-  const shared=phonetics.length>1&&phonetics[0].text&&phonetics.every(item=>item.text===phonetics[0].text);
+  const accents = (['UK','US'] as const).map(accent=>({accent, info:phonetics.find(item=>item.accent===accent)}));
+  const ipa = accents[0].info?.text;
+  const shared = language==='en' && ipa && accents[1].info?.text===ipa;
   return <div className={styles.pronunciation}>
-    {shared&&<small>{phonetics[0].text}</small>}
-    {(phonetics.length?phonetics:[{accent:'UK',text:''},{accent:'US',text:''}]).map(item=><PronunciationControl
-      key={item.accent} text={word} accent={item.accent==='US'?'US':'UK'} recording={item.audio||null}
-      phonetic={shared?'':item.text} showErrors={showErrors} activeStyle={activeStyle}/>)}
+    {partOfSpeech&&<small className={styles.pronunciationMeta}>{partOfSpeech}</small>}
+    {shared&&<span className={styles.ipa}>{ipa}</span>}
+    {language==='en' ? accents.map(({accent,info})=><PronunciationControl
+      key={accent} text={word} accent={accent} recording={info?.audio}
+      phonetic={shared?undefined:info?.text} showErrors={showErrors} activeStyle={activeStyle} utility/>)
+      : <PronunciationControl text={word} language={language} showErrors={showErrors} activeStyle={activeStyle} utility/>}
   </div>;
 }
 export function DictionaryReferenceContent({result,word,hideChinese=false}:{result:DictionaryResult;word:string;hideChinese?:boolean}){

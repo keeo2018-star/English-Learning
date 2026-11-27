@@ -1,4 +1,5 @@
 "use client";
+import { VocabularyTitle } from "@/components/ui/vocabulary-title";
 import { Button } from '@/components/ui/button';
 import {Icon,IconButton} from "@/components/ui/icon";
 import {Segments} from '@/components/ui/segments';
@@ -825,7 +826,7 @@ export default function Workspace({
                   className="panel review-card wb-learning-card"
                 >
                   {randomMode&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
-                  <h2 className="wb-learning-content">{prompt}</h2>
+                  <VocabularyTitle text={prompt}/>
                   {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
                   {revealed === card.id ? (
                     <>

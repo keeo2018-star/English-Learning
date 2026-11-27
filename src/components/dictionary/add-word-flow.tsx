@@ -1,4 +1,5 @@
 "use client";
+import {VocabularyTitle} from '@/components/ui/vocabulary-title';
 import {Icon,IconButton} from '@/components/ui/icon';
 import {Sheet} from '@/components/ui/sheet';
 import {DictionaryButton} from './dictionary-sheet';
@@ -62,7 +63,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
   const validTitle=useCallback((value:unknown,max=2000)=>targetText(value,target,max),[target]);
 
   const [word, setWord] = useState(initialDraft?.word||''), [meaning, setMeaning] = useState(initialDraft?.meaning||''), [type, setType] = useState(initialDraft?.type||'auto');
-  const [context,setContext]=useState(initialDraft?.context||''),[pasted,setPasted]=useState(false),[extracting,setExtracting]=useState(false),[selected,setSelected]=useState({start:0,end:0}),[replaceContext,setReplaceContext]=useState<{expression:string;context:string}|null>(null),[saveError,setSaveError]=useState(''),[failed,setFailed]=useState(false),[remoteDuplicate,setRemoteDuplicate]=useState(false),[attemptId,setAttemptId]=useState(initialDraft?.request?.id||'');
+  const [context,setContext]=useState(initialDraft?.context||''),[noteOpen,setNoteOpen]=useState(false),[pasted,setPasted]=useState(false),[extracting,setExtracting]=useState(false),[selected,setSelected]=useState({start:0,end:0}),[replaceContext,setReplaceContext]=useState<{expression:string;context:string}|null>(null),[saveError,setSaveError]=useState(''),[failed,setFailed]=useState(false),[remoteDuplicate,setRemoteDuplicate]=useState(false),[attemptId,setAttemptId]=useState(initialDraft?.request?.id||'');
   const resolveWithAi=useRef(false);
   const request=useRef<{fingerprint:string;id:string}|null>(initialDraft?.request||null),compositionEnded=useRef(-Infinity);
   const [items, setItems] = useState<Suggestion[]>([]), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
@@ -266,10 +267,10 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
   }
   function reset() {
     invalidateQuery();input.current?.blur();setInputFocused(false);setContextExpanded(false);setQuery('');setInputError('');setEditingExpression(false);clearCandidates();setTranslationContext('');setSuggestedExample('');setExampleSource('dictionary');cancel.current(); request.current=null;setAttemptId('');version.current++; current.current = ''; manual.current = false;
-    setVoice(null);setVoiceOpen(false);setContext('');setPasted(false);setExtracting(false);setSaveError('');setFailed(false);setRemoteDuplicate(false);resetSizing();setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
+    setVoice(null);setVoiceOpen(false);setNoteOpen(false);setContext('');setPasted(false);setExtracting(false);setSaveError('');setFailed(false);setRemoteDuplicate(false);resetSizing();setWord(''); setMeaning(''); setType('auto'); setItems([]); setOpen(false); setStatus(''); setActive(-1);
     requestAnimationFrame(() => {const field=input.current;if(field?.getClientRects().length&&!formIsComposing(field.form)){field.scrollIntoView({block:'nearest',behavior:'instant'});}});
   }
-  function acceptExtraction(value:{expression:string;context:string}){changeQuery(value.expression);setContext(value.context);setType('expression');setPasted(false);setExtracting(false);setReplaceContext(null);setStatus('Expression extracted. Original text kept in My Context.');input.current?.focus({preventScroll:true});}
+  function acceptExtraction(value:{expression:string;context:string}){changeQuery(value.expression);setContext(value.context);setNoteOpen(true);setType('expression');setPasted(false);setExtracting(false);setReplaceContext(null);setStatus('Expression extracted. Original text kept in My Context.');input.current?.focus({preventScroll:true});}
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();if(submitted.current||busy||voiceBusy||composing||imeBlocksSubmit(event.currentTarget,event.timeStamp))return;
     if(!validTitle(word)){setSaveError('Resolve a word or expression in the learning language before saving.');return;}
@@ -373,11 +374,9 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       : selectedCandidate.source==='translation'?'Basic translation · Context and examples unavailable'
       : selectedCandidate.source==='ai'?'AI translation':'Dictionary lookup'}</p>}
     {(word||editingExpression)&&<div className={styles.titleRow}>
-      {word&&<h2 className={styles.previewTitle}>{word}</h2>}
-      <button type="button" className={styles.editExpression} aria-label="Edit vocabulary" aria-expanded={editingExpression}
-        onClick={()=>setEditingExpression(!editingExpression)} disabled={busy||resolving}>
-        <Icon name="pencil" />
-      </button>
+      {word&&<VocabularyTitle text={word}/>}
+      <IconButton icon="pencil" label="Edit vocabulary" className={styles.editExpression} aria-expanded={editingExpression}
+        onClick={()=>setEditingExpression(!editingExpression)} disabled={busy||resolving}/>
     </div>}
     {editingExpression&&<ImeTextarea aria-label="Vocabulary expression" rows={1} value={word} readOnly={busy||resolving}
       onValueChange={value=>{
@@ -413,20 +412,20 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
     {selectedCandidate&&aiAvailable&&(!suggestedExample||!selectedCandidate.exampleTranslation)&&
       <button type="button" className="text-button" disabled={resolving||busy} onClick={()=>void resolveQuery(true)}>
         {selectedCandidate.source==='ai'?'Retry learning example':'Generate learning examples with AI'}</button>}
-    {word&&<label className={styles.personalNote}>Personal notes <span>Optional</span>
+    {word&&<details className={`${styles.contextField} ${styles.personalNote}`} open={noteOpen} onToggle={event=>setNoteOpen(event.currentTarget.open)}>
+      <summary>Personal notes <span>Optional</span><Icon name="chevronDown" size={16}/></summary>
       <ImeTextarea aria-label="My Context" name="personal_note" value={context}
         onValueChange={value=>{setAttemptId('');setContext(value);setSaveError('');setFailed(false)}}
         placeholder="Where did you come across this word?" rows={2} readOnly={busy}/>
-      {overContext&&<small role="status">Shorten your note to 3000 characters before saving.</small>}
-    </label>}
+    </details>}
+    {overContext&&<small role="status">Shorten your note to 3000 characters before saving.</small>}
     <input type="hidden" name="example" value={suggestedExample}/>
     <input type="hidden" name="learning_details" value={JSON.stringify(learningDetails)??''}/>
-    {!expression&&<p className={styles.meaningStatus}>Voice notes are available for expressions. Change the content type to Expression to record one.</p>}
     {itemType({word,item_type:type==='auto'?null:type as 'word'|'expression'})==='expression'&&<details className={voiceStyles.draft} open={voiceOpen} onToggle={event=>setVoiceOpen(event.currentTarget.open)}><summary><Microphone/>Add a voice note</summary>{voiceOpen&&<VoiceDraftBox draft={voice} onDraft={value=>{setVoice(value);if(value)setType('expression');}} onBusy={setVoiceBusy} disabled={busy}/>}</details>}
     {pendingType!==null&&<VoiceConfirm title="Discard this draft recording?" description="Voice Notes are available only for Expressions. Keep Expression to retain this recording." confirmLabel="Discard and change type" busy={false} onCancel={()=>setPendingType(null)} onConfirm={()=>{setVoice(null);setType(pendingType);setPendingType(null);setVoiceOpen(false);}}/>}
     {replaceContext&&<VoiceConfirm title="Replace My Context?" description="Your existing context will be replaced by the complete text currently in the main input. The text stays unchanged until you confirm." confirmLabel="Use original text as context" busy={busy} onCancel={()=>setReplaceContext(null)} onConfirm={()=>acceptExtraction(replaceContext)}/>}
     {saveError&&!duplicate&&<p role="alert" className={styles.saveError}>Couldn’t save — {saveError}</p>}
-    <div className="form-bottom"><button type="submit" disabled={busy||voiceBusy||duplicate||!word.trim()||overItem||overContext}>{busy ? 'Saving…' : failed?'Retry':'Add to my library + '}</button></div>
+    {!duplicate&&<div className="form-bottom"><button type="submit" disabled={busy||voiceBusy||!word.trim()||overItem||overContext}>{busy ? 'Saving…' : failed?'Retry':'Add to my library + '}</button></div>}
     </section>}
   </form>;
 }

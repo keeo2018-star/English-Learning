@@ -56,8 +56,7 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .candidates button { display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:4px;background:transparent;color:var(--wb-black);border:1px solid rgb(0 0 0 / 24%);padding:12px 16px;min-height:48px;white-space:normal;overflow-wrap:anywhere; }
 .candidates button[aria-pressed=true] { background:var(--wb-black);color:var(--wb-offwhite);border-color:var(--wb-black); }
 .candidates small { font-size:12px;line-height:1.6;font-weight:400; }
-.preview { display:grid;gap:16px;min-width:0;padding:var(--wb-card-padding);background:var(--wb-lavender,var(--noted-lavender,#c9b9f5)); }
-.previewTitle { margin:0;padding-bottom:16px;border-bottom:1px solid rgb(0 0 0 / 24%);font-size:clamp(2.25rem,9vw,3.25rem);font-weight:var(--wb-bold);line-height:1.16;letter-spacing:normal;overflow-wrap:anywhere;white-space:pre-wrap; }
+.preview { display:grid;gap:var(--wb-space-2);min-width:0;padding:var(--wb-card-padding);background:var(--wb-lavender,var(--noted-lavender,#c9b9f5)); }
 .previewExample { margin:0;font-size:1rem;line-height:1.65;overflow-wrap:anywhere; }
 .previewExample small { display:block;margin-top:8px;font-size:12px; }
 /* A visible single-boundary capture field; secondary meaning stays on the card. */
@@ -66,8 +65,7 @@ form.unified { padding:0;gap:20px;background:transparent; }
 .field .clear { right:52px;top:8px; }
 .field .searchAction { position:absolute;right:8px;top:8px;width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--wb-black); }
 .field .searchAction:focus-visible { outline:1px solid var(--wb-black);outline-offset:-4px; }
-.previewTitle { padding:0;border:0; }
-.preview :global(.form-bottom) { border-top:0;padding-top:8px; }
+.preview :global(.form-bottom) { border-top:0;padding-top:var(--wb-space-1); }
 .resolveActions small { font-size:12px;align-self:center; }
 /* Focused Add refinement: retain the palette and typography, remove separators. */
 .field textarea.queryInput,.field textarea.queryInput[data-scale] { border-width:2px;padding:12px 56px 12px 16px; }
@@ -86,16 +84,19 @@ form.unified { padding:0;gap:20px;background:transparent; }
 
 
 .sourceChoice select,.typeControl select { width:auto; max-width:100%; margin:0; }
-.preview { gap:12px; }
+.preview > :global(.wb-dictionary-action) { justify-self:start; }
 
 .translationList { min-width: 0; display: grid; gap: 8px; }
 .translationList h2 { margin: 0; font-size: 1rem; letter-spacing: normal; }
 .translationList .candidates button { border-radius: var(--wb-radius-small); min-height: 44px; padding: 8px 12px; }
 .translationList .candidates button[aria-pressed="true"] { background: var(--wb-lavender); color: var(--wb-black); }
 .translationList .candidates button[aria-pressed="true"] strong::after { content: " ✓"; }
-.titleRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.titleRow .previewTitle { font-size: clamp(1.9rem, 7.5vw, 3rem); }
-.editExpression { flex: 0 0 44px; min-height: 44px; padding: 0; display: grid; place-items: center; background: transparent; color: inherit; }
+.titleRow { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--wb-space-1); text-align: start; }
+.editExpression { flex: none; }
+.previewSettings :global(.wb-select) { font-size: var(--wb-size-small); }
+.duplicate a { border: 0; padding-inline: 0; }
+.personalNote summary > svg { margin-inline-start: auto; }
+.personalNote[open] summary > svg { transform: rotate(180deg); }
 .personalNote { display: block; font-weight: 600; }
 .personalNote span { font-weight: 400; }
 .personalNote textarea { min-height: 56px; margin-top: 6px; background: var(--wb-offwhite); }
