@@ -9,7 +9,7 @@ const guidance = [
   'Name the single sense you chose in the usage note if the word is ambiguous. Use the supplied part of speech where reliable. Keep every comparison, collocation and context in that one sense. Do not add contexts for other meanings.',
   'Compare two to four useful near-alternatives when available. State a concrete test for choosing each alternative, such as a grammatical slot, register, intensity, or context. Include a short contrasting phrase when it helps. Do not pad the list.',
   'Provide up to five idiomatic reusable combinations. Avoid invented frequency rankings. For an unusual expression, collocations may illustrate a clearly identified conventional construction instead.',
-  'Use the usage field for a compact grammatical pattern, natural example, and common mistake when relevant. Add up to three contexts that add distinct information.',
+  'Always include a short usage note with a concrete grammatical pattern or situation and a natural example. Keep all explanations to one or two sentences. Use empty arrays when a comparison, combination or context would be misleading.',
   'If the supplied form is uncommon, distinguish uncommon usage from incorrect usage. Explain its natural construction with an example, and avoid unsupported etymology, universal claims, or invented grammar rules. Never silently correct the input.',
   'Avoid broad claims about gender, regional forms, or what speakers never say. If uncertain, omit the claim. Never use HTML or URLs.',
 ].join(' ');
@@ -32,7 +32,7 @@ export async function generateEnrichment(input:EnrichmentInput,fetcher:typeof fe
       systemInstruction:{parts:[{text:guidance}]},
       contents:[{role:'user',parts:[{text:JSON.stringify(input)}]}],
       generationConfig:{temperature:0.2,maxOutputTokens:1900,responseMimeType:'application/json',responseSchema:{
-        type:'OBJECT',required:['word','target','explanationLanguage'],properties:{word:{...string,enum:[input.word]},target:{...string,enum:[input.target]},explanationLanguage:{...string,enum:[input.explanation]},
+        type:'OBJECT',required:['word','target','explanationLanguage','comparisons','collocations','contexts','usage'],properties:{word:{...string,enum:[input.word]},target:{...string,enum:[input.target]},explanationLanguage:{...string,enum:[input.explanation]},
           comparisons:phrases(4),collocations:phrases(5),contexts:{type:'ARRAY',maxItems:3,items:string},usage:string},
       }},
     }),
@@ -48,7 +48,9 @@ export async function generateEnrichment(input:EnrichmentInput,fetcher:typeof fe
   const raw=candidate?.content?.parts?.filter((part:{thought?:boolean})=>!part.thought)
     .map((part:{text?:string})=>part.text||'').join('');
   try {
-    return parseEnrichment(JSON.parse(raw||'null'),input);
+    const notes = parseEnrichment(JSON.parse(raw||'null'),input);
+    if(!notes.usage && !notes.contexts.length)throw new EnrichmentUnavailable('response');
+    return notes;
   } catch {
     throw new EnrichmentUnavailable('response');
   }

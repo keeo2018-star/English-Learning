@@ -50,7 +50,7 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   assert.equal(payload.generationConfig.responseMimeType,'application/json');
   return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({
     word:input.word,target:input.target,explanationLanguage:input.explanation,
-    collocations:invalid?[]:[{expression:'dire bonjour',explanation:'打招呼。'}],contexts:[],usage:'',
+    collocations:invalid?[]:[{expression:'dire bonjour',explanation:'打招呼。'}],contexts:[],usage:invalid?'':'白天见面时用来问好。',
   })}]}}]});
  };
  const post=(extra={})=>route.POST(new Request('https://noted.test/api/ai-dictionary',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer test'},
