@@ -1,3 +1,4 @@
+import { Button } from './button';
 import type { ComponentProps } from 'react';
 
 const paths = {
@@ -18,15 +19,15 @@ const paths = {
 } as const;
 export type IconName = keyof typeof paths;
 
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
-  return <svg className="wb-svg-icon" aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
+export function Icon({ name, size = 20 }: { name: IconName; size?: 16 | 20 | 24 }) {
+  return <svg className="wb-svg-icon" data-icon-size={size} aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name]}/></svg>;
 }
 
 export function IconButton({ icon, label, variant = 'neutral', className = '', ...props }: ComponentProps<'button'> & {
   icon: IconName; label: string; variant?: 'neutral' | 'soft' | 'primary';
 }) {
-  return <button {...props} type="button" aria-label={label} className={`wb-icon-button ${className}`} data-variant={variant}>
-    <span><Icon name={icon}/></span>
-  </button>;
+  return <Button {...props} variant="icon" size="icon" compactSurface aria-label={label} className={`wb-icon-button ${className}`} data-variant={variant}>
+    <Icon name={icon}/>
+  </Button>;
 }

@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useRef,useState,useSyncExternalStore,useId,type ReactNode} from 'react';
+import {Icon} from '@/components/ui/icon';
 import {inspectVoice} from '@/lib/voice-file';
 import {voiceError,type VoiceDraft} from '@/lib/voice-notes';
 import {processVoice,type ProcessedVoice} from '@/lib/voice-processing';
@@ -11,7 +12,7 @@ import styles from './voice-notes.module.css';
 const subscribe=()=>()=>{};
 const supported=()=>typeof window!=='undefined'&&typeof MediaRecorder!=='undefined'&&!!navigator.mediaDevices?.getUserMedia;
 const idle:RecorderSnapshot={phase:'idle',elapsed:0,level:0,noInput:false,error:''};
-export function Microphone(){return <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="8" y="3" width="8" height="12" rx="4"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></svg>}
+export function Microphone(){return <Icon name="microphone" />;}
 export function VoiceEditor({draft,onDraft,onBusy,disabled=false,saveAction}:{draft:VoiceDraft|null;onDraft:(value:VoiceDraft|null)=>void;onBusy?:(value:boolean)=>void;disabled?:boolean;saveAction?:ReactNode}){
  const statusId=useId();
  const canRecord=useSyncExternalStore(subscribe,supported,()=>false);

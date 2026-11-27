@@ -1,7 +1,7 @@
 :root {
-  --wb-black: #161616;
+  --wb-black: #171717;
   --wb-white: #fff;
-  --wb-offwhite: #f5f4ef;
+  --wb-offwhite: #f3f2ed;
   --wb-grey: #e9e9e4;
   --wb-acid: #e3fa43;
   --noted-lime: #c1ff32;
@@ -15,6 +15,18 @@
   --wb-medium: 500;
   --wb-bold: 700;
   --wb-brand-tracking: -.055em;
+  /* Reading roles share rhythm without inheriting brand tracking. */
+  --wb-leading-display: 1.08;
+  --wb-leading-title: 1.15;
+  --wb-leading-section: 1.25;
+  --wb-leading-body: 1.45;
+  --wb-leading-cjk: 1.6;
+  --wb-leading-learning: 1.55;
+  --wb-leading-support: 1.4;
+  --wb-leading-control: 1.2;
+  --wb-icon-small: 16px;
+  --wb-icon-medium: 20px;
+  --wb-icon-large: 24px;
   --wb-space-1: 4px;
   --wb-space-2: 8px;
   --wb-space-3: 12px;
@@ -187,11 +199,13 @@
 }
 
 .wb-icon {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  vertical-align: -0.14em;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--wb-icon-large);
+  block-size: var(--wb-icon-large);
+  vertical-align: middle;
+  flex: none;
 }
 
 .wb-status-unlearned {
@@ -314,9 +328,22 @@ button[aria-pressed="true"]:not(.calendar-day),
   border-radius: var(--wb-learning-radius);
   text-align: center;
 }
-.wb-learning-card > h2.wb-learning-content {
+.wb-vocabulary-title {
+  font-family: var(--wb-font);
   font-size: var(--wb-learning-word-size);
-  line-height: 1.08;
+  font-weight: var(--wb-bold);
+  line-height: var(--wb-leading-display);
+  letter-spacing: normal;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.wb-vocabulary-title[data-long] { font-size: clamp(1.75rem, 5vw, 3.25rem); }
+.wb-learning-card > h2.wb-learning-content:not(.wb-vocabulary-title) {
+  font-size: var(--wb-learning-word-size);
+  line-height: var(--wb-leading-display);
   letter-spacing: normal;
   max-width: 100%;
   margin: 8px 0 0;
@@ -331,14 +358,14 @@ button[aria-pressed="true"]:not(.calendar-day),
   font-weight: 400;
   color: #45453f;
 }
-.wb-learning-card > p { margin: 0; max-width: 640px; line-height: 1.65; }
+.wb-learning-card > p { margin: 0; max-width: 640px; line-height: var(--wb-leading-learning); }
 .wb-learning-card > blockquote {
   margin: 0;
   padding: 0;
   border: 0;
   max-width: 600px;
   font-size: 16px;
-  line-height: 1.65;
+  line-height: var(--wb-leading-learning);
   font-weight: 400;
 }
 .wb-learning-card > blockquote::before, .wb-learning-card > blockquote::after { content: none; }
@@ -347,7 +374,7 @@ button[aria-pressed="true"]:not(.calendar-day),
 .wb-learning-card > .review-reveal { margin: auto 0 0; min-height: 48px; }
 .wb-learning-card .review-ratings { margin: auto 0 0; padding-top: 8px; max-width: 440px; }
 .wb-learning-card .review-ratings button { width: 100%; min-width: 0; }
-.wb-learning-card > button[aria-haspopup="dialog"] { font-size: 12px; padding: 10px 16px; min-height: 44px; }
+
 @media (min-width: 700px) { .wb-learning-card.wb-card { min-height: 400px; } }
 
 /* Review follows its visible content, without reserving a hidden answer area. */

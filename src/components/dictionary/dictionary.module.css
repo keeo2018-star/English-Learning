@@ -1,3 +1,40 @@
+.pronunciation { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--wb-space-2); }
+.pronunciation:empty { display: none; }
+.phonetic { display: inline-flex; align-items: center; gap: 0 var(--wb-space-1); min-width: 0; max-width: 100%; flex: 0 1 auto; flex-wrap: wrap; }
+.pronunciationMeta, .ipa { font-size: var(--wb-size-small); line-height: var(--wb-leading-support); }
+.ipa { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.phonetic > small { flex-basis: 100%; overflow-wrap: anywhere; }
+.pronunciationButton > :global(.wb-button-surface) {
+  padding-inline: var(--wb-space-2);
+  border: 1px solid var(--wb-black);
+  background: transparent;
+  font-size: var(--wb-size-meta);
+  white-space: nowrap;
+}
+.personal { margin: var(--wb-space-3) 0 var(--wb-space-4); padding: var(--wb-space-3) var(--wb-space-4); border-radius: 18px; background: #e8e6e0; }
+.personalHeader { display: flex; align-items: center; justify-content: space-between; gap: var(--wb-space-4); margin-bottom: var(--wb-space-1); }
+.personalHeader h3 { margin: 0; font-size: 12px; font-weight: var(--wb-medium); letter-spacing: 0; }
+.personal p { margin: 0; font-size: 1rem; line-height: var(--wb-leading-learning); overflow-wrap: anywhere; }
+.reference { display: grid; gap: var(--wb-space-4); }
+.reference h3 { font-size: 1.125rem; line-height: var(--wb-leading-section); margin: 0 0 var(--wb-space-3); letter-spacing: -.02em; }
+.reference p { margin: 8px 0 0; font-size: 1rem; line-height: var(--wb-leading-learning); overflow-wrap: anywhere; }
+.definitions { margin: 0; padding-left: var(--wb-space-4); }
+.definitions li { padding-left: 0; }
+.definitions li + li { margin-top: var(--wb-space-3); }
+.definitions li::marker { font-size: 12px; color: #65655e; }
+.reference :global(.wb-pill) { border: 0; min-height: 20px; padding: 0; font-size: 12px; color: #55554e; }
+.reference blockquote { margin: 0; padding: 0; border: 0; font-size: inherit; font-weight: var(--wb-regular); }
+.reference blockquote::before, .reference blockquote::after { content: none; }
+.reference blockquote + blockquote { margin-top: 16px; }
+.reference blockquote p:first-child { margin-top: 0; }
+.reference blockquote p[lang="zh"] { color: #55554e; font-size: 15px; }
+.reference .credit { color: #65655e; font-size: 12px; line-height: 1.6; margin: 0; }
+.savedNote { display: block; margin-top: 8px; font-size: 12px; color: #55554e; }
+.related { margin-top:var(--wb-space-5); border:1px solid #d3d0c8; border-radius:18px; padding:14px; }
+.relatedGrid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:4px; }
+.relatedItem { display:flex;align-items:center;gap:var(--wb-space-2);min-width:0;border:0;border-radius:0;padding:0; }
+.relatedTerm { flex:1;display:grid;gap:4px;justify-content:start;text-align:left;min-width:0;min-height:44px;padding:4px 0;border:0;border-radius:4px;background:transparent;color:var(--wb-black);overflow-wrap:anywhere; }
+.relatedTerm small { font-size:12px;line-height:1.5;font-weight:400; }
 .content { min-width:0;line-height:var(--wb-reading-line-height); }
 .pronunciation { display:flex;flex-wrap:wrap;align-items:center;gap:var(--wb-space-2);margin-block-end:var(--wb-space-3); }
 .pronunciation:empty { display:none; }
@@ -31,6 +68,25 @@
 .related .credit { font-size:var(--wb-size-meta);line-height:var(--wb-reading-line-height);color:#65655e;margin:var(--wb-space-3) 0 0; }
 .relation { font-size:11px;font-weight:400;color:#55554e; }
 .explore { margin-top:var(--wb-space-3); }
+
+:global(.wb-sheet-body) h2.hero { margin:0 0 var(--wb-space-2); font-size:clamp(2rem,7vw,2.5rem); line-height:var(--wb-leading-title); letter-spacing:normal; overflow-wrap:anywhere; }
+.reference details { margin-top:8px; }
+.reference summary { min-height:44px; cursor:pointer; font-size:.875rem; }
+.reference h3,.learningNotes h3 { margin:0 0 8px; font-size:1.125rem; }
+.learningNotes { margin-block:var(--wb-space-4); padding:var(--wb-space-4); border-radius:18px; background:#e9e1fa; overflow-wrap:anywhere; }
+.learningNotes section { margin-top:var(--wb-space-3); }
+.learningNotes h4,.learningNotes dl,.learningNotes dd,.learningNotes p { margin:0 0 4px; }
+.learningNotes dt { font-weight:600; }
+.learningNotes dl > div + div { margin-top:8px; }
+
+.meaningEditor { display:grid; gap:12px; }
+.meaningEditor h3 { font-size:1.25rem; line-height:1.2; }
+.meaningEditor label,.meaningEditor p { margin:0; }
+.meaningEditor textarea { min-height:96px; max-height:min(40dvh,240px); font-size:1rem; }
+.learningAvailability { margin:12px 0; font-size:.875rem; color:#55554e; }
+
+.exampleDisclosure[aria-expanded="true"] svg { transform: rotate(180deg); }
+.exampleDisclosure > :global(.wb-button-surface) { background: transparent; }
 :global(.wb-sheet-body) h2.hero { margin:0 0 var(--wb-space-2);font-size:clamp(2rem,7vw,2.5rem);line-height:1.1;overflow-wrap:anywhere;letter-spacing:normal;text-align:start; }
 .learningNotes { margin:0;padding:0;border:0;border-radius:18px;background:transparent;overflow-wrap:anywhere; }
 .learningNotes > h3 { display:none; }

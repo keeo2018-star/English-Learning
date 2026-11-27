@@ -21,3 +21,17 @@ export function selectExample(word: string, meaning: string, candidates: Example
     return { text: sentence, score: overlap * 10 - index };
   }).filter((v): v is { text: string; score: number } => !!v).sort((a,b) => b.score-a.score)[0]?.text || '';
 }
+
+// Reference providers return bilingual pairs, but usually do not identify the
+// grammatical sense of each example. Require the complete saved gloss in the
+// paired translation. Explicitly POS-labelled entries need reviewed examples.
+export function selectReferenceExample(word: string, meaning: string, candidates: ExampleCandidate[]) {
+  if (/^(?:n|v|adj|adv)\.\s/i.test(meaning.trim())) return '';
+  const glosses = meaning.split(/[；;，,、/]/u).map(gloss => gloss.trim())
+    .filter(gloss => /^[\p{Script=Han}]{2,}$/u.test(gloss));
+  if (!glosses.length) return '';
+  return selectExample(word, meaning, candidates.filter(candidate =>
+    /[.!?]["’”']?$/u.test(candidate.source.trim()) &&
+    glosses.some(gloss => candidate.translation?.includes(gloss))
+  ));
+}

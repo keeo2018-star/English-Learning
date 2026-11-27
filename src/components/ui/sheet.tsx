@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { IconButton } from './icon';
 
 let locks = 0;
@@ -17,12 +18,13 @@ function lockPage() {
   return ()=>{if (--locks===0) unlockPage();};
 }
 
-export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, returnFocus, swipe, onBackdrop }: {
+export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, returnFocus, swipe, onBackdrop, portal, footer }: {
   title: string; onClose: () => void; busy?: boolean; children: ReactNode; id?: string; wide?: boolean;
-  swipe?: boolean; onBackdrop?: boolean; bodyRef?: RefObject<HTMLDivElement|null>; returnFocus?: RefObject<HTMLElement|null>;
+  portal?:boolean; footer?:ReactNode; swipe?: boolean; onBackdrop?: boolean; bodyRef?: RefObject<HTMLDivElement|null>; returnFocus?: RefObject<HTMLElement|null>;
 }) {
   const element = useRef<HTMLDialogElement>(null);
   const heading = useId();
+  const titleTarget = useRef<HTMLHeadingElement>(null);
   const header = useRef<HTMLElement>(null);
   const innerBody = useRef<HTMLDivElement>(null);
   const [keyboard, setKeyboard] = useState(false);
@@ -33,12 +35,31 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     if (!dialog) return;
     const previous = returnFocus?.current ?? document.activeElement;
     const unlock = lockPage();
+    let pointer = !previous?.matches(':focus-visible');
+    const onPointer = () => { pointer = true; };
+    const onKey = () => { pointer = false; };
+    document.addEventListener('pointerdown', onPointer, true);
+    document.addEventListener('keydown', onKey, true);
     dialog.showModal();
+    titleTarget.current?.focus({preventScroll:true});
     return () => {
+      document.removeEventListener('pointerdown', onPointer, true);
+      document.removeEventListener('keydown', onKey, true);
+      if (pointer && previous instanceof HTMLElement && previous.matches('button,a[href],[role=button]') && previous.isConnected) {
+        previous.dataset.wbPointerRestored = 'true';
+        const clear = () => {
+          delete previous.dataset.wbPointerRestored;
+          previous.removeEventListener('blur', clear);
+          previous.removeEventListener('keydown', clear, true);
+        };
+        previous.addEventListener('blur', clear, { once: true });
+        previous.addEventListener('keydown', clear, { once: true, capture: true });
+      }
       dialog.close();
       unlock();
-      if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected)
+      if (previous instanceof HTMLElement && previous.matches('button,a[href],input,textarea,select,[role=button]') && previous.isConnected) {
         previous.focus({ preventScroll: true });
+      }
     };
   }, [returnFocus]);
   useEffect(()=>{
@@ -101,17 +122,19 @@ export function Sheet({ title, onClose, busy, children, id, wide, bodyRef, retur
     return()=>{reset();node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);
       node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',reset);};
   },[busy,onClose,swipe]);
-  return <dialog ref={element} id={id} className="language-sheet wb-bottom-sheet" data-wide={wide||undefined} aria-labelledby={heading}
+  const sheet = <dialog ref={element} id={id} className="language-sheet wb-bottom-sheet" data-wide={wide||undefined} aria-labelledby={heading}
     onPointerDown={event=>{backdropPointer.current=event.target===event.currentTarget;}}
     onClick={event=>{if(onBackdrop&&backdropPointer.current&&event.target===event.currentTarget)dismiss();backdropPointer.current=false;}}
     onCancel={event => { event.preventDefault(); dismiss(); }}>
     <div className="wb-sheet-layout">
-      <header ref={header} className="wb-sheet-header" data-dictionary-drag-handle={swipe!==undefined||undefined}><h2 id={heading}>{title}</h2>
+      <header ref={header} className="wb-sheet-header" data-dictionary-drag-handle={swipe!==undefined||undefined}><h2 id={heading} ref={titleTarget} tabIndex={-1}>{title}</h2>
         <div className="wb-sheet-header-actions">{keyboard&&<button type="button" className="text-button" onClick={()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}}>Done</button>}
         <IconButton icon="close" label="Close" variant="soft" disabled={busy} onClick={dismiss}/></div>
       </header>
       <div className="wb-sheet-body" ref={node=>{innerBody.current=node;if(bodyRef)bodyRef.current=node;}}>{children}</div>
+      {footer&&<footer className="wb-sheet-footer">{footer}</footer>}
       <div className="wb-sheet-toast-anchor" role="status" aria-live="polite" aria-atomic="true"/>
     </div>
   </dialog>;
+  return portal&&typeof document!=='undefined'?createPortal(sheet,document.body):sheet;
 }

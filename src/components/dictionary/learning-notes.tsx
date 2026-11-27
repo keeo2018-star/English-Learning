@@ -4,6 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {aiStatus,requestEnrichment,cachedEnrichment,type AiStatus} from '@/lib/ai-client';
 import type {DictionaryEnrichment,EnrichmentInput} from '@/lib/dictionary-enrichment';
 import {Disclosure} from '@/components/ui/disclosure';
+import {Button} from '@/components/ui/button';
 import {HighlightWord} from './highlight-word';
 import styles from './dictionary.module.css';
 
@@ -15,8 +16,9 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
   const active=useRef<AbortController|null>(null);
   useEffect(()=>{
     let mounted=true;
-    void aiStatus().then(value=>{if(mounted)setStatus(value);});void cachedEnrichment(input).then(value=>{if(mounted&&value)setNotes(value);});
-    return()=>{mounted=false;active.current?.abort();};
+    const cacheRequest=new AbortController();
+    void aiStatus().then(value=>{if(mounted)setStatus(value);});void cachedEnrichment(input,AbortSignal.any([cacheRequest.signal,AbortSignal.timeout(8000)])).then(value=>{if(mounted&&value)setNotes(value);}).catch(()=>{});
+    return()=>{mounted=false;cacheRequest.abort();active.current?.abort();};
   },[input,check]);
   async function generate(){
     if(active.current)return;
@@ -42,9 +44,9 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
         {notes.contexts.length>0&&<ul>{notes.contexts.map(context=><li key={context}>{context}</li>)}</ul>}
       </section>}
     </>:<><p>Generate with Gemini using this entry, its meaning and learning settings. Your saved meaning stays unchanged.</p>
-      <button className="text-button" type="button" disabled={busy} onClick={()=>void generate()}>
+      <Button variant="ghost" size="small" compactSurface disabled={busy} onClick={()=>void generate()}>
         {busy?'Preparing learning notes…':error?'Retry learning notes':'Generate learning notes'}
-      </button>
+      </Button>
     </>}
     {error&&<p role="status">{error}</p>}
   </section>;

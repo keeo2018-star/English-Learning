@@ -58,6 +58,9 @@ for(const width of [320,375,390,430,1024])test(`Library and Dictionary remain sc
  await row.click();
  const sheet=page.getByRole('dialog',{name:'Dictionary'});
  const close=sheet.getByRole('button',{name:'Close'});
+ await expect(sheet.getByRole('heading',{name:'Dictionary',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(close).toBeFocused();
  await expect(sheet.getByRole('heading',{name:'callous',exact:true})).toBeVisible();
  await expect(sheet.getByText('冷酷无情的',{exact:true}).first()).toBeVisible();
  expect((await close.locator('svg').boundingBox())!.width).toBe(20);
@@ -156,4 +159,90 @@ test('Home due and caught-up counts, and Review share compact pronunciation and 
  await page.goto('/');
  await expect(page.getByText('All caught up. No words due right now.')).toBeVisible();
  await shot(page,'home-caught-up');
+});
+
+for(const width of [320,375,390,430])test(`meaning editor stays above the simulated keyboard at ${width}px`,async({page})=>{
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width,height:844});
+ await fixture(page,true);
+ await page.addInitScript(()=>{
+   const viewport=window.visualViewport!;
+   let height=844;
+   Object.defineProperty(viewport,'height',{get:()=>height});
+   Object.assign(window,{notedSimulateViewport:(value:number)=>{height=value;viewport.dispatchEvent(new Event('resize'));}});
+ });
+ await page.goto(width===390?'/review':'/library');
+ if(width===390)await page.getByRole('button',{name:'Reveal answer'}).click();
+ const trigger=page.getByRole('button',{name:'Dictionary for callous'});
+ await trigger.click();
+ const dictionary=page.getByRole('dialog',{name:'Dictionary'});
+ await expect(dictionary).toHaveCSS('text-align','start');
+ await expect(dictionary.locator('[data-context-example]').first()).toBeVisible();
+ expect(await dictionary.locator('[data-context-example]').first().evaluate(el=>getComputedStyle(el,'::before').content)).toBe('none');
+ if(width===390)await shot(page,'dictionary-review');
+ const viewportSize=async(value:number)=>page.evaluate(h=>(window as unknown as {notedSimulateViewport:(h:number)=>void}).notedSimulateViewport(h),value);
+ const shell=page.locator('.wb-app'),height=(await shell.boundingBox())!.height;
+ await dictionary.getByRole('button',{name:'Edit my meaning'}).click();
+ const editor=page.getByRole('dialog',{name:'Edit meaning'});
+ const input=editor.getByRole('textbox',{name:'My meaning'});
+ await expect(input).toBeFocused();
+ if(width===390)await shot(page,'meaning-editor');
+ await viewportSize(360);
+ await expect(page.locator('.wb-app-navigation')).toHaveCSS('visibility','hidden');
+ expect((await shell.boundingBox())!.height).toBe(height);
+ await input.fill('長い説明 / A longer meaning. '.repeat(25));
+ expect((await editor.getByRole('button',{name:'Save meaning'}).boundingBox())!.y).toBeLessThan(360);
+ expect((await editor.getByRole('button',{name:'Cancel',exact:true}).boundingBox())!.y).toBeLessThan(360);
+ if(width===390)await shot(page,'meaning-simulated-keyboard');
+ await input.blur();
+ await expect(page.locator('.wb-app-navigation')).toHaveCSS('visibility','hidden');
+ expect((await editor.getByRole('button',{name:'Cancel',exact:true}).boundingBox())!.y).toBeLessThan(360);
+ await editor.getByRole('button',{name:'Cancel',exact:true}).click();
+ await viewportSize(844);
+ await expect(dictionary.getByRole('button',{name:'Edit my meaning'})).toBeFocused();
+ await expect(dictionary.getByText('冷酷无情的',{exact:true}).first()).toBeVisible();
+ if(width===390)await shot(page,'dictionary-after-cancel');
+ await dictionary.getByRole('button',{name:'Close'}).click();
+ await expect(trigger).toBeFocused();
+ if(width===390)await expect(page.getByRole('button',{name:'Sure',exact:true})).toBeVisible();
+});
+
+test('a missing exact phrase keeps the original entry and offers an explicit headword lookup',async({page})=>{
+ test.skip(!cloudUrl);
+ await fixture(page);
+ await page.route('**/api/dictionary?*',route=>route.fulfill({status:404,json:{message:'No exact entry'}}));
+ await page.goto('/library');
+ await page.getByRole('button',{name:'Dictionary for take care of'}).click();
+ const sheet=page.getByRole('dialog',{name:'Dictionary'});
+ await expect(sheet.getByText(/No exact reference for this expression/)).toBeVisible();
+ await expect(sheet.getByRole('heading',{name:'take care of'})).toBeVisible();
+ await expect(sheet.getByRole('button',{name:'Try again'})).toHaveCount(0);
+ await expect(sheet.getByRole('button',{name:'Look up first word: take'})).toBeVisible();
+ await shot(page,'missing-exact-entry');
+});
+
+test('shared page grid and ordinary selection remain stable',async({page})=>{
+ test.skip(!cloudUrl);
+ await page.setViewportSize({width:390,height:844});
+ await fixture(page);
+ for(const [path,name] of [['/','home'],['/add','add-idle'],['/discover','discover'],['/review','review-due'],['/library','library'],['/auth','profile']]){
+   await page.goto(path);
+   await expect(page.getByRole('main')).toBeVisible();
+   await expect(page.getByRole('navigation',{name:'Main navigation'})).toBeVisible();
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+   await shot(page,name);
+ }
+ const setting=page.getByRole('button',{name:'Settings for French'});
+ await setting.click();
+ await expect(page.getByRole('dialog',{name:'Language settings'})).toBeVisible();
+ await shot(page,'language-settings');
+ await page.getByRole('dialog').getByRole('button',{name:'Close'}).click();
+ await page.goto('/library');
+ const words=page.getByRole('button',{name:'Words',exact:true});
+ const geometry=()=>words.evaluate(el=>({height:el.getBoundingClientRect().height,border:getComputedStyle(el).borderTopWidth}));
+ const before=await geometry();
+ await words.click();
+ await expect(words).toHaveAttribute('aria-pressed','true');
+ expect(await geometry()).toEqual(before);
+ await shot(page,'library-selected');
 });

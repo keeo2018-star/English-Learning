@@ -1,5 +1,5 @@
 import { dictionaryReference } from './dictionary-client';
-import { selectExample } from './example-quality';
+import { selectReferenceExample } from './example-quality';
 import { supabase } from './supabase';
 import type { LearningItem } from './learning';
 export type ExampleItem = Pick<LearningItem, 'personal_note'|'learning_details'> & { example_source?:'ai'|'dictionary'|'personal'|null; id: string; word: string; meaning: string; example?: string | null };
@@ -49,7 +49,7 @@ export function resolveExample(owner: string, item: ExampleItem, persistItem = f
   const task = limited(async () => {
     let text = cached;
     try {
-      text = cached || selectExample(item.word,item.meaning,(await dictionaryReference(item.word)).examples);
+      text = cached || selectReferenceExample(item.word,item.meaning,(await dictionaryReference(item.word)).examples);
       if (!text) { misses.set(cacheKey, Date.now()+300000); return ''; }
       // Cache before attempting cloud sync: a failed write must not lose the example.
       remember(cacheKey,text);

@@ -1,4 +1,7 @@
 import {lookupText,type DictionaryResult} from './dictionary';
+export class ReferenceRequestError extends Error {
+ constructor(message:string,readonly status:number){super(message);}
+}
 const cache=new Map<string,{value:DictionaryResult;at:number}>(),pending=new Map<string,Promise<DictionaryResult>>();
 // Pronunciation and contextual examples reuse the same complete dictionary response.
 export function dictionaryPayload(word:string,pronunciation=false):Promise<DictionaryResult>{
@@ -7,7 +10,7 @@ export function dictionaryPayload(word:string,pronunciation=false):Promise<Dicti
  const waiting=pending.get(key);if(waiting)return waiting;
  const task=(async()=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);try{
   const response=await fetch('/api/dictionary?'+new URLSearchParams({word:query,...(pronunciation?{pronunciation:'1'}:{})}),{signal:controller.signal}),data=await response.json();
-  if(!response.ok)throw new Error(typeof data.message==='string'?data.message:'The dictionary is unavailable right now.');
+  if(!response.ok)throw new ReferenceRequestError(typeof data.message==='string'?data.message:'The dictionary is unavailable right now.',response.status);
   if(!Array.isArray(data.phonetics))throw new Error('The dictionary returned an unreadable response.');
   // Do not retain incomplete / malformed responses as successful references.
   if(typeof data.word==='string'&&Array.isArray(data.chinese)&&Array.isArray(data.english)&&Array.isArray(data.examples)&&Array.isArray(data.synonyms)){

@@ -14,7 +14,7 @@
 .choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .choices button { justify-content: flex-start; text-align: left; min-height: 52px; white-space: normal; overflow-wrap: anywhere; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
-.actions button, .blue button { min-height: 48px; }
+.actions button:not(:global(.wb-button)), .blue button:not(:global(.wb-button)) { min-height: 48px; }
 .blue .unknown { margin-top: 20px; }
 .progress { display: flex; align-items: center; gap: 16px; margin: 16px 0; font-size: 13px; }
 .progress span { white-space: nowrap; }
@@ -35,7 +35,7 @@
 .blue:global(.wb-learning-card) > p { margin: 0; }
 .blue:global(.wb-learning-card) > blockquote { margin: 0; padding: 0; border: 0; font-size: 16px; }
 .blue:global(.wb-learning-card) > .meaning { font-size: 24px; line-height: 1.6; }
-.blue:global(.wb-learning-card) > button, .blue:global(.wb-learning-card) > .actions { margin: auto 0 0; }
+.blue:global(.wb-learning-card) > button:not([aria-haspopup="dialog"]), .blue:global(.wb-learning-card) > .actions { margin: auto 0 0; }
 .blue:global(.wb-learning-card) .actions { width: 100%; justify-content: center; padding-top: 8px; }
 .blue:global(.wb-learning-card) .actions button { flex: 1; max-width: 240px; }
 .blue:global(.wb-learning-card) .choices { width: 100%; max-width: 520px; gap: 8px; }
@@ -59,3 +59,6 @@
 
 .batchHeader .options[open] { grid-column:1 / -1; }
 .batchHeader .options[open] > summary { justify-content:flex-end; }
+.blue:global(.wb-learning-card) > .reviewedExample { text-align: start; align-self: stretch; }
+.reviewedExample p { margin: 0; line-height: var(--wb-leading-learning); }
+.reviewedExample p + p { margin-block-start: var(--wb-space-1); }

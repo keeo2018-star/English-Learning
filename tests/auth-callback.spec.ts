@@ -163,7 +163,7 @@ test.describe("auth callback (mocked service)", () => {
         await verifier(page);
         await page.goto(path);
         await expect(page).toHaveURL(/\/auth\?error=auth_callback$/);
-        await expect(page.getByRole("status")).toContainText(
+        await expect(page.getByRole("main").getByRole("status")).toContainText(
           "We couldn’t complete the email confirmation",
         );
         await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
@@ -209,7 +209,7 @@ test.describe("auth callback (mocked service)", () => {
     await page
       .getByRole("button", { name: "Create account", exact: true })
       .click();
-    await expect(page.getByRole("status")).toContainText("Check your email");
+    await expect(page.getByRole("main").getByRole("status")).toContainText("Check your email");
     expect(new URL(redirect).origin).toBe(production);
     expect(new URL(redirect).pathname).toBe("/auth/callback");
     const callback = new URL(redirect);
@@ -220,5 +220,27 @@ test.describe("auth callback (mocked service)", () => {
     // The callback can cancel speculative Next.js requests from the previous
     // page. All flow assertions are complete; ignore only leftover proxy errors.
     await page.unrouteAll({ behavior: "ignoreErrors" });
+  });
+
+  test("invalid credentials guide a signed-out visitor to account creation", async ({ page }) => {
+    await page.route(origin + "/auth/v1/token?grant_type=password", route =>
+      route.fulfill({
+        status: 400,
+        headers: {
+          "x-supabase-api-version": "2024-01-01",
+          "access-control-expose-headers": "x-supabase-api-version",
+        },
+        json: { code: "invalid_credentials", message: "Invalid login credentials" },
+      }),
+    );
+    await page.goto("/auth");
+    const main = page.getByRole("main");
+    await main.getByLabel("Email", { exact: true }).fill("new-preview-account@example.com");
+    await main.getByLabel("Password", { exact: true }).fill("fixture-password-123");
+    await main.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(main.getByRole("status")).toContainText("Sign-in failed.");
+    await expect(main.getByRole("status")).toContainText("create an account");
+    await main.getByRole("button", { name: "Create an account", exact: true }).click();
+    await expect(main.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
   });
 });

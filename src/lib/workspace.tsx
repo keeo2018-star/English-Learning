@@ -1,4 +1,6 @@
 "use client";
+import { VocabularyTitle } from "@/components/ui/vocabulary-title";
+import { Button } from '@/components/ui/button';
 import {Icon,IconButton} from "@/components/ui/icon";
 import {Segments} from '@/components/ui/segments';
 import {Toast} from '@/components/ui/toast';
@@ -794,15 +796,14 @@ export default function Workspace({
                         </label>
                         {'personal_note' in w&&<label>Personal note<ImeTextarea name="personal_note" defaultValue={w.personal_note||''} maxLength={3000}/></label>}
                         <div className="actions">
-                          <button disabled={busy}>Save changes</button>
-                          <button
-                            type="button"
-                            className="secondary"
+                          <Button type="submit" disabled={busy}>Save changes</Button>
+                          <Button
+                            variant="secondary"
                             disabled={busy}
                             onClick={() => setEditing(null)}
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </form>
                     ):<div className="wb-entry-management">
@@ -853,7 +854,7 @@ export default function Workspace({
                   className="panel review-card wb-learning-card"
                 >
                   {randomMode&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
-                  <h2 className="wb-learning-content">{prompt}</h2>
+                  <VocabularyTitle text={prompt}/>
                   {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
                   {revealed === card.id ? (
                     <>
@@ -864,14 +865,14 @@ export default function Workspace({
                       <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>
-                        <SelectableButton selected={pendingRating === "sure"} disabled={busy}
+                        <SelectableButton selected={pendingRating === "sure"} variant="primary" disabled={busy}
                           onClick={() => void grade(card, "sure")}>Sure</SelectableButton>
                       </div>
                     </>
                   ) : (
-                    <button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
+                    <Button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
                       Reveal answer
-                    </button>
+                    </Button>
                   )}
                 </Card>
               </>

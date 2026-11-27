@@ -32,9 +32,9 @@ for(const width of [320,375,390,430,768,1440])test(`all main screens remain with
  for(const path of ['/','/add','/discover','/review?mode=random','/review','/library','/auth']){
   await page.goto(path);await expect(page.locator('h1').first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),path).toBe(true);
-  await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+  await page.locator('.wb-app-frame').evaluate(frame=>{frame.scrollTop=frame.scrollHeight;});
   await expect.poll(async()=>{
-   await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+   await page.locator('.wb-app-frame').evaluate(frame=>{frame.scrollTop=frame.scrollHeight;});
    const bottom=await page.locator('main').evaluate(el=>el.getBoundingClientRect().bottom);
    const nav=await page.getByRole('navigation',{name:'Main navigation'}).boundingBox();
    return nav ? bottom-nav.y : 0;
@@ -55,8 +55,9 @@ test.skip(!cloudUrl,'Uses isolated Supabase fixtures');
 
 test('short confirmation actions share a row when they fit; focus has one contiguous boundary',async({page})=>{
  test.skip(before);await page.setViewportSize({width:375,height:844});await setup(page);await page.goto('/library');
+ await page.getByRole('button',{name:'Dictionary for take stock of',exact:true}).click();
  await page.getByRole('button',{name:'Delete take stock of',exact:true}).click();
- const dialog=page.getByRole('dialog');const actions=dialog.locator('.actions button');await expect(actions).toHaveCount(2);
+ const dialog=page.getByRole('dialog',{name:'Delete this word?',exact:true});const actions=dialog.locator('.actions button');await expect(actions).toHaveCount(2);
  const tops=await actions.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().top));expect(Math.abs(tops[0]-tops[1])).toBeLessThan(2);
  await page.keyboard.press('Tab');
  const focus=await page.locator(':focus').evaluate(el=>({offset:getComputedStyle(el).outlineOffset,style:getComputedStyle(el).outlineStyle}));

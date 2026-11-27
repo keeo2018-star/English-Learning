@@ -93,7 +93,7 @@ test('AI casing corrections require a common-word classification and a matching 
 });
 
 test('structured Gemini requests carry only the intended translation input for each scenario', async () => {
-  const aiStub = 'data:text/javascript,' + encodeURIComponent("export const AI_MODEL='fixture-model';export const aiConfigured=()=>true;");
+  const aiStub = 'data:text/javascript,' + encodeURIComponent("export const configuredAiModel=()=> 'fixture-model';export const aiConfigured=()=>true;");
   const parser = await compile('../../src/lib/translation-candidates.ts', {
     './collections': collections, './highlight': highlight,
   });
@@ -113,7 +113,7 @@ test('structured Gemini requests carry only the intended translation input for e
       const request = JSON.parse(init.body);
       assert.deepEqual(JSON.parse(request.contents[0].parts[0].text), inputWithContext);
       assert.equal(request.generationConfig.responseSchema.properties.candidates.maxItems, 5);
-      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({
+      return Response.json({ candidates: [{ content: { parts: [{ thought: true, text: 'Internal reasoning' }, { text: JSON.stringify({
         ambiguous: false, candidates: [entry(expression, '中文释义')],
       }) }] } }] });
     });
