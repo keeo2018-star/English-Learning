@@ -68,20 +68,24 @@ for (const width of [390, 1440]) for (const recorded of [true, false]) {
   test(`${recorded ? 'recordings' : 'deterministic speech fallback'} stay identical across all pronunciation controls (${width}px)`, async ({ page }) => {
     test.skip(!cloudUrl, 'Requires mocked account data');
     await page.setViewportSize({ width, height: 844 });
-    const { word } = await setup(page, recorded);
+    const { word, fixture } = await setup(page, recorded);
+    if (recorded) await page.route('**/api/pronunciation?*', route => route.fulfill(fixture));
     await page.goto('/library');
-    await page.locator('button[data-accent="UK"]').click();
-    await expect.poll(async () => (await plays(page)).length).toBe(1);
     await page.getByRole('button', { name: `Dictionary for ${word}`, exact: true }).click();
     await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
-    await expect.poll(async () => (await plays(page)).length).toBe(2);
+    await expect.poll(async () => (await plays(page)).length).toBe(1);
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Due words', exact: true }).click();
     await page.waitForURL('**/review');
     await expect(page.locator('.review-card')).toBeVisible();
-    await expect.poll(async () => (await plays(page)).length).toBe(3); // Due autoplay.
+    await expect.poll(async () => (await plays(page)).length).toBe(2);
     await page.locator('.review-card').locator('button[data-accent="UK"]').click();
+    await expect.poll(async () => (await plays(page)).length).toBe(3);
+    await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+    await page.locator('.review-card').getByRole('button', { name: 'Dictionary for ' + word, exact: true }).click();
+    await page.getByRole('dialog').locator('button[data-accent="UK"]').click();
     await expect.poll(async () => (await plays(page)).length).toBe(4);
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('button', { name: 'Random review', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(5);
     await page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
