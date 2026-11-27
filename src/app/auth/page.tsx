@@ -16,6 +16,26 @@ import { AppShell } from "@/components/ui/app-shell";
 import { SelectableButton } from "@/components/ui/selection";
 import { Card, Pill } from "@/components/ui/primitives";
 import { LoadingState, Feedback } from "@/components/ui/states";
+
+function authFailureMessage(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  switch (code) {
+    case "invalid_credentials":
+      return "Sign-in failed. Check your email and password, or create an account if this is your first time using this version of Noted.";
+    case "email_not_confirmed":
+      return "Confirm your email using the link we sent, then sign in.";
+    case "email_address_invalid":
+      return "Use an email address that can receive your confirmation link.";
+    case "email_address_not_authorized":
+      return "This version of Noted can’t send confirmation email to this address. Contact the person who shared it with you.";
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+      return "Too many attempts. Wait before trying again, and check your inbox for an existing link.";
+    default:
+      return error instanceof Error ? error.message : "Authentication failed. Please try again.";
+  }
+}
+
 function AuthForm() {
   const params = useSearchParams();
   const router = useRouter();
@@ -65,7 +85,7 @@ function AuthForm() {
     setBusy(true);
     setMessage("");
     const f = new FormData(e.currentTarget);
-    const email = String(f.get("email")),
+    const email = String(f.get("email")).trim(),
       password = String(f.get("password"));
     try {
       if (mode === "reset") {
@@ -101,11 +121,7 @@ function AuthForm() {
         router.push("/library");
       }
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Authentication failed. Please try again.",
-      );
+      setMessage(authFailureMessage(error));
     } finally {
       setBusy(false);
     }
