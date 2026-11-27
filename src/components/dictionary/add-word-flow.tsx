@@ -7,7 +7,7 @@ import {PhotoInput} from './photo-input';
 import {SpeechInput} from './speech-input';
 import {Select} from '@/components/ui/select';
 import {inputLanguage,isOriginalEnglish,learningLanguages,targetText,type LearningCollection,type TargetLanguage} from '@/lib/collections';
-import {aiStatus,requestTranslation} from '@/lib/ai-client';
+import {aiStatus,requestTranslation,TranslationRequestError} from '@/lib/ai-client';
 import type {TranslationCandidate} from '@/lib/translation-candidates';
 import {englishResult,type SearchItem} from '@/lib/bilingual-contract';
 import {dictionaryReference,rememberDictionaryReference} from '@/lib/dictionary-client';
@@ -165,9 +165,11 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       if(!clean.length)throw Error('No usable match. Try a more specific expression.');
       setCandidates(clean);setShowAllCandidates(false);setAmbiguous(unclear);
       selectCandidate(clean[0]);
-    }catch{
+    }catch(error){
       if(ticket===queryVersion.current&&!controller.signal.aborted)setResolveError(
-        ai?'AI translation is unavailable. Retry or use standard lookup. Your draft is kept.':'Lookup couldn’t find a match. Retry or enter a meaning manually.');
+        error instanceof TranslationRequestError ? error.message
+          : ai ? 'AI translation is unavailable. Retry or use standard lookup. Your draft is kept.'
+          : 'Lookup couldn’t find a match. Retry or enter a meaning manually.');
     } finally {
       if(ticket===queryVersion.current){queryAbort.current=null;setResolving(false);}
     }
@@ -374,7 +376,7 @@ function SmartAddForm({ busy, onManualSubmit,library=[],collection,initialDraft,
       : selectedCandidate.source==='translation'?'Basic translation · Context and examples unavailable'
       : selectedCandidate.source==='ai'?'AI translation':'Dictionary lookup'}</p>}
     {(word||editingExpression)&&<div className={styles.titleRow}>
-      {word&&<VocabularyTitle text={word}/>}
+      {word&&<VocabularyTitle text={word} fit/>}
       <IconButton icon="pencil" label="Edit vocabulary" className={styles.editExpression} aria-expanded={editingExpression}
         onClick={()=>setEditingExpression(!editingExpression)} disabled={busy||resolving}/>
     </div>}

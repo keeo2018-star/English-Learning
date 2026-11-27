@@ -56,6 +56,12 @@ test('compact Dictionary controls and shared vocabulary typography at 320px',asy
   await preview.getByRole('textbox',{name:'Vocabulary expression'}).fill('a shorter expression');
   await expect(preview.getByRole('heading',{name:'a shorter expression'})).toBeVisible();
   if(!baseline){
+    await input.fill('chrysanthemum');
+    const flower = preview.getByRole('heading', { name: 'chrysanthemum', exact: true });
+    await expect(flower).toHaveCSS('white-space', 'nowrap');
+    await expect.poll(() => flower.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    const typeControl = await preview.getByLabel('Content type').boundingBox();
+    expect(typeControl?.height).toBeGreaterThanOrEqual(44);
     await preview.getByRole('textbox',{name:'Meaning',exact:true}).fill('我的释义');
     await page.getByRole('button',{name:'Clear input',exact:true}).click();
     await expect(input).toHaveValue('');

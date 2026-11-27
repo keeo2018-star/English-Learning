@@ -118,3 +118,24 @@ form.unified[data-idle="true"] > .queryArea { grid-row:2; align-self:start; }
 .toolbar .contextButton { display:inline-flex; align-items:center; gap:var(--wb-space-1); margin-inline-start:auto; border:0; padding:8px 0 8px 8px; min-height:var(--wb-touch); }
 .queryArea .contextField label { display:grid; gap:var(--wb-space-1); }
 .sourceChoice summary { min-height:var(--wb-touch); display:flex; align-items:center; cursor:pointer; }
+
+.titleRow > h2 { flex: 1; }
+.typeControl { position: relative; }
+.typeControl::before {
+  content: "";
+  position: absolute;
+  inset: 4px 0;
+  pointer-events: none;
+  border: 1px solid var(--wb-black);
+  border-radius: var(--wb-radius-small);
+  background: var(--wb-offwhite);
+}
+.preview .typeControl :global(.wb-select) {
+  position: relative;
+  min-height: var(--wb-touch);
+  padding: 4px 23px 4px 8px;
+  border: 0;
+  background-color: transparent;
+  background-position: right 6px center;
+  font-size: var(--wb-size-small);
+}

@@ -11,10 +11,11 @@ export async function GET(request:Request){const query=new URL(request.url).sear
 export async function POST(request:Request){if(!aiConfigured())return Response.json({message:'AI help is not enabled. Dictionary and translation remain available.'},{status:503,headers});let c:Awaited<ReturnType<typeof client>>|undefined,hash='',lease='';try{if(Number(request.headers.get('content-length'))>4096)throw Error('Search text is too long.');const body=await request.json();if(body.mode==='translation')return translate(request,body);if(body.mode==='enrichment')return enrich(request,body);if(body.consent!==true||!['auto','en','zh'].includes(body.direction))throw Error('Confirm that this search may be sent to Gemini.');const q=searchText(body.q);c=await client(request);hash=queryKey(q,body.direction);const schema=await c.from('words').select('example_source').limit(0);if(schema.error)return Response.json({message:'AI help is not available yet.'},{status:503,headers});const reserved=await c.rpc('noted_ai_reserve',{p_hash:hash});if(reserved.error)return Response.json({message:'AI help is not available yet. Dictionary and translation still work.'},{status:503,headers});const state=reserved.data;if(state.status==='cached')return Response.json({entry:parseAiEntry(state.payload),cached:true},{headers});if(state.status==='pending')return Response.json({message:'This explanation is already being prepared. Try again shortly.'},{status:202,headers});if(state.status!=='reserved')return Response.json({message:'AI request limit reached. Dictionary and translation still work.'},{status:429,headers});lease=state.lease;const entry=await generateAi(q,body.direction);const saved=await c.rpc('noted_ai_finish',{p_hash:hash,p_lease:lease,p_payload:entry});if(saved.error||saved.data!==true)throw Error('Could not confirm the saved explanation. Please retry later.');return Response.json({entry},{headers});}catch(error){if(c&&hash&&lease)await c.rpc('noted_ai_fail',{p_hash:hash,p_lease:lease});return Response.json({message:error instanceof Error?error.message:'AI help is unavailable.'},{status:503,headers});}}
 
 async function translate(request: Request, body: Record<string, unknown>) {
+  const { generateTranslation, TranslationProviderError } = await import('@/lib/translation-provider');
   let c: Awaited<ReturnType<typeof client>> | undefined, hash = '', lease = '';
   try {
-    const [{ learningLanguages, inputLanguage }, { parseTranslation }, { generateTranslation }] = await Promise.all([
-      import('@/lib/collections'), import('@/lib/translation-candidates'), import('@/lib/translation-provider'),
+    const [{ learningLanguages, inputLanguage }, { parseTranslation }] = await Promise.all([
+      import('@/lib/collections'), import('@/lib/translation-candidates'),
     ]);
     const { target, explanation, source } = body;
     if (body.consent !== true || typeof target !== 'string' || !Object.hasOwn(learningLanguages, target) ||
@@ -47,8 +48,15 @@ async function translate(request: Request, body: Record<string, unknown>) {
     const saved = await c.rpc('noted_ai_finish', { p_hash: hash, p_lease: lease, p_payload: result });
     if (saved.error || saved.data !== true) throw Error('Could not save the generated translation.');
     return Response.json({ result }, { headers });
-  } catch {
+  } catch (error) {
     if (c && hash && lease) await c.rpc('noted_ai_fail', { p_hash: hash, p_lease: lease });
+    if (error instanceof TranslationProviderError) {
+      console.warn('[noted.ai.translation]', { stage: error.stage, upstreamStatus: error.status });
+      const message = error.stage === 'quota' ? 'The AI provider has reached its request limit. Try standard lookup or come back later.'
+        : error.stage === 'timeout' ? 'AI translation timed out. Try standard lookup or retry.'
+        : 'AI translation is temporarily unavailable. Your draft is kept.';
+      return Response.json({ message }, { status: error.stage === 'quota' ? 429 : 503, headers });
+    }
     return Response.json({ message: 'AI translation is temporarily unavailable. Your draft is kept.' }, { status: 503, headers });
   }
 }
