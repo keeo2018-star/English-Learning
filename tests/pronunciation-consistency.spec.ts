@@ -32,7 +32,11 @@ async function setup(page: Page, recorded: boolean, blockAutoplay = false) {
     } });
     HTMLMediaElement.prototype.play = function () {
       if (this.src.startsWith('data:audio/')) return Promise.resolve();
-      if (blocked) { blocked = false; return Promise.reject(new DOMException('Tap required', 'NotAllowedError')); }
+      if (blocked) {
+        blocked = false;
+        Object.assign(window, { blockedRecording: this });
+        return Promise.reject(new DOMException('Tap required', 'NotAllowedError'));
+      }
       events.push({ kind: 'audio', src: this.src, rate: this.playbackRate,
         volume: this.volume, overlap: !!active }); active = this.src;
       return Promise.resolve();
@@ -140,8 +144,15 @@ test('blocked autoplay keeps dictionary audio for manual replay instead of switc
   const { fixture } = await setup(page, true, true);
   await page.route('**/api/pronunciation?*', route => route.fulfill(fixture));
   await page.goto('/review?mode=random');
+  await page.waitForFunction(() => 'blockedRecording' in window);
   await expect(page.getByRole('button', { name: 'Play pronunciation', exact: true })).toHaveAttribute('aria-busy', 'false');
   await expect(page.getByText('Tap the speaker to try pronunciation again.')).toHaveCount(0);
+  await page.evaluate(() => {
+    const audio = (window as unknown as {blockedRecording: HTMLAudioElement}).blockedRecording;
+    Object.defineProperty(audio, 'error', { configurable: true, value: { code: 4 } });
+    audio.dispatchEvent(new Event('error'));
+    Reflect.deleteProperty(audio, 'error');
+  });
   expect(await plays(page)).toHaveLength(0);
   await page.getByRole('button', { name: 'Play pronunciation', exact: true }).click();
   await expect.poll(async () => (await plays(page)).length).toBe(1);
