@@ -15,10 +15,14 @@ test.describe("production UX regressions (mocked service)", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockCloud(page, (r) => r.fulfill({ json: [] }));
     await page.goto("/library");
+    await page.getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "Profile", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Sign out", exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Welcome back." })).toBeVisible();
+    await page.goto("/library");
     await expect(
       page.getByRole("heading", { name: "Your words belong to you." }),
     ).toBeVisible();
@@ -43,13 +47,18 @@ test.describe("production UX regressions (mocked service)", () => {
         ],
       }),
     );
+    await page.goto("/auth");
+    await expect(page.getByRole("region", { name: "Account information" })).toContainText(session().user.email);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     for (const path of ["/library", "/review", "/add"]) {
       await page.goto(path);
-      await expect(
-        page.getByRole("button", { name: "Sign out", exact: true }),
-      ).toBeAttached();
+      await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible();
+      if (path === "/library")
+        await expect(page.getByRole("region", { name: "Library results" }).getByRole("heading", { name: "a".repeat(120), exact: true })).toBeVisible();
       if (path === "/review")
         await page.getByRole("button", { name: "Reveal answer" }).click();
+      if (path === "/add")
+        await expect(page.getByRole("combobox", { name: "Word or phrase", exact: true })).toBeVisible();
       await expect
         .poll(() =>
           page.evaluate(
@@ -76,7 +85,7 @@ test.describe("production UX regressions (mocked service)", () => {
     await page.goto("/library");
     await expect(page.getByText("Loading your library…")).toBeVisible();
     release();
-    await expect(page.getByRole("status")).toContainText("Service unavailable");
+    await expect(page.getByRole("main").getByRole("status")).toContainText("Service unavailable");
     await expect(
       page.getByRole("heading", { name: "Your next discovery starts here." }),
     ).toHaveCount(0);
