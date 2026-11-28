@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import {LearningHeader} from '@/components/collections/learning-header';
 import {useCollections} from '@/lib/use-collections';
 import {MyLanguages} from '@/components/collections/my-languages';
+import {AiQuotaRedemption} from "@/components/dictionary/ai-quota-redemption";
 import {AiSettings} from "@/components/dictionary/ai-settings";
 import { LearningCalendar } from "@/components/learning/learning-calendar";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -136,6 +137,7 @@ function AuthForm() {
     <LearningCalendar key={user.id} account={user.id} collections={collections} initiallyOpen />
     <section aria-label="Settings" className="wb-profile-settings"><h2>Settings</h2>
     <AiSettings key={"ai:"+user.id} user={user}/>
+    <AiQuotaRedemption key={"ai-quota:"+user.id}/>
     <p><Link href="/privacy">Privacy &amp; terms</Link></p>
     </section>
     {collections.enabled&&<section aria-label="Account information" className="profile-account"><p className="profile-email">{user.email}</p><button className="text-button" disabled={busy} onClick={() => void signOut()}>Sign out</button></section>}

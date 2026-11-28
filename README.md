@@ -201,3 +201,26 @@ Dictionary uses shared `DefinitionList` and `BilingualExample` presentation comp
 Shared disclosures use one title/content rhythm and retain opened reference content when collapsed, preserving local state and avoiding repeated loading. Real-world video explicitly unmounts on collapse to stop playback. Profile suppresses pointer-restored row outlines only within My Languages; keyboard focus-visible styles stay available, while Active and reordering retain distinct indicators. Discover options share the batch heading area, keeping the progress and learning card higher. No schema, RLS, collection, review or save-model changes are required.
 
 `tests/editorial-spacing.spec.ts` measures reading gaps and inline alignment at 320–768px and two root text sizes, verifies pointer/keyboard focus and navigation clearance, and captures six matched 390px before/after scenes. These are browser fixtures, not physical iPhone verification.
+
+### Internal AI quota codes
+
+Apply `supabase/migrations/20261128104257_ai_quota_redemption.sql` after the AI Dictionary migration. It adds single-use, account-bound codes for a 50-request daily limit. The default is 5. Existing usage counts toward the new limit on redemption, and project and provider limits continue to apply.
+
+Generate a fresh code and registration SQL locally. Keep the printed code private and run only the printed SQL in the intended Supabase project's SQL Editor. The database stores its hash.
+
+```sh
+node --input-type=module <<'JS'
+import { randomBytes, createHash } from 'node:crypto';
+const code = randomBytes(32).toString('base64url');
+const hash = createHash('sha256').update(code).digest('hex');
+console.log('Internal code:', code);
+console.log(`insert into public.noted_ai_quota_codes(code_hash) values (decode('${hash}', 'hex'));`);
+JS
+```
+
+In Noted, sign in and open **Profile → Settings → Redeem an internal AI code**. Random codes grant access to the first account that redeems them. Six-digit codes must be bound to a specific account by its Supabase Auth user UUID before they can be redeemed. Use the SQL Editor with the intended project selected. Replace both placeholders locally.
+
+```sql
+insert into public.noted_ai_quota_codes (code_hash, eligible_user)
+values (sha256(convert_to('<six-digit code>', 'UTF8')), '<Auth user UUID>'::uuid);
+```
