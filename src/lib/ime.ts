@@ -4,7 +4,8 @@ const states=new WeakMap<Element,ImeState>();
 const explicitSubmits=new WeakMap<HTMLFormElement,number>();
 const submitTracking=new WeakMap<HTMLFormElement,{count:number;listener:(event:MouseEvent)=>void}>();
 // A genuine button activation is different from the synthetic click generated
-// by an input's trailing IME Enter. Keep the latter protected for Safari.
+// by an input's trailing IME Enter. Listen on the document so footer buttons
+// associated through the form attribute receive the same protection.
 export function trackExplicitImeSubmit(form:HTMLFormElement){
  let tracking=submitTracking.get(form);
  if(!tracking){
@@ -18,10 +19,10 @@ export function trackExplicitImeSubmit(form:HTMLFormElement){
     setTimeout(()=>{if(explicitSubmits.get(form)===stamp)explicitSubmits.delete(form);},0);
    }else explicitSubmits.delete(form);
   };
-  tracking={count:0,listener};submitTracking.set(form,tracking);form.addEventListener('click',listener,true);
+  tracking={count:0,listener};submitTracking.set(form,tracking);form.ownerDocument.addEventListener('click',listener,true);
  }
  tracking.count++;
- return()=>{if(--tracking.count===0){form.removeEventListener('click',tracking.listener,true);submitTracking.delete(form);explicitSubmits.delete(form);}};
+ return()=>{if(--tracking.count===0){form.ownerDocument.removeEventListener('click',tracking.listener,true);submitTracking.delete(form);explicitSubmits.delete(form);}};
 }
 export function imeState(element:Element):ImeState {
  let state=states.get(element);if(!state){state={active:false,endedAt:-Infinity};states.set(element,state);}return state;

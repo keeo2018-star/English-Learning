@@ -16,7 +16,7 @@ test('all form fields guard submission, and composition state is isolated by nat
 test('explicit pointer or focused-button save works immediately; implicit IME Enter remains blocked',async()=>{
  const keys=['Element','HTMLButtonElement','HTMLInputElement','document'];const previous=Object.fromEntries(keys.map(key=>[key,globalThis[key]]));
  class Element{closest(){return this;}}class Button extends Element{type='submit';}class Input extends Element{}
- const field={},listeners=new Set(),form={querySelectorAll:()=>[field],addEventListener:(_type,listener)=>listeners.add(listener),removeEventListener:(_type,listener)=>listeners.delete(listener)},button=new Button();button.form=form;
+ const field={},listeners=new Set(),form={querySelectorAll:()=>[field],ownerDocument:{addEventListener:(_type,listener)=>listeners.add(listener),removeEventListener:(_type,listener)=>listeners.delete(listener)}},button=new Button();button.form=form;
  const document={activeElement:field};Object.assign(globalThis,{Element,HTMLButtonElement:Button,HTMLInputElement:Input,document});
  try{
   const stop=trackExplicitImeSubmit(form),stopSecond=trackExplicitImeSubmit(form);assert.equal(listeners.size,1);
