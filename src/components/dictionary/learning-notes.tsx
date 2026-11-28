@@ -44,13 +44,26 @@ export function useLearningNotes(input:EnrichmentInput|null) {
   };
 }
 
-export function LearningNotes({input,state}:{input:EnrichmentInput;state:ReturnType<typeof useLearningNotes>}) {
+export function AiMeaningAction({state}:{state:ReturnType<typeof useLearningNotes>}) {
   const {status,notes,error,busy,generate,checkAgain}=state;
-  if(!status&&!notes)return null;
-  return <Disclosure key={notes?'available':'pending'} label="Learning notes" defaultOpen={!!notes}>
-  <section className={styles.learningNotes} aria-label="AI learning notes">
-    <h3>Learning notes</h3>
-    {!status?.available&&!notes?<div className={styles.status} role="status"><span>{status?.reason==='request'?'Couldn’t check AI availability.':status?.reason==='quota'?'AI request limit reached.':'AI not enabled.'}</span><button type="button" className="text-button" onClick={checkAgain}>Check again</button></div>:notes?<><small>AI-assisted suggestions</small>
+  if(!status||notes)return null;
+  if(!status.available)return <p className="wb-supporting" role="status">
+    AI meaning is unavailable. <button type="button" className="text-button" onClick={checkAgain}>Check again</button>
+  </p>;
+  return <div className={styles.aiMeaningAction}>
+    <Button variant="ghost" size="small" compactSurface disabled={busy} aria-busy={busy} onClick={()=>void generate()}>
+      {busy?'Generating AI meaning…':error?'Retry AI meaning':'AI meaning'}
+    </Button>
+    <small>Sends this entry, its meaning and learning settings to Gemini.</small>
+    {error&&<p role="status">{error}</p>}
+  </div>;
+}
+
+export function LearningNotes({input,notes}:{input:EnrichmentInput;notes:DictionaryEnrichment}) {
+  if(!notes.comparisons.length&&!notes.collocations.length&&!notes.contexts.length&&!notes.usage)return null;
+  return <Disclosure label="Learning notes" defaultOpen>
+    <section className={styles.learningNotes} aria-label="AI learning notes">
+      <small>AI-assisted suggestions</small>
       {notes.comparisons.length>0&&<Disclosure label="Compare words" defaultOpen><dl>
         {notes.comparisons.map(item=><div key={item.expression}><dt>{item.expression}</dt><dd>{item.explanation}{item.coreMeaning&&<p><strong>Meaning:</strong> {item.coreMeaning}</p>}{item.register&&<p><strong>Tone:</strong> {item.register}</p>}{item.situation&&<p><strong>Use:</strong> {item.situation}</p>}{item.example&&<p>{item.example}</p>}</dd></div>)}
       </dl></Disclosure>}
@@ -61,11 +74,6 @@ export function LearningNotes({input,state}:{input:EnrichmentInput;state:ReturnT
         {notes.usage&&<p>{notes.usage}</p>}
         {notes.contexts.length>0&&<ul>{notes.contexts.map(context=><li key={context}>{context}</li>)}</ul>}
       </section>}
-    </>:<><p>Generate with Gemini using this entry, its meaning and learning settings. Your saved meaning stays unchanged.</p>
-      <Button variant="ghost" size="small" compactSurface disabled={busy} onClick={()=>void generate()}>
-        {busy?'Preparing learning notes…':error?'Retry learning notes':'Generate learning notes'}
-      </Button>
-    </>}
-    {error&&<p role="status">{error}</p>}
-  </section></Disclosure>;
+    </section>
+  </Disclosure>;
 }

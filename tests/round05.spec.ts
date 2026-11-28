@@ -33,7 +33,9 @@ async function fixture(page:Page,ai=false,due=true){
  const calls:Record<string,unknown>[]=[];
  await page.route('**/api/ai-dictionary*',route=>{
    if(route.request().method()==='GET')return route.fulfill({json:{available:ai}});
-   calls.push(route.request().postDataJSON());
+   const input=route.request().postDataJSON();
+   if(input.mode==='enrichment-cache')return route.fulfill({json:{available:ai,result:null}});
+   calls.push(input);
    return route.fulfill({json:{result:{word:'callous',target:'en',explanationLanguage:'zh-CN',
      comparisons:[{expression:'insensitive',explanation:'冷酷无情，强调没有顾及对方的感受。'}],
      collocations:[{expression:'callous remark',explanation:'冷酷无情的话。'}],
@@ -69,8 +71,7 @@ for(const width of [320,375,390,430,1024])test(`Library and Dictionary remain sc
  await expect(sheet.getByText('They seemed callous.')).toBeVisible();
  expect(calls).toHaveLength(0);
  if(width===390)await shot(page,'dictionary-examples');
- await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();
- await sheet.locator('summary').filter({hasText:'Compare words'}).click();
+ await sheet.getByRole('button',{name:'AI meaning',exact:true}).click();
  const notes=sheet.getByRole('region',{name:'AI learning notes'});
  await expect(notes.getByText('insensitive',{exact:true})).toBeVisible();
  await expect(notes.getByText('callous remark',{exact:true})).toBeVisible();

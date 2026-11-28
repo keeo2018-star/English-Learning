@@ -87,10 +87,11 @@ test('Visual Viewport keeps editor/actions above keyboard, stable reading positi
 
 test('AI states are compact, deliberate and quota failure is retryable',async({page})=>{
  const state=await fixture(page,true);await page.goto('/library');const sheet=await openDictionary(page);
- expect(state.aiCalls).toHaveLength(0);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();
- await sheet.getByRole('button',{name:'Generate learning notes'}).click();await expect(sheet.getByRole('region',{name:'AI learning notes'}).getByRole('status')).toContainText('AI request limit reached');
+ expect(state.aiCalls).toHaveLength(0);
+ await expect(sheet.locator('summary').filter({hasText:'Learning notes'})).toHaveCount(0);
+ await sheet.getByRole('button',{name:'AI meaning'}).click();await expect(sheet.getByRole('status').filter({hasText:'AI request limit reached'})).toContainText('AI request limit reached');
  expect(state.aiCalls).toHaveLength(1);expect(state.aiCalls[0]).toHaveProperty('meaning',fruit);
- await expect(sheet.getByRole('button',{name:'Retry learning notes'})).toBeVisible();
+ await expect(sheet.getByRole('button',{name:'Retry AI meaning'})).toBeVisible();
 });
 
 test('Related requests time out and can retry without a perpetual loading card',async({page})=>{
@@ -119,9 +120,10 @@ test('successful AI notes and grounded comparisons cache across reopening withou
  await page.route('**/api/ai-dictionary*',route=>{
   if(route.request().method()==='GET')return route.fulfill({json:{available:true}});
   if(route.request().postDataJSON().mode==='enrichment-cache')return route.fulfill({json:{available:true,result:null}});
-  generated++;return route.fulfill({json:{result:{word:'satsuma',target:'en',explanationLanguage:'zh-CN',comparisons:[{expression:'mandarin',explanation:'都是柑橘水果，mandarin 是更宽泛的类别。',coreMeaning:'柑橘水果',register:'日常用语',situation:'谈论水果的种类。',example:'I ate a mandarin after lunch.'},{expression:'samurai',explanation:'日本历史上的武士。'}],contexts:['谈论柑橘水果。'],usage:'日常用来指蜜柑。'}}});
+  generated++;return route.fulfill({json:{result:{word:'satsuma',target:'en',explanationLanguage:'zh-CN',aiMeaning:'一种小型柑橘水果。',comparisons:[{expression:'mandarin',explanation:'都是柑橘水果，mandarin 是更宽泛的类别。',coreMeaning:'柑橘水果',register:'日常用语',situation:'谈论水果的种类。',example:'I ate a mandarin after lunch.'},{expression:'samurai',explanation:'日本历史上的武士。'}],contexts:['谈论柑橘水果。'],usage:'日常用来指蜜柑。'}}});
  });
- await page.goto('/library');let sheet=await openDictionary(page);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();
+ await page.goto('/library');let sheet=await openDictionary(page);await sheet.getByRole('button',{name:'AI meaning'}).click();
+ await expect(sheet.getByRole('heading',{name:'AI meaning',exact:true})).toBeVisible();
  await expect(sheet.getByText('mandarin',{exact:true})).toBeVisible();await expect(sheet.getByText('samurai',{exact:true})).toHaveCount(0);await expect(sheet.getByText('I ate a mandarin after lunch.')).toBeVisible();expect(generated).toBe(1);
  await sheet.getByRole('button',{name:'Close',exact:true}).click();sheet=await openDictionary(page);await expect(sheet.getByText('日常用来指蜜柑。')).toBeVisible();expect(generated).toBe(1);expect(state.writes).toHaveLength(0);
 });

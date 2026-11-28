@@ -15,7 +15,7 @@ async function fixture(page:Page){
  await mockCloud(page,route=>{if(route.request().method()==='PATCH'){writes.push(route.request().postDataJSON());return route.fulfill({json:{...rows[0],...route.request().postDataJSON()}});}return route.fulfill({json:rows});});
  await page.route(cloudOrigin+'/rest/v1/rpc/noted_collections_snapshot',route=>route.fulfill({json:{version:1,multilingual_enabled:true,learning_ready:true,collections}}));
  await page.route(cloudOrigin+'/rest/v1/rpc/learning_collection_calendar',route=>route.fulfill({json:{tracking_since:'2020-01-01T00:00:00Z',days:[]}}));
- await page.route('**/api/ai-dictionary*',route=>{aiReads++;return route.fulfill({json:{available:false}});});
+ await page.route('**/api/ai-dictionary*',route=>{if(route.request().method()==='GET')aiReads++;return route.fulfill({json:{available:false}});});
  await page.route('**/api/dictionary?*',route=>route.fulfill({json:{word:'section',phonetics:[{accent:'UK',text:'/ˈsekʃən/'},{accent:'US',text:'/ˈsekʃən/'}],chinese:['部分；段落','分割，切开'],english:[...definitions,definitions[0]],examples:[{source:saved,translation:'我们考虑了文件的每一部分。'},{source:other,translation},{source:other,translation}],synonyms:[]}}));
  await page.route('**/api/collection-reference?*',route=>route.fulfill({json:{sections:[{partOfSpeech:new URL(route.request().url()).searchParams.get('language')==='fr'?'Nom commun':'Sustantivo',definitions:['A part of a larger whole.','A part of a larger whole.','A limited amount or share intended for a particular purpose.']},{partOfSpeech:'Verbe / Verbo',definitions:['To divide into parts.']}],source:'https://en.wiktionary.org/wiki/portion'}}));
  const discover=discoverFixture();discover.ready();await page.route(cloudOrigin+'/rest/v1/rpc/discover_action',discover.handler);
@@ -69,7 +69,9 @@ for(const language of ['French','Spanish'])test(`${language} grammar stays inlin
 
 test('accordion keeps expanded content mounted and preserves reading scroll after reopening',async({page})=>{
  test.skip(before);await page.setViewportSize({width:390,height:700});const state=await fixture(page);const sheet=await open(page);await summary(sheet,'More examples').click();const details=summary(sheet,'More examples').locator('..');const text=details.getByText(other,{exact:true});await expect(text).toBeVisible();await text.evaluate(el=>el.setAttribute('data-same-node','yes'));await summary(sheet,'More examples').click();await summary(sheet,'More examples').click();await expect(text).toHaveAttribute('data-same-node','yes');
- await summary(sheet,'Learning notes').click();await expect(sheet.getByText('AI not enabled.',{exact:true})).toBeVisible();const status=sheet.getByRole('region',{name:'AI learning notes'});expect((await status.boundingBox())!.height).toBeLessThan(100);await status.evaluate(el=>el.setAttribute('data-retained','true'));await summary(sheet,'Learning notes').click();await summary(sheet,'Learning notes').click();await expect(status).toHaveAttribute('data-retained','true');expect(state.aiReads()).toBe(1);
+ const status=sheet.getByRole('status').filter({hasText:'AI meaning is unavailable.'});await expect(status).toBeVisible();expect((await status.boundingBox())!.height).toBeLessThan(100);
+ await expect(summary(sheet,'Learning notes')).toHaveCount(0);expect(state.aiReads()).toBe(1);
+ await status.getByRole('button',{name:'Check again'}).click();await expect.poll(state.aiReads).toBe(2);
 });
 
 for(const width of [320,390,430])for(const fontSize of [16,20])test(`Discover keeps vocabulary primary and options usable ${width}px at ${fontSize}px`,async({page})=>{

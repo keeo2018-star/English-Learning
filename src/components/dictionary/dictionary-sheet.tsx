@@ -23,7 +23,7 @@ import { RelatedWords,type RelatedInput } from './related-words';
 import {stopPronunciation} from '@/lib/pronunciation';
 import {DictionaryPronunciation,DictionaryReferenceContent} from './dictionary-reference';
 import {BilingualSearch} from './bilingual-search';
-import {LearningNotes,useLearningNotes} from './learning-notes';
+import {AiMeaningAction,LearningNotes,useLearningNotes} from './learning-notes';
 import { VideoContextSection } from './video-context-section';
 export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,savedWords,collection,example, browse, details, metadata, management, blockClose }: {
     browse?:boolean; blockClose?:boolean; details?:ReactNode; management?:ReactNode; metadata?:string; example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
@@ -142,6 +142,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
    <h3>AI meaning</h3>
    <p className="wb-learning-content" lang={explanation}>{learningNotes.notes.aiMeaning}</p>
  </section>}
+ {notesInput&&<AiMeaningAction state={learningNotes}/>}
  {!trail.length&&(onSaveMeaning||meaning)&&<aside className={styles.personal}>
  <div className={styles.personalHeader}><h3 className="wb-ui-text">{onSaveMeaning?"My meaning":"Meaning"}</h3>{onSaveMeaning && !editingMeaning && <IconButton ref={editButton} icon="pencil" label="Edit my meaning" onClick={beginEditing}/>}</div>
  <p className="wb-learning-content">{primaryMeaning(meaning)}</p>{primaryMeaning(meaning)!==meaning&&<Disclosure label="Full saved meaning"><p className="wb-learning-content">{meaning}</p></Disclosure>}{meaningSaved && <span role="status" className={`${styles.savedNote} wb-ui-text`}>Meaning saved.</span>}
@@ -153,7 +154,7 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  {closeAlert&&blockClose&&<p role="alert">Save or cancel your entry edit before closing.</p>}
  {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word} savedMeaning={meaning} savedExample={!trail.length?example:undefined} visibleExample={visibleExample}/>}
  {collection&&!englishReference&&<Disclosure label="Definitions / Other meanings" lazy><CollectionReference key={collection.target_language + ":" + word} word={word} language={collection.target_language}/></Disclosure>}
- {notesInput&&<LearningNotes input={notesInput} state={learningNotes}/>}
+ {notesInput&&learningNotes.notes&&<LearningNotes input={notesInput} notes={learningNotes.notes}/>}
  {englishReference&&<>
  <Disclosure label="Real-world examples" lazy unmountOnClose><VideoContextSection key={"video:"+word} word={word} /></Disclosure>
  {isOriginalEnglish(collection)&&<Disclosure label="Related & Compare" lazy><RelatedWords referenceReady={!!result||!!error} key={"related:"+word+meaning} word={word} meaning={!trail.length?meaning.trim()||result?.chinese[0]||'':result?.chinese[0]||''} synonyms={result?.synonyms||[]} onOpen={navigate} onSave={onRelatedSave} savedWords={savedWords}/></Disclosure>}</>}

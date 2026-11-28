@@ -105,3 +105,7 @@
 .aiMeaning p { margin:0;font-size:1rem;line-height:var(--wb-reading-line-height); }
 .learningNotes > small { color:#55554e; }
 .learningNotes section { margin-top:var(--wb-space-3); }
+
+.aiMeaningAction { display:grid;justify-items:start;gap:var(--wb-space-1);margin-block:var(--wb-space-2) var(--wb-space-3); }
+.aiMeaningAction small { color:#55554e;font-size:var(--wb-size-meta); }
+.aiMeaningAction p { margin:0; }
