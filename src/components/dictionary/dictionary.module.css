@@ -94,8 +94,8 @@
 .learningNotes h4,.learningNotes dl,.learningNotes dd,.learningNotes p { margin:0 0 var(--wb-space-1);line-height:var(--wb-reading-line-height); }
 .learningNotes dt { font-weight:600; }
 .learningNotes dl > div + div { margin-top:var(--wb-space-2); }
-.exampleEditor { margin-block:var(--wb-space-3); }
-.exampleEditor label { display:grid;gap:var(--wb-space-2); }
 .status { display:flex;flex-wrap:wrap;align-items:center;gap:var(--wb-space-2);margin:0;font-size:var(--wb-size-small);line-height:var(--wb-reading-line-height); }
 .status button { padding:var(--wb-space-2) 0;border:0; }
 .content > :global(.wb-disclosure) { margin:0; }
+.content > .reference { margin-block-start: var(--wb-space-4); }
+.reference > figure { margin-block-end: var(--wb-space-3); }

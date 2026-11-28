@@ -24,9 +24,9 @@ import {DictionaryPronunciation,DictionaryReferenceContent} from './dictionary-r
 import {BilingualSearch} from './bilingual-search';
 import {LearningNotes} from './learning-notes';
 import { VideoContextSection } from './video-context-section';
-export function DictionaryButton({ word, meaning, onSaveMeaning,onSaveExample,onRelatedSave,savedWords,collection,example, browse, details, metadata, management, blockClose }: {
+export function DictionaryButton({ word, meaning, onSaveMeaning,onRelatedSave,savedWords,collection,example, browse, details, metadata, management, blockClose }: {
     browse?:boolean; blockClose?:boolean; details?:ReactNode; management?:ReactNode; metadata?:string; example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
-    onSaveMeaning?: (meaning: string) => Promise<void>; onSaveExample?: (example:string)=>Promise<void>;
+    onSaveMeaning?: (meaning: string) => Promise<void>;
     word: string;
     meaning: string;
 }) {
@@ -36,12 +36,12 @@ export function DictionaryButton({ word, meaning, onSaveMeaning,onSaveExample,on
     const openEntry=()=>setOpen(true);
     return <>{browse ? <VocabularyRow expression={word} meaning={meaning} metadata={metadata} buttonRef={trigger} onClick={openEntry}/> :
       <Button ref={trigger} variant="secondary" size="medium" className="wb-dictionary-action" aria-label={"Dictionary for " + word} aria-expanded={open} aria-controls={open?dialogId:undefined} aria-haspopup="dialog" onClick={openEntry}>Dictionary <Icon name="chevronRight" size={16}/></Button>}
-      {open && <DictionarySheet returnFocus={trigger} blockClose={blockClose} details={details} management={management} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onSaveExample={onSaveExample} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
+      {open && <DictionarySheet returnFocus={trigger} blockClose={blockClose} details={details} management={management} example={example} collection={collection} dialogId={dialogId} word={word} meaning={meaning} onSaveMeaning={onSaveMeaning} onRelatedSave={onRelatedSave} savedWords={savedWords} onClose={() => setOpen(false)}/>}</>;
 }
-function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onSaveExample, onClose,onRelatedSave,savedWords,collection,example,details,management,blockClose }: {
+function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord, meaning:rootMeaning, onSaveMeaning:rootSaveMeaning, onClose,onRelatedSave,savedWords,collection,example,details,management,blockClose }: {
     blockClose?:boolean; details?: ReactNode; management?: ReactNode; returnFocus?:React.RefObject<HTMLButtonElement|null>;
     example?:string;collection?:LearningCollection;onRelatedSave?:(input:RelatedInput)=>Promise<void>;savedWords?:string[];
-    onSaveMeaning?: (meaning: string) => Promise<void>; onSaveExample?: (example:string)=>Promise<void>;
+    onSaveMeaning?: (meaning: string) => Promise<void>;
     dialogId: string;
     word: string;
     meaning: string;
@@ -82,20 +82,10 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         catch (error) { setMeaningError(error instanceof Error ? error.message : "Could not save your meaning. Please try again."); }
         finally { savingMeaning.current = false; setMeaningBusy(false); }
     }
-    const [editingExample,setEditingExample]=useState(false),[exampleDraft,setExampleDraft]=useState(example||''),[exampleError,setExampleError]=useState('');
-    const exampleInput=useRef<HTMLTextAreaElement>(null);
-    async function saveExample(event:React.FormEvent<HTMLFormElement>){
-      event.preventDefault();if(!onSaveExample||savingMeaning.current||imeBlocksSubmit(event.currentTarget,event.timeStamp))return;
-      savingMeaning.current=true;setMeaningBusy(true);setExampleError('');
-      try{await onSaveExample(exampleDraft.trim());setEditingExample(false);}catch(error){setExampleError(error instanceof Error?error.message:'Could not save the example. Your edit is kept.');}
-      finally{savingMeaning.current=false;setMeaningBusy(false);}
-    }
-    useEffect(()=>{if(editingExample)exampleInput.current?.focus({preventScroll:true});},[editingExample]);
     const [closeAlert,setCloseAlert]=useState(false);
     function requestClose() {
         if(blockClose){setCloseAlert(true);return;}
         if (savingMeaning.current || formIsComposing(dialog.current)) return;
-        if(editingExample&&exampleDraft!==(example||'')){setExampleError('Save or cancel your example before closing.');exampleInput.current?.focus({preventScroll:true});return;}
         if (editingMeaning && draft !== meaning) { setMeaningError("Save or cancel your edit before closing."); meaningInput.current?.focus({preventScroll:true}); return; }
         onClose();
     }
@@ -123,10 +113,10 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
         return () => controller.abort();
     }, [word, attempt,searchOnly,englishReference]);
     function resetEntry(){setVisibleExample('');stopPronunciation();setResult(null);setError(null);setMeaningError('');setMeaningSaved(false);setEditingMeaning(false);}
-    function navigate(next:string){if(editingExample){setExampleError('Save or cancel your example first.');return;}if(savingMeaning.current||formIsComposing(dialog.current))return;if(blockClose){setCloseAlert(true);return;}if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus({preventScroll:true});return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});});}
-    function back(){if(editingMeaning||editingExample)return;if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>dialog.current?.scrollTo({top}));}
+    function navigate(next:string){if(savingMeaning.current||formIsComposing(dialog.current))return;if(blockClose){setCloseAlert(true);return;}if(editingMeaning){setMeaningError('Save or cancel your edit before exploring another entry.');meaningInput.current?.focus({preventScroll:true});return;}resetEntry();restoreScroll.current=0;setTrail(old=>next.trim().toLowerCase()===rootWord.trim().toLowerCase()?[]:[...old.slice(-18),{word:next,scroll:dialog.current?.scrollTop||0}]);requestAnimationFrame(()=>{dialog.current?.scrollTo({top:0});});}
+    function back(){if(editingMeaning)return;if(savingMeaning.current||formIsComposing(dialog.current))return;const top=trail.at(-1)?.scroll||0;resetEntry();restoreScroll.current=top;setTrail(old=>old.slice(0,-1));requestAnimationFrame(()=>dialog.current?.scrollTo({top}));}
     const formId=dialogId+'-meaning';
-    return <Sheet footer={editingMeaning&&<><Button type="button" variant="secondary" disabled={meaningBusy} onClick={finishEditing}>Cancel</Button><Button type="submit" form={formId} disabled={meaningBusy}>{meaningBusy?'Saving…':'Save meaning'}</Button></>} id={dialogId} portal title={editingMeaning?"Edit meaning":"Dictionary"} wide swipe={!editingMeaning&&!editingExample&&!blockClose} onBackdrop bodyRef={dialog} busy={meaningBusy} returnFocus={returnFocus} onClose={requestClose}>
+    return <Sheet footer={editingMeaning&&<><Button type="button" variant="secondary" disabled={meaningBusy} onClick={finishEditing}>Cancel</Button><Button type="submit" form={formId} disabled={meaningBusy}>{meaningBusy?'Saving…':'Save meaning'}</Button></>} id={dialogId} portal title={editingMeaning?"Edit meaning":"Dictionary"} wide swipe={!editingMeaning&&!blockClose} onBackdrop bodyRef={dialog} busy={meaningBusy} returnFocus={returnFocus} onClose={requestClose}>
  {editingMeaning&&<form id={formId} className={styles.meaningEditor} onSubmit={saveMeaning} aria-label="Edit my meaning">
    <h3>{word}</h3>
    <label>My meaning<ImeTextarea aria-label="My meaning" lang={collection?.explanation_language==='en'?'en':'zh-Hans'} autoCapitalize="none" autoCorrect="off" spellCheck={false} ref={meaningInput} value={draft} onValueChange={setDraft} maxLength={2000} required readOnly={meaningBusy}/></label>
@@ -144,14 +134,9 @@ function DictionarySheet({returnFocus,searchOnly=false, dialogId, word:rootWord,
  {englishReference&&!result && !error && <LoadingState label="Looking up dictionary reference…"/>}
  {error && <div><Feedback>{error.status===404?(/\s/u.test(word)?'No exact reference for this expression.':'No exact dictionary entry available.'):error.message}</Feedback>{error.status!==404&&error.status!==400&&<Button variant="ghost" onClick={() => { setError(null); setResult(null); setAttempt(v => v + 1); }}>Try again</Button>}</div>}
  {!trail.length&&<VisibleReferenceExample.Provider value={setVisibleExample}>{details}</VisibleReferenceExample.Provider>}
- {!trail.length&&onSaveExample&&(editingExample?<form onSubmit={saveExample} aria-label="Edit example" className={styles.exampleEditor}>
- <label>Example sentence<ImeTextarea ref={exampleInput} value={exampleDraft} onValueChange={setExampleDraft} maxLength={3000} readOnly={meaningBusy} rows={3}/></label>
- <div className={styles.editActions}><button disabled={meaningBusy}>{meaningBusy?'Saving…':'Save example'}</button><button type="button" className="secondary" disabled={meaningBusy} onClick={()=>setEditingExample(false)}>Cancel</button></div>
- {exampleError&&<p role="alert">{exampleError}</p>}
- </form>:<button type="button" className="text-button" onClick={()=>{setExampleDraft(example||'');setExampleError('');setEditingExample(true);}}>{example?'Edit example':'Add an example'}</button>)}
  {!trail.length&&contentIssues({word,meaning,example}).length>0&&<Disclosure label="Check saved learning content"><p className="wb-supporting">Your original content is unchanged. Review the intended meaning and edit only if needed.</p><ul>{contentIssues({word,meaning,example}).map(issue=><li key={issue}>{issue}</li>)}</ul>{onSaveMeaning&&<button type="button" className="text-button" onClick={beginEditing}>Choose my meaning</button>}</Disclosure>}
  {closeAlert&&blockClose&&<p role="alert">Save or cancel your entry edit before closing.</p>}
- {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word} savedMeaning={meaning} savedExample={!trail.length?example:undefined} visibleExample={visibleExample} hasPrimaryExample={!trail.length&&!!details}/>}
+ {result && <DictionaryReferenceContent key={word} result={collection?.explanation_language==='en'?{...result,chinese:[],examples:result.examples.map(example=>({...example,translation:''}))}:result} word={word} savedMeaning={meaning} savedExample={!trail.length?example:undefined} visibleExample={visibleExample}/>}
  {collection&&!englishReference&&<Disclosure label="Definitions / Other meanings" lazy><CollectionReference key={collection.target_language + ":" + word} word={word} language={collection.target_language}/></Disclosure>}
  {(!englishReference||!!result||!!error)&&<Disclosure label="Learning notes" lazy><LearningNotes key={JSON.stringify([word,collection?.id,collection?.explanation_language,result?.english[0]?.partOfSpeech,primaryMeaning(meaning)])}
    input={{word,target:collection?.target_language||'en',explanation:collection?.explanation_language||'zh-CN',

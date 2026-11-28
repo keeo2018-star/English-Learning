@@ -13,7 +13,7 @@ const topics = {
 
 export function meaningParts(meaning: string): string[] {
   return meaning.split(/[；;\n]+|(?:\s+[1-9][.)、]\s*)/u)
-    .map(text=>text.replace(/^\s*(?:\d+[.)、]\s*|(?:n|v|adj|adv|phr)\.\s*)/iu,'').trim()).filter(Boolean);
+    .map(text=>text.replace(/^\s*(?:\d+[.)、]\s*|(?:n|vt|vi|v|adj|adv|phr)\.\s*)/iu,'').trim()).filter(Boolean);
 }
 
 export function primaryMeaning(meaning: string, limit=110): string {

@@ -61,6 +61,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
   test.skip(!cloudUrl, 'Uses isolated mocked Supabase accounts');
   for (const width of [390, 1440]) test(`30 distinct mixed items; submitted progress and completion (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     const state = await setup(page, store(35));
     await page.goto('/review?mode=random');
     const seen = new Set<string>();
@@ -72,6 +73,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
       await page.getByRole('button', { name: 'Reveal answer' }).click();
       await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText(`${i} / 30`);
       await page.getByRole('button', { name: i % 3 ? 'Sure' : 'Not sure', exact: true }).click();
+      await page.getByRole('button', { name: 'Continue', exact: true }).click();
     }
     await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     await expect(page.getByText('30 items reviewed.', { exact: true })).toBeVisible();
@@ -90,6 +92,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Not sure', exact: true }).click();
     await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('1 / 3');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     const next = await page.locator('.review-card h2').textContent();
     await page.reload();
     await expect(page.locator('.review-card h2')).toHaveText(next!);
@@ -97,7 +100,7 @@ test.describe('learning sessions, calendar and Library metadata', () => {
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Library', exact: true }).click();
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Random review', exact: true }).click();
     await expect(page.getByRole('status', { name: 'Session progress' })).toHaveText('1 / 3');
-    for (let i = 0; i < 2; i++) { await page.getByRole('button', { name: 'Reveal answer' }).click(); await page.getByRole('button', { name: 'Sure', exact: true }).click(); }
+    for (let i = 0; i < 2; i++) { await page.getByRole('button', { name: 'Reveal answer' }).click(); await page.getByRole('button', { name: 'Sure', exact: true }).click(); await page.getByRole('button', { name: 'Continue', exact: true }).click(); }
     await expect(page.getByText('3 items reviewed.', { exact: true })).toBeVisible();
     expect(state.events.size).toBe(3);
   });

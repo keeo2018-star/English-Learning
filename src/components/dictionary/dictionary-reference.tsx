@@ -1,7 +1,7 @@
 "use client";
 
 import {DefinitionList,BilingualExample} from '@/components/learning/reference-reading';
-import {selectExample} from '@/lib/example-quality';
+import {bestDisplayExample} from '@/lib/example-quality';
 import {primaryMeaning} from '@/lib/learning-quality';
 import type { TargetLanguage } from '@/lib/collections';
 import type {DictionaryResult} from '@/lib/dictionary';
@@ -25,11 +25,11 @@ export function DictionaryPronunciation({word,phonetics,showErrors=true,activeSt
       : <PronunciationControl text={word} language={language} showErrors={showErrors} activeStyle={activeStyle} utility/>}
   </div>;
 }
-export function DictionaryReferenceContent({result,word,hideChinese=false,savedMeaning='',savedExample,visibleExample='',hasPrimaryExample=false}:{result:DictionaryResult;word:string;hideChinese?:boolean;savedMeaning?:string;savedExample?:string;visibleExample?:string;hasPrimaryExample?:boolean}){
-  const primary=selectExample(word,savedMeaning||result.chinese[0]||result.english[0]?.definition||'',result.examples);
+export function DictionaryReferenceContent({result,word,hideChinese=false,savedMeaning='',savedExample,visibleExample=''}:{result:DictionaryResult;word:string;hideChinese?:boolean;savedMeaning?:string;savedExample?:string;visibleExample?:string}){
+  const primary=visibleExample?undefined:bestDisplayExample(word,savedMeaning||result.chinese[0]||result.english[0]?.definition||'',result.examples);
   const displayKey=(value?:string)=>value?.normalize('NFC').replace(/\s+/g,' ').trim()||'';
   const seen=new Set<string>();
-  const remaining=result.examples.filter(item=>{const source=displayKey(item.source),key=JSON.stringify([source,displayKey(item.translation)]);if(seen.has(key))return false;seen.add(key);return source!==displayKey(savedExample)&&source!==displayKey(visibleExample)&&(hasPrimaryExample||source!==displayKey(primary));});
+  const remaining=result.examples.filter(item=>{const source=displayKey(item.source),key=JSON.stringify([source,displayKey(item.translation)]);if(seen.has(key))return false;seen.add(key);return source!==displayKey(savedExample)&&source!==displayKey(visibleExample)&&source!==displayKey(primary?.source);});
   const groups=[
     ...(!hideChinese&&result.chinese.length?[{title:'Chinese definitions',entries:result.chinese.filter(definition=>definition.trim()!==savedMeaning.trim()).map(definition=>({definition,partOfSpeech:''}))}]:[]),
     ...(result.english.length?[{title:'English definitions',entries:result.english}]:[]),
@@ -37,11 +37,11 @@ export function DictionaryReferenceContent({result,word,hideChinese=false,savedM
   const examples=(rows:DictionaryResult['examples'])=>rows.map((example,index)=><BilingualExample key={index} dictionary
     source={<HighlightWord text={example.source} target={word}/>} translation={example.translation}/>);
   return <div className={styles.reference}>
-    {!hasPrimaryExample&&primary&&examples(result.examples.filter(item=>item.source===primary).slice(0,1))}
+    {primary&&<BilingualExample label="Example" dictionary source={<HighlightWord text={primary.source} target={word}/>} translation={primary.translation}/>}
     {!!groups.length&&<Disclosure label="Definitions / Other meanings">
       {groups.map(({title,entries})=><section key={title}><h3>{title}</h3>{entries.length>0&&<DefinitionList items={entries}/>}</section>)}
     </Disclosure>}
-    {remaining.length>0&&<Disclosure label={`More examples (${remaining.length})`}><p className="wb-supporting">Other dictionary contexts may use a different sense. Your primary meaning: {primaryMeaning(savedMeaning)||'not selected'}.</p>{examples(remaining)}</Disclosure>}
+    {remaining.length>0&&<Disclosure label={`More examples (${remaining.length})`}><p className="wb-supporting">Other senses may appear here. Your meaning: {primaryMeaning(savedMeaning)||'not selected'}.</p>{examples(remaining)}</Disclosure>}
     {!groups.length&&!result.examples.length&&<p>No definitions or examples available for this entry.</p>}
     <small className={styles.credit}>Dictionary reference via UAPI.</small>
   </div>;

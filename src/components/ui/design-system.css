@@ -382,3 +382,18 @@ button[aria-pressed="true"]:not(.calendar-day),
 .review-card.wb-learning-card > h2.wb-learning-content { margin: 0; }
 .review-card.wb-learning-card > .review-reveal { margin: var(--wb-space-4) 0 0; }
 .review-card.wb-learning-card .review-ratings { margin: var(--wb-space-2) 0 0; }
+
+.review-card .random-pronunciation .wb-button-surface {
+  color: var(--wb-black);
+}
+.review-card > figure {
+  justify-self: stretch;
+  text-align: start;
+}
+.review-card .review-ratings > [role="status"] {
+  font-size: var(--wb-size-small);
+  align-self: center;
+}
+.review-card.wb-color-blue > figure :is(figcaption, [data-example-translation]) {
+  color: inherit;
+}

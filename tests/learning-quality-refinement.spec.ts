@@ -30,7 +30,7 @@ for(const width of [320,375,390,430,768,1280])test(`concise sense, progressive D
  await page.setViewportSize({width,height:844});const state=await fixture(page);await page.goto('/review');
  await page.getByRole('button',{name:'Reveal answer'}).click();
  await expect(page.locator('.wb-meaning-reveal')).toHaveText(fruit);
- await expect(page.locator('[data-context-example]')).toHaveText(sentence);
+ await expect(page.locator('[data-example-source]')).toHaveText(sentence);
  await expect(page.locator('[data-context-example]')).not.toContainText('clan');
  expect(state.writes).toHaveLength(0);
  await shot(page,`review-${width}`);
@@ -54,10 +54,10 @@ for(const width of [320,375,390,430,768,1280])test(`concise sense, progressive D
 
 test('saved example editing is explicit, preserves scheduling and survives reopening',async({page})=>{
  const state=await fixture(page);await page.goto('/library');const sheet=await openDictionary(page);
- await sheet.getByRole('button',{name:'Edit example',exact:true}).click();
+ await sheet.getByRole('button',{name:'Edit satsuma',exact:true}).click();
  const input=sheet.getByRole('textbox',{name:'Example sentence'});await input.fill('I enjoyed a satsuma after lunch.');
- await sheet.getByRole('button',{name:'Save example',exact:true}).click();
- expect(state.writes).toHaveLength(1);expect(state.writes[0]).toEqual({example:'I enjoyed a satsuma after lunch.',learning_details:{exampleSource:'personal'}});
+ await sheet.getByRole('button',{name:'Save changes',exact:true}).click();
+ expect(state.writes).toHaveLength(1);expect(state.writes[0]).toMatchObject({example:'I enjoyed a satsuma after lunch.',learning_details:{exampleSource:'personal'}});
  expect(state.row().due_at).toBe(sampleWord.due_at);expect(state.row().meaning).toContain('萨摩藩');
  await sheet.getByRole('button',{name:'Close',exact:true}).click();await page.reload();
  const again=await openDictionary(page);await expect(again.locator('[data-context-example]')).toContainText('I enjoyed a satsuma after lunch.');
@@ -128,5 +128,28 @@ test('successful AI notes and grounded comparisons cache across reopening withou
 
 test('failed example save keeps the draft; Cancel and retry never change the meaning or progress',async({page})=>{
  const state=await fixture(page);let fail=true;await page.route(cloudOrigin+'/rest/v1/words*',route=>route.request().method()==='PATCH'&&fail?route.fulfill({status:503,json:{message:'Try again later'}}):route.fallback());
- await page.goto('/library');const sheet=await openDictionary(page);await sheet.getByRole('button',{name:'Edit example',exact:true}).click();const input=sheet.getByRole('textbox',{name:'Example sentence'});await input.fill('I bought a satsuma today.');await sheet.getByRole('button',{name:'Save example',exact:true}).click();await expect(sheet.getByRole('alert')).toBeVisible();await expect(input).toHaveValue('I bought a satsuma today.');expect(state.row().example).toBe(clan);fail=false;await sheet.getByRole('button',{name:'Save example',exact:true}).click();expect(state.row().example).toBe('I bought a satsuma today.');expect(state.row().due_at).toBe(sampleWord.due_at);expect(state.row().meaning).toContain('萨摩藩');
+ await page.goto('/library');const sheet=await openDictionary(page);await sheet.getByRole('button',{name:'Edit satsuma',exact:true}).click();const input=sheet.getByRole('textbox',{name:'Example sentence'});await input.fill('I bought a satsuma today.');await sheet.getByRole('button',{name:'Save changes',exact:true}).click();await expect(sheet.getByRole('alert')).toBeVisible();await expect(input).toHaveValue('I bought a satsuma today.');expect(state.row().example).toBe(clan);fail=false;await sheet.getByRole('button',{name:'Save changes',exact:true}).click();expect(state.row().example).toBe('I bought a satsuma today.');expect(state.row().due_at).toBe(sampleWord.due_at);expect(state.row().meaning).toContain('萨摩藩');
+});
+
+test('Dictionary opens on the matching example and separates examples from other senses',async({page})=>{
+ await fixture(page);await page.goto('/library');const sheet=await openDictionary(page);
+ await expect(sheet.locator('[data-dictionary-example]')).toHaveText(sentence+'她剥了一颗蜜柑，吃了甜甜的水果。');
+ await expect(sheet.getByText(clan,{exact:true}).first()).not.toBeVisible();
+ await expect(sheet.getByRole('button',{name:/^(Add an|Edit) example$/})).toHaveCount(0);
+});
+
+for(const rating of ['Sure','Not sure'])test(`Review keeps the matching example after ${rating}`,async({page})=>{
+ const state=await fixture(page);await page.goto('/review');
+ await page.getByRole('button',{name:'Reveal answer'}).click();
+ await page.getByRole('button',{name:rating,exact:true}).click();
+ const card=page.locator('.wb-learning-card.review-card');
+ await expect(card.getByRole('heading',{name:'satsuma'})).toBeVisible();
+ await expect(card.locator('[data-example-source]')).toHaveText(sentence);
+ await expect(card.locator('[data-example-translation]')).toHaveText('她剥了一颗蜜柑，吃了甜甜的水果。');
+ await expect(card.getByText(clan,{exact:true})).toHaveCount(0);
+ await expect(card.getByRole('button',{name:rating,exact:true})).toHaveCount(0);
+ await card.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(card.getByRole('heading',{name:'satsuma'})).toHaveCount(0);
+ expect(state.writes).toHaveLength(1);
+ expect(state.row().example).toBe(clan);
 });

@@ -22,6 +22,12 @@ export function selectExample(word: string, meaning: string, candidates: Example
   }).filter((v): v is { text: string; score: number } => !!v).sort((a,b) => b.score-a.score)[0]?.text || '';
 }
 
+export function bestDisplayExample(word: string, meaning: string, candidates: ExampleCandidate[]) {
+  const complete = candidates.filter(candidate => /[.!?]["’”']?$/u.test(candidate.source.trim()));
+  const source = selectExample(word, meaning, complete);
+  return source ? complete.find(candidate => candidate.source.trim() === source) : undefined;
+}
+
 // Reference providers return bilingual pairs, but usually do not identify the
 // grammatical sense of each example. Require the complete saved gloss in the
 // paired translation. Explicitly POS-labelled entries need reviewed examples.

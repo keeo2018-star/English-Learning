@@ -88,12 +88,14 @@ export default function Workspace({
     [query, setQuery] = useState(() => searchParams.get("q") || ""),
     [libraryPage, setLibraryPage] = useState(0),
     [syncError, setSyncError] = useState(false),
+    [ratedCard, setRatedCard] = useState<{scope:string;word:Word;direction:string;position:string;rating:RecallRating}|null>(null),
     [revealed, setRevealed] = useState<string | null>(null),
     [session, setSession] = useState<ReviewSession | null>(null),
     [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
     [autoChoice,setAutoChoice]=useState<{key:string;enabled:boolean}|null>(null),
     [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
     [now, setNow] = useState(0),
+    [editError,setEditError] = useState(""),
     [editing, setEditing] = useState<string | null>(null),
     [deleting, setDeleting] = useState<Word | null>(null);
   const learning = useCollections(user?.id);
@@ -108,7 +110,7 @@ export default function Workspace({
   const missingContext=learning.enabled&&allWords.some(item=>item.collection_id&&!learning.collections.some(c=>c.id===item.collection_id));
   const refreshCollections=learning.refresh;
   useEffect(()=>{if(missingContext)refreshCollections();},[missingContext,refreshCollections]);
-  function selectCollection(id:string|null){if(busy||editing||captureBusy)return;if(id===collection?.id){setAllLanguages(false);return;}stopPronunciation();setMessage('');setRevealed(null);setSession(null);requestedRandom.current=false;setLibraryPage(0);setAllLanguages(id===null);if(id)learning.select(id);}
+  function selectCollection(id:string|null){if(busy||editing||captureBusy)return;if(id===collection?.id){setAllLanguages(false);return;}stopPronunciation();setMessage('');setRatedCard(null);setRevealed(null);setSession(null);requestedRandom.current=false;setLibraryPage(0);setAllLanguages(id===null);if(id)learning.select(id);}
   const [captureBusy,setCaptureBusy]=useState(false);
   const [offlineNotice,setOfflineNotice]=useState('');
   const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
@@ -403,22 +405,6 @@ export default function Workspace({
       setMessage("Meaning updated.");
     } finally { saving.current = false; setBusy(false); }
   }
-  async function saveDictionaryExample(word:Word,value:string){
-    if(value.length>3000)throw Error('Keep the example within 3,000 characters.');
-    const details={...word.learning_details};delete details.highlight;delete details.exampleTranslation;
-    details.exampleSource='personal';
-    const changes={example:value,...('learning_details' in word?{learning_details:details}:{}),...('example_source' in word?{example_source:value?'personal':null}:{})};
-    if(saving.current)throw Error('A save is already in progress.');
-    saving.current=true;setBusy(true);++loadVersion.current;
-    try{
-      if(supabase){if(!user)throw Error('Please sign in first.');const owner=user.id;
-        const {data,error}=await supabase.from('words').update(changes).eq('id',word.id).eq('user_id',owner).select('*').single();
-        if(error)throw error;if(accountId.current!==owner)throw Error('Your account changed. Reopen this item.');
-        setWords(previous=>previous.map(item=>item.id===word.id?data:item));
-      }else persistLocal(allWords.map(item=>item.id===word.id?{...item,...changes} as Word:item));
-      setMessage('Example updated.');
-    }finally{saving.current=false;setBusy(false);}
-  }
   async function edit(e: React.FormEvent<HTMLFormElement>, word: Word) {
     e.preventDefault();
     if(imeBlocksSubmit(e.currentTarget,e.timeStamp))return;
@@ -434,13 +420,13 @@ export default function Workspace({
         ? { item_type: String(form.get("item_type")) as "word" | "expression" } : {}),
     };
     if(supabase&&changes.item_type==='word'&&itemType(word)==='expression'){
-      try{if((await voiceFiles([word.id])).length){setVoiceTypeEdit({word,changes});return;}}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||'')){setMessage(voiceError(error));return;}}
+      try{if((await voiceFiles([word.id])).length){setVoiceTypeEdit({word,changes});return;}}catch(error){const code=(error as {code?:string}).code;if(!['PGRST202','PGRST205'].includes(code||'')){setEditError(voiceError(error));return;}}
     }
     await applyEdit(word,changes);
   }
   async function applyEdit(word:Word,changes:NewLearningItem,preserve=false,removeRecording=false){
     setBusy(true);
-    setMessage("");
+    setEditError("");
     try {
       if (!changes.word)
         throw new Error("Enter a word or expression.");
@@ -466,7 +452,7 @@ export default function Workspace({
       setMessage("Word updated.");
     } catch (error) {
       setVoiceTypeEdit(null);
-      setMessage(errorMessage(error, "Could not update word."));
+      setEditError(errorMessage(error, "Could not update word."));
     } finally {
       setBusy(false);
     }
@@ -476,6 +462,7 @@ export default function Workspace({
     ratingInFlight.current = true;++loadVersion.current;
     setPendingRating(rating);
     const owner = accountId.current;
+    const feedback = {scope:reviewScope,word,direction,position:cardPosition,rating};
     setNow(Date.now());
     setBusy(true);
     setMessage("");
@@ -527,7 +514,7 @@ export default function Workspace({
           persistLocal(allWords.map(w => w.id === word.id ? updated : w));
         }
       }
-      focusNextCard.current = true;
+      if(accountId.current===owner)setRatedCard({...feedback,word:updated});
       setRevealed(null);
       if (currentSession && entry) {
         let latest: ReviewSession | null = null;
@@ -551,14 +538,23 @@ export default function Workspace({
   const reviewCard = randomPosition >= 0 ? randomQueue?.[randomPosition] : undefined;
   const sessionTotal = visibleSession?.queue.filter(entry => visibleSession.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
   const reviewedCount = visibleSession?.completed.length ?? 0;
-  const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
+  const reviewScope = JSON.stringify([account,collection?.id,randomMode]);
+  const feedback = ratedCard?.scope===reviewScope ? ratedCard : null;
+  const card = feedback?.word ?? (randomMode ? words.find(word => word.id === reviewCard?.id) : due[0]);
+  const cardPosition = feedback?.position ?? (randomMode ? `${session?.id}/${randomPosition}` : 'due');
+  const continueReview = () => {
+    stopPronunciation();
+    prepareReviewPronunciation();
+    focusNextCard.current = true;
+    setRatedCard(null);
+  };
   useEffect(()=>{
     if(deleting||!deleteFocusPending.current)return;
     deleteFocusPending.current=false;
     if(page==='review')(revealButton.current||document.querySelector<HTMLElement>('.review-completion button, .review-card a[href="/add"]'))?.focus({preventScroll:true});
     else librarySearch.current?.focus({preventScroll:true});
   },[deleting,page]);
-  const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
+  const selectedDirection = feedback?.direction ?? (randomMode ? reviewCard?.direction ?? "forward" : "forward");
   const direction = selectedDirection === 'reverse' && !card?.meaning.trim() ? 'forward' : selectedDirection;
   const prompt = card ? direction === "context" ? (trustedSavedExample(card)?contextPrompt(card):'') || card.word : direction === "reverse" ? primaryMeaning(card.meaning) : card.word : "";
   useEffect(() => {
@@ -566,7 +562,7 @@ export default function Workspace({
       revealButton.current?.focus({ preventScroll: true });
       focusNextCard.current = false;
     }
-  }, [card?.id, randomPosition]);
+  }, [card?.id, randomPosition, feedback]);
   function startRandomReview() {
     const queue = createReviewQueue(words);
     for (const entry of queue.slice(0, 2)) {
@@ -659,11 +655,11 @@ export default function Workspace({
         <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
           {page === "review" ? <Segments label="Review mode">
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-              onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
+              onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRatedCard(null); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
               Due words
             </SelectableButton>
             <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}
-              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
+              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setRatedCard(null); setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
               Random review
             </SelectableButton>
           </Segments> : <>
@@ -751,12 +747,12 @@ export default function Workspace({
               {displayedWords.map(w => {
                 const entry=entryCollection(w);
                 return <div className="word-row" key={w.id}>
-                  <DictionaryButton browse blockClose={editing===w.id} word={w.word} meaning={w.meaning} example={w.example} onSaveExample={value=>saveDictionaryExample(w,value)} collection={entry}
+                  <DictionaryButton browse blockClose={editing===w.id} word={w.word} meaning={w.meaning} example={w.example} collection={entry}
                     metadata={allLanguages&&entry?learningLanguages[entry.target_language].label:w.learning_details?.partOfSpeech}
                     onSaveMeaning={value=>saveDictionaryMeaning(w,value)} onRelatedSave={input=>saveRelated(input,entry)}
                     savedWords={collectionItems(allWords,entry||null,true).map(item=>item.word)}
                     details={<>
-                    <ContextExample labelExample item={w} owner={account} language={entry?.target_language} lookup={isOriginalEnglish(entry)}/>
+                    <ContextExample labelExample item={w} owner={account} language={entry?.target_language} lookup={false}/>
                     {itemType(w)==='expression'&&<VoiceManager item={w.id} files={voiceMetadata.files.filter(file=>file.item_id===w.id)} ready={voiceMetadata.ready} error={voiceMetadata.error} onChange={voiceMetadata.refresh}/>}
                     {reviewState(w)&&<p className="wb-supporting">Last review: {reviewState(w)?.last_rating==='sure'?'Sure':'Not sure'}</p>}
                     </>}
@@ -795,6 +791,7 @@ export default function Workspace({
                           />
                         </label>
                         {'personal_note' in w&&<label>Personal note<ImeTextarea name="personal_note" defaultValue={w.personal_note||''} maxLength={3000}/></label>}
+                        {editError&&<p role="alert">{editError}</p>}
                         <div className="actions">
                           <Button type="submit" disabled={busy}>Save changes</Button>
                           <Button
@@ -807,7 +804,7 @@ export default function Workspace({
                         </div>
                       </form>
                     ):<div className="wb-entry-management">
-                      <button type="button" className="text-button" disabled={busy} aria-label={'Edit '+w.word} onClick={()=>setEditing(w.id)}>Edit entry</button>
+                      <button type="button" className="text-button" disabled={busy} aria-label={'Edit '+w.word} onClick={()=>{setEditError("");setEditing(w.id);}}>Edit entry</button>
                       <button type="button" className="text-button" disabled={busy} aria-label={'Delete '+w.word} onClick={()=>void requestDelete(w)}>Delete entry</button>
                     </div>}/>
                 </div>;
@@ -849,25 +846,28 @@ export default function Workspace({
                   <progress aria-label="Items reviewed" value={reviewedCount} max={Math.max(1, sessionTotal)} />
                 </div> : null}
                 <Card
-                  key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
+                  key={`${card.id}/${cardPosition}`}
                   color={randomMode ? "coral" : collectionColor(card.id)}
                   className="panel review-card wb-learning-card"
                 >
-                  {randomMode&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
+                  {randomMode&&!feedback&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
                   <VocabularyTitle text={prompt}/>
-                  {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
-                  {revealed === card.id ? (
+                  {(!randomMode || direction === "forward" || (revealed === card.id || feedback)) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
+                  {(revealed === card.id || feedback) ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? primaryMeaning(card.meaning) || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{primaryMeaning(card.meaning)}</p>}
-                      <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)}/>
-                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} onSaveExample={value=>saveDictionaryExample(card,value)} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
-                      <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
+                      <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)} labelExample review/>
+                      <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
+                      {feedback ? <div className="actions review-ratings">
+                        <span role="status">{feedback.rating === "sure" ? "Sure" : "Not sure"}</span>
+                        <Button onClick={continueReview}>Continue</Button>
+                      </div> : <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
                         <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>
                         <SelectableButton selected={pendingRating === "sure"} variant="primary" disabled={busy}
                           onClick={() => void grade(card, "sure")}>Sure</SelectableButton>
-                      </div>
+                      </div>}
                     </>
                   ) : (
                     <Button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>
