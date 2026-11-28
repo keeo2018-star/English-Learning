@@ -52,7 +52,6 @@ test.describe('shared review speech fallback', () => {
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     expect(await speaks(page)).toHaveLength(1);
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect.poll(async () => (await speaks(page)).length).toBe(2);
     expect((await speaks(page))[1].text).toBe('Good morning!');
     const setting = page.getByRole('switch', { name: 'Auto pronunciation', exact: true });

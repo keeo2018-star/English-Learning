@@ -99,3 +99,9 @@
 .content > :global(.wb-disclosure) { margin:0; }
 .content > .reference { margin-block-start: var(--wb-space-4); }
 .reference > figure { margin-block-end: var(--wb-space-3); }
+
+.aiMeaning { margin-block:var(--wb-space-3);padding:var(--wb-space-3) var(--wb-space-4);border-radius:18px;background:#e9e1fa;overflow-wrap:anywhere; }
+.aiMeaning h3 { margin:0 0 var(--wb-space-1);font-size:var(--wb-size-meta);font-weight:var(--wb-medium);letter-spacing:normal; }
+.aiMeaning p { margin:0;font-size:1rem;line-height:var(--wb-reading-line-height); }
+.learningNotes > small { color:#55554e; }
+.learningNotes section { margin-top:var(--wb-space-3); }

@@ -12,6 +12,7 @@ export type DictionaryEnrichment = {
   word: string;
   target: string;
   explanationLanguage: string;
+  aiMeaning?: string;
   comparisons: LearningPhrase[];
   collocations: LearningPhrase[];
   contexts: string[];
@@ -57,6 +58,10 @@ export function parseEnrichment(raw:unknown,input:EnrichmentInput):DictionaryEnr
   const collocations=phrases(data.collocations,false);
   const contexts=[...new Set((Array.isArray(data.contexts)?data.contexts.slice(0,8):[]).map(explains).filter(Boolean))].slice(0,3);
   const usage=explains(data.usage);
+  const definition=explains(data.aiMeaning);
+  const aiMeaning=definition.length<=180&&!/[\r\n]/.test(definition)&&
+    !conflictingSense(input.meaning||'',definition)?definition:'';
+
   if(!comparisons.length&&!collocations.length&&!contexts.length&&!usage)throw Error('AI returned no usable learning notes.');
-  return {word:input.word,target:input.target,explanationLanguage:input.explanation,comparisons,collocations,contexts,usage};
+  return {word:input.word,target:input.target,explanationLanguage:input.explanation,...(aiMeaning?{aiMeaning}:{}),comparisons,collocations,contexts,usage};
 }

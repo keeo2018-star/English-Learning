@@ -974,7 +974,7 @@ summary:focus-visible {
 .library-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 24px 0; font-size: 13px; }
 .library-pagination button { padding-inline: 18px; }
 /* A rating locks navigation without flashing the mode controls half-transparent. */
-.review-modes[data-saving=true] button:disabled, button[data-rating-lock=true]:disabled { opacity: 1; }
+button[data-rating-lock=true]:disabled { opacity: 1; }
 
 /* Quick-capture forms use the same rhythm as other editorial interfaces. */
 .word-form { display: grid; gap: 16px; padding: var(--wb-card-padding); }
@@ -1038,8 +1038,8 @@ summary:focus-visible {
 .ai-explanation,.ai-search-action,.ai-settings { border-top:1px solid rgb(0 0 0 / 16%);margin-top:24px;padding-top:24px;min-width:0; }
 .ai-explanation p,.ai-settings p { font-size:14px;line-height:1.7;overflow-wrap:anywhere; }
 .ai-settings h2 { font-size:24px;letter-spacing:normal;margin-bottom:16px; }
-.ai-settings label { display:flex;align-items:flex-start;gap:12px; }
-.ai-settings input { width:20px;min-width:20px;min-height:20px;margin:0; }
+.ai-settings .wb-switch-row { display:flex;justify-content:space-between;gap:var(--wb-space-3);line-height:1.4; }
+.ai-settings .wb-switch { flex:none; }
 .ai-meaning { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
 .ai-meaning small { font-size:12px; }
 .ai-meaning:empty { display:none; }
@@ -1348,7 +1348,17 @@ html[data-wb-modal-keyboard] .wb-sheet-footer { padding-block-end:10px; }
 .wb-icon-button[data-variant="neutral"] > .wb-button-surface { background: transparent; }
 .wb-icon-button[data-variant="primary"] > .wb-button-surface,
 .wb-button[data-button-surface][aria-pressed="true"] > .wb-button-surface { background: var(--wb-black); color: var(--wb-white); }
-.wb-button[data-button-variant].wb-dictionary-action { margin-inline: 0; }
+/* A dialog trigger is an action. Keep one visible line even on keyboard focus. */
+.wb-button[data-button-variant].wb-dictionary-action { margin-inline: 0; transition-property: background-color, color; }
+.wb-button[data-button-variant].wb-dictionary-action:focus-visible:not([data-input-modality="pointer"]):not([data-wb-pointer-restored="true"]) {
+  border-color: transparent;
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.wb-button[data-button-variant].wb-dictionary-action[data-input-modality="pointer"]:focus {
+  outline: none;
+  box-shadow: none;
+}
 @media (prefers-reduced-motion: reduce) { .wb-button[data-button-variant] { transition: none; } }
 .wb-dialog .wb-button[data-button-variant]:focus-visible { outline-offset: 0; }
 /* Keyboard focus is distinct from the active Collection; pointer focus stays quiet. */

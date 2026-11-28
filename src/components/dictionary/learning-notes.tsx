@@ -8,32 +8,50 @@ import {Button} from '@/components/ui/button';
 import {HighlightWord} from './highlight-word';
 import styles from './dictionary.module.css';
 
-export function LearningNotes({input}:{input:EnrichmentInput}) {
-  const [status,setStatus]=useState<AiStatus|null>(null);const [check,setCheck]=useState(0);
-  const [notes,setNotes]=useState<DictionaryEnrichment|null>(null);
-  const [error,setError]=useState('');
-  const [busy,setBusy]=useState(false);
+export function useLearningNotes(input:EnrichmentInput|null) {
+  const [status,setStatus]=useState<AiStatus|null>(null);
+  const [check,setCheck]=useState(0);
+  const [cached,setCached]=useState<{input:EnrichmentInput;notes:DictionaryEnrichment}|null>(null);
+  const [failure,setFailure]=useState<{input:EnrichmentInput;message:string}|null>(null);
+  const [working,setWorking]=useState<EnrichmentInput|null>(null);
   const active=useRef<AbortController|null>(null);
   useEffect(()=>{
-    let mounted=true;
-    const cacheRequest=new AbortController();
-    void aiStatus().then(value=>{if(mounted)setStatus(value);});void cachedEnrichment(input,AbortSignal.any([cacheRequest.signal,AbortSignal.timeout(8000)])).then(value=>{if(mounted&&value)setNotes(value);}).catch(()=>{});
-    return()=>{mounted=false;cacheRequest.abort();active.current?.abort();};
+    if(!input)return;
+    const controller=new AbortController();
+    void aiStatus().then(value=>{if(!controller.signal.aborted)setStatus(value);});
+    void cachedEnrichment(input,AbortSignal.any([controller.signal,AbortSignal.timeout(8000)]))
+      .then(notes=>{if(notes&&!controller.signal.aborted)setCached({input,notes});}).catch(()=>{});
+    return()=>{controller.abort();active.current?.abort();active.current=null;};
   },[input,check]);
   async function generate(){
-    if(active.current)return;
+    if(!input||active.current)return;
     const request=new AbortController();
     active.current=request;
-    setBusy(true);setError('');
-    try{setNotes(await requestEnrichment(input,request.signal));}
-    catch(e){if(!request.signal.aborted)setError(e instanceof Error?e.message:'Could not generate learning notes.');}
-    finally{active.current=null;if(!request.signal.aborted)setBusy(false);}
+    setWorking(input);setFailure(null);
+    try{
+      const notes=await requestEnrichment(input,request.signal);
+      if(!request.signal.aborted)setCached({input,notes});
+    } catch(error) {
+      if(!request.signal.aborted)setFailure({input,message:error instanceof Error?error.message:'Could not generate learning notes.'});
+    } finally {
+      if(active.current===request){active.current=null;setWorking(null);}
+    }
   }
-  if(!status)return <p className="wb-inline-status" role="status">Checking notes…</p>;
-  return <section className={styles.learningNotes} aria-label="AI learning notes">
+  return {
+    status, notes:input&&cached?.input===input?cached.notes:null,
+    error:failure?.input===input?failure.message:'', busy:working===input&&!!input,
+    generate, checkAgain:()=>setCheck(value=>value+1),
+  };
+}
+
+export function LearningNotes({input,state}:{input:EnrichmentInput;state:ReturnType<typeof useLearningNotes>}) {
+  const {status,notes,error,busy,generate,checkAgain}=state;
+  if(!status&&!notes)return null;
+  return <Disclosure key={notes?'available':'pending'} label="Learning notes" defaultOpen={!!notes}>
+  <section className={styles.learningNotes} aria-label="AI learning notes">
     <h3>Learning notes</h3>
-    {!status.available&&!notes?<div className={styles.status} role="status"><span>{status.reason==='request'?'Couldn’t check AI availability.':status.reason==='quota'?'AI request limit reached.':'AI not enabled.'}</span><button type="button" className="text-button" onClick={()=>setCheck(n=>n+1)}>Check again</button></div>:notes?<><small>AI-assisted suggestions</small>
-      {notes.comparisons.length>0&&<Disclosure label="Compare words"><dl>
+    {!status?.available&&!notes?<div className={styles.status} role="status"><span>{status?.reason==='request'?'Couldn’t check AI availability.':status?.reason==='quota'?'AI request limit reached.':'AI not enabled.'}</span><button type="button" className="text-button" onClick={checkAgain}>Check again</button></div>:notes?<><small>AI-assisted suggestions</small>
+      {notes.comparisons.length>0&&<Disclosure label="Compare words" defaultOpen><dl>
         {notes.comparisons.map(item=><div key={item.expression}><dt>{item.expression}</dt><dd>{item.explanation}{item.coreMeaning&&<p><strong>Meaning:</strong> {item.coreMeaning}</p>}{item.register&&<p><strong>Tone:</strong> {item.register}</p>}{item.situation&&<p><strong>Use:</strong> {item.situation}</p>}{item.example&&<p>{item.example}</p>}</dd></div>)}
       </dl></Disclosure>}
       {notes.collocations.length>0&&<section><h4>Suggested collocations</h4><dl>
@@ -49,5 +67,5 @@ export function LearningNotes({input}:{input:EnrichmentInput}) {
       </Button>
     </>}
     {error&&<p role="status">{error}</p>}
-  </section>;
+  </section></Disclosure>;
 }

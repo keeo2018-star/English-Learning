@@ -121,9 +121,9 @@ test('successful AI notes and grounded comparisons cache across reopening withou
   if(route.request().postDataJSON().mode==='enrichment-cache')return route.fulfill({json:{available:true,result:null}});
   generated++;return route.fulfill({json:{result:{word:'satsuma',target:'en',explanationLanguage:'zh-CN',comparisons:[{expression:'mandarin',explanation:'都是柑橘水果，mandarin 是更宽泛的类别。',coreMeaning:'柑橘水果',register:'日常用语',situation:'谈论水果的种类。',example:'I ate a mandarin after lunch.'},{expression:'samurai',explanation:'日本历史上的武士。'}],contexts:['谈论柑橘水果。'],usage:'日常用来指蜜柑。'}}});
  });
- await page.goto('/library');let sheet=await openDictionary(page);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();await sheet.locator('summary').filter({hasText:'Compare words'}).click();
+ await page.goto('/library');let sheet=await openDictionary(page);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();
  await expect(sheet.getByText('mandarin',{exact:true})).toBeVisible();await expect(sheet.getByText('samurai',{exact:true})).toHaveCount(0);await expect(sheet.getByText('I ate a mandarin after lunch.')).toBeVisible();expect(generated).toBe(1);
- await sheet.getByRole('button',{name:'Close',exact:true}).click();sheet=await openDictionary(page);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await expect(sheet.getByText('日常用来指蜜柑。')).toBeVisible();expect(generated).toBe(1);expect(state.writes).toHaveLength(0);
+ await sheet.getByRole('button',{name:'Close',exact:true}).click();sheet=await openDictionary(page);await expect(sheet.getByText('日常用来指蜜柑。')).toBeVisible();expect(generated).toBe(1);expect(state.writes).toHaveLength(0);
 });
 
 test('failed example save keeps the draft; Cancel and retry never change the meaning or progress',async({page})=>{
@@ -136,20 +136,4 @@ test('Dictionary opens on the matching example and separates examples from other
  await expect(sheet.locator('[data-dictionary-example]')).toHaveText(sentence+'她剥了一颗蜜柑，吃了甜甜的水果。');
  await expect(sheet.getByText(clan,{exact:true}).first()).not.toBeVisible();
  await expect(sheet.getByRole('button',{name:/^(Add an|Edit) example$/})).toHaveCount(0);
-});
-
-for(const rating of ['Sure','Not sure'])test(`Review keeps the matching example after ${rating}`,async({page})=>{
- const state=await fixture(page);await page.goto('/review');
- await page.getByRole('button',{name:'Reveal answer'}).click();
- await page.getByRole('button',{name:rating,exact:true}).click();
- const card=page.locator('.wb-learning-card.review-card');
- await expect(card.getByRole('heading',{name:'satsuma'})).toBeVisible();
- await expect(card.locator('[data-example-source]')).toHaveText(sentence);
- await expect(card.locator('[data-example-translation]')).toHaveText('她剥了一颗蜜柑，吃了甜甜的水果。');
- await expect(card.getByText(clan,{exact:true})).toHaveCount(0);
- await expect(card.getByRole('button',{name:rating,exact:true})).toHaveCount(0);
- await card.getByRole('button',{name:'Continue',exact:true}).click();
- await expect(card.getByRole('heading',{name:'satsuma'})).toHaveCount(0);
- expect(state.writes).toHaveLength(1);
- expect(state.row().example).toBe(clan);
 });

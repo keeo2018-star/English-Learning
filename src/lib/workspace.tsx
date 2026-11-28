@@ -88,11 +88,11 @@ export default function Workspace({
     [query, setQuery] = useState(() => searchParams.get("q") || ""),
     [libraryPage, setLibraryPage] = useState(0),
     [syncError, setSyncError] = useState(false),
-    [ratedCard, setRatedCard] = useState<{scope:string;word:Word;direction:string;position:string;rating:RecallRating}|null>(null),
     [revealed, setRevealed] = useState<string | null>(null),
     [session, setSession] = useState<ReviewSession | null>(null),
     [typeFilter, setTypeFilter] = useState<"all" | "word" | "expression">("all"),
     [autoChoice,setAutoChoice]=useState<{key:string;enabled:boolean}|null>(null),
+    [reviewError, setReviewError] = useState(""),
     [pendingRating, setPendingRating] = useState<RecallRating | null>(null),
     [now, setNow] = useState(0),
     [editError,setEditError] = useState(""),
@@ -110,7 +110,7 @@ export default function Workspace({
   const missingContext=learning.enabled&&allWords.some(item=>item.collection_id&&!learning.collections.some(c=>c.id===item.collection_id));
   const refreshCollections=learning.refresh;
   useEffect(()=>{if(missingContext)refreshCollections();},[missingContext,refreshCollections]);
-  function selectCollection(id:string|null){if(busy||editing||captureBusy)return;if(id===collection?.id){setAllLanguages(false);return;}stopPronunciation();setMessage('');setRatedCard(null);setRevealed(null);setSession(null);requestedRandom.current=false;setLibraryPage(0);setAllLanguages(id===null);if(id)learning.select(id);}
+  function selectCollection(id:string|null){if(busy||ratingInFlight.current||editing||captureBusy)return;if(id===collection?.id){setAllLanguages(false);return;}stopPronunciation();setMessage('');setRevealed(null);setSession(null);requestedRandom.current=false;setLibraryPage(0);setAllLanguages(id===null);if(id)learning.select(id);}
   const [captureBusy,setCaptureBusy]=useState(false);
   const [offlineNotice,setOfflineNotice]=useState('');
   const [deleteTrigger,setDeleteTrigger]=useState<HTMLElement|null>(null);
@@ -200,7 +200,8 @@ export default function Workspace({
     const { data } = client.auth.onAuthStateChange((_event, session) => {
       if(!active)return;authRevision++;
       if(_event==='INITIAL_SESSION'&&!session&&prepared&&!navigator.onLine)return;
-      if (accountId.current !== (session?.user.id || null)) {
+      const accountChanged = accountId.current !== (session?.user.id || null);
+      if (accountChanged) {
         ++loadVersion.current;
         if(accountId.current)forgetLibrary(accountId.current);
         accountId.current = session?.user.id || null;
@@ -217,7 +218,10 @@ export default function Workspace({
         setReady(false);setRefreshed(false);
       }
       setUser(session?.user || null);
-      setTimeout(() => void load(session?.user || null), 0);
+      setTimeout(() => {
+        if(!active||(!accountChanged&&ratingInFlight.current))return;
+        void load(session?.user || null, !accountChanged&&_event!=='INITIAL_SESSION');
+      }, 0);
     });
     return () => {
       active=false;data.subscription.unsubscribe();
@@ -462,10 +466,10 @@ export default function Workspace({
     ratingInFlight.current = true;++loadVersion.current;
     setPendingRating(rating);
     const owner = accountId.current;
-    const feedback = {scope:reviewScope,word,direction,position:cardPosition,rating};
-    setNow(Date.now());
-    setBusy(true);
-    setMessage("");
+    const reviewedAt = Date.now();
+    prepareReviewPronunciation(false);
+    setReviewError("");
+
     let updated = rateItem(word, rating);
     const currentSession = randomMode ? visibleSession : null;
     const entry = currentSession?.queue.find(c => c.id === word.id && !currentSession.completed.includes(c.eventId));
@@ -514,7 +518,9 @@ export default function Workspace({
           persistLocal(allWords.map(w => w.id === word.id ? updated : w));
         }
       }
-      if(accountId.current===owner)setRatedCard({...feedback,word:updated});
+      stopPronunciation();
+      focusNextCard.current = true;
+      setNow(reviewedAt);
       setRevealed(null);
       if (currentSession && entry) {
         let latest: ReviewSession | null = null;
@@ -523,11 +529,10 @@ export default function Workspace({
         else persistSession(completeSessionCard(latest || currentSession, entry.eventId));
       }
     } catch (error) {
-      setMessage(errorMessage(error, "Could not save review. Please try again."));
+      if(accountId.current===owner)setReviewError(errorMessage(error, "Could not save review. Please try again."));
     } finally {
       ratingInFlight.current = false;
       setPendingRating(null);
-      setBusy(false);
     }
   }
 
@@ -538,23 +543,14 @@ export default function Workspace({
   const reviewCard = randomPosition >= 0 ? randomQueue?.[randomPosition] : undefined;
   const sessionTotal = visibleSession?.queue.filter(entry => visibleSession.completed.includes(entry.eventId) || words.some(word => word.id === entry.id)).length ?? 0;
   const reviewedCount = visibleSession?.completed.length ?? 0;
-  const reviewScope = JSON.stringify([account,collection?.id,randomMode]);
-  const feedback = ratedCard?.scope===reviewScope ? ratedCard : null;
-  const card = feedback?.word ?? (randomMode ? words.find(word => word.id === reviewCard?.id) : due[0]);
-  const cardPosition = feedback?.position ?? (randomMode ? `${session?.id}/${randomPosition}` : 'due');
-  const continueReview = () => {
-    stopPronunciation();
-    prepareReviewPronunciation();
-    focusNextCard.current = true;
-    setRatedCard(null);
-  };
+  const card = randomMode ? words.find(word => word.id === reviewCard?.id) : due[0];
   useEffect(()=>{
     if(deleting||!deleteFocusPending.current)return;
     deleteFocusPending.current=false;
     if(page==='review')(revealButton.current||document.querySelector<HTMLElement>('.review-completion button, .review-card a[href="/add"]'))?.focus({preventScroll:true});
     else librarySearch.current?.focus({preventScroll:true});
   },[deleting,page]);
-  const selectedDirection = feedback?.direction ?? (randomMode ? reviewCard?.direction ?? "forward" : "forward");
+  const selectedDirection = randomMode ? reviewCard?.direction ?? "forward" : "forward";
   const direction = selectedDirection === 'reverse' && !card?.meaning.trim() ? 'forward' : selectedDirection;
   const prompt = card ? direction === "context" ? (trustedSavedExample(card)?contextPrompt(card):'') || card.word : direction === "reverse" ? primaryMeaning(card.meaning) : card.word : "";
   useEffect(() => {
@@ -562,7 +558,7 @@ export default function Workspace({
       revealButton.current?.focus({ preventScroll: true });
       focusNextCard.current = false;
     }
-  }, [card?.id, randomPosition, feedback]);
+  }, [card?.id, randomPosition]);
   function startRandomReview() {
     const queue = createReviewQueue(words);
     for (const entry of queue.slice(0, 2)) {
@@ -652,14 +648,14 @@ export default function Workspace({
       )}
       <LearningHeader title={page==='add'?'Add.':page==='review'?'Review.':'Library.'} legacyTitle={page==='add'?'Add a word.':page==='review'?'Let’s make it stick.':'Library.'} enabled={learning.enabled} collections={learning.collections} active={collection} disabled={busy||!!editing||captureBusy} onSelect={selectCollection}/>
       {page==='library'&&learning.enabled?<Link href={searchParams.get('review')==='random'?'/review?mode=random':'/review'} className="library-back"><Icon name="left" size={16}/> Review</Link>:page !== "add" && (
-        <nav className="review-modes" aria-label="Learning navigation" data-saving={pendingRating !== null || undefined}>
+        <nav className="review-modes" aria-label="Learning navigation">
           {page === "review" ? <Segments label="Review mode">
             <SelectableButton className="secondary" selected={!randomMode} disabled={busy}
-              onClick={() => { if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation(); setRatedCard(null); setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
+              onClick={() => { if (ratingInFlight.current) return; if (!randomMode) { prepareReviewPronunciation(); return; } stopPronunciation(); prepareReviewPronunciation();  setRevealed(null); setMessage(""); router.replace("/review", { scroll: false }); }}>
               Due words
             </SelectableButton>
             <SelectableButton className="secondary" selected={randomMode} disabled={busy || !ready || !!loadError || (!!supabase && !user) || !words.length}
-              onClick={() => { if (!randomMode) { stopPronunciation(); prepareReviewPronunciation(); setRatedCard(null); setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
+              onClick={() => { if (ratingInFlight.current) return; if (!randomMode) { stopPronunciation(); prepareReviewPronunciation();  setSession(null); setRevealed(null); router.replace("/review?mode=random", { scroll: false }); } }}>
               Random review
             </SelectableButton>
           </Segments> : <>
@@ -667,7 +663,7 @@ export default function Workspace({
             <SelectableLink className="wb-control wb-control-outline" selected={false} href="/review?mode=random" onClick={() => { stopPronunciation(); prepareReviewPronunciation(); }}>Random review</SelectableLink>
           </>}
           <SelectableLink className={learning.enabled?"library-inline-link":"wb-control wb-control-outline"} selected={page === "library"} href={learning.enabled?`/library?review=${randomMode?'random':'due'}`:"/library"}
-            aria-disabled={busy || undefined} onClick={event => { if (busy) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
+            aria-disabled={busy || undefined} onClick={event => { if (busy||ratingInFlight.current) event.preventDefault(); else stopPronunciation(); }}>Library</SelectableLink>
         </nav>
       )}
       {offlineNotice&&<Feedback>{offlineNotice}</Feedback>}
@@ -846,28 +842,26 @@ export default function Workspace({
                   <progress aria-label="Items reviewed" value={reviewedCount} max={Math.max(1, sessionTotal)} />
                 </div> : null}
                 <Card
-                  key={`${card.id}/${cardPosition}`}
+                  key={`${card.id}/${randomMode ? `${session?.id}/${randomPosition}` : "due"}`}
                   color={randomMode ? "coral" : collectionColor(card.id)}
                   className="panel review-card wb-learning-card"
                 >
-                  {randomMode&&!feedback&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
+                  {randomMode&&<div className="review-card-tools"><IconButton icon="trash" label="Delete entry" variant="soft" disabled={busy} onClick={()=>void requestDelete(card)}/></div>}
                   <VocabularyTitle text={prompt}/>
-                  {(!randomMode || direction === "forward" || (revealed === card.id || feedback)) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
-                  {(revealed === card.id || feedback) ? (
+                  {(!randomMode || direction === "forward" || revealed === card.id) && (itemType(card)==='expression'?<ExpressionReviewAudio accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)} note={voiceMetadata.files.find(file=>file.item_id===card.id&&file.state==='active'&&file.stored&&!file.preserved_for_word)}/>:<ReviewPronunciation accent={collection?.preferences.accent==='US'?'US':'UK'} language={collection?.target_language} text={card.word} automatic={autoPronunciation&&(refreshed||!supabase||typeof navigator!=='undefined'&&!navigator.onLine)}/>)}
+                  {revealed === card.id ? (
                     <>
                       <p className="wb-meaning-reveal wb-learning-content">{direction === "forward" ? primaryMeaning(card.meaning) || 'No meaning saved yet. Open Dictionary to add one.' : card.word}</p>
                       {direction === "context" && <p className="wb-learning-content">{primaryMeaning(card.meaning)}</p>}
                       <ContextExample item={card} owner={account} language={collection?.target_language} lookup={isOriginalEnglish(collection)} labelExample review/>
                       <DictionaryButton onRelatedSave={saveRelated} savedWords={dictionarySavedWords} word={card.word} meaning={card.meaning} example={card.example} details={<ContextExample labelExample item={card} owner={account} language={collection?.target_language} lookup={false}/>} collection={collection||undefined} onSaveMeaning={value => saveDictionaryMeaning(card, value)} />
-                      {feedback ? <div className="actions review-ratings">
-                        <span role="status">{feedback.rating === "sure" ? "Sure" : "Not sure"}</span>
-                        <Button onClick={continueReview}>Continue</Button>
-                      </div> : <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
-                        <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy}
+                      {reviewError&&<p role="status">{reviewError}</p>}
+                      <div className="actions review-ratings" role="group" aria-label="How well did you recall it?">
+                        <SelectableButton selected={pendingRating === "unsure"} className="secondary" disabled={busy||pendingRating!==null}
                           onClick={() => void grade(card, "unsure")}>Not sure</SelectableButton>
-                        <SelectableButton selected={pendingRating === "sure"} variant="primary" disabled={busy}
+                        <SelectableButton selected={pendingRating === "sure"} variant="primary" disabled={busy||pendingRating!==null}
                           onClick={() => void grade(card, "sure")}>Sure</SelectableButton>
-                      </div>}
+                      </div>
                     </>
                   ) : (
                     <Button ref={revealButton} className="review-reveal" onClick={() => setRevealed(card.id)}>

@@ -49,7 +49,7 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   assert.deepEqual(Object.keys(input).sort(),['explanation','level','meaning','partOfSpeech','target','word']);
   assert.equal(payload.generationConfig.responseMimeType,'application/json');
   return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({
-    word:input.word,target:input.target,explanationLanguage:input.explanation,
+    word:input.word,target:input.target,explanationLanguage:input.explanation,aiMeaning:'见面时用的问候语。',
     collocations:invalid?[]:[{expression:'dire bonjour',explanation:'打招呼。'}],contexts:[],usage:invalid?'':'白天见面时用来问好。',
   })}]}}]});
  };
@@ -65,6 +65,15 @@ test('Dictionary enrichment reuses owner quota, caches validated structured outp
   const snapshot=await (await lookup()).json();
   assert.equal(snapshot.available,true);
   assert.equal(snapshot.result.collocations[0].expression,'dire bonjour');
+  assert.equal(snapshot.result.aiMeaning,'见面时用的问候语。');
+  const cacheRead=await (await post({mode:'enrichment-cache',consent:false})).json();
+  assert.equal(cacheRead.result.aiMeaning,snapshot.result.aiMeaning);
+  const {aiMeaning,...oldCache}=cached;
+  assert.ok(aiMeaning);
+  cached=oldCache;
+  const old=await (await post({mode:'enrichment-cache',consent:false})).json();
+  assert.equal(old.result.aiMeaning,undefined);
+  assert.equal(old.result.collocations[0].expression,'dire bonjour');
   assert.equal(hashes.length,2);assert.equal(modelCalls,1);
   const goodCache=cached;cached={word:'unrelated'};
   assert.equal((await (await lookup()).json()).result,null);

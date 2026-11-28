@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { cloudUrl } from './helpers/cloud';
+import { cloudUrl, mockCloud, sampleWord } from './helpers/cloud';
 import { dailyItems, discoverFixture, mockDiscover } from './helpers/discover';
 
 const evidence = process.env.NOTED_BUTTON_EVIDENCE;
@@ -11,7 +11,7 @@ async function appearance(button: Locator) {
     const css = getComputedStyle(node);
     return {
       width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height,
-      border: css.borderTopWidth, outline: css.outlineStyle,
+      border: css.borderTopWidth, borderColor: css.borderTopColor, outline: css.outlineStyle, outlineOffset: css.outlineStyle === 'none' ? null : css.outlineOffset,
       shadow: css.boxShadow, focused: document.activeElement === node,
       background: css.backgroundColor, radius: css.borderRadius,
     };
@@ -61,7 +61,7 @@ for (const width of [320, 390, 1440]) {
         await page.keyboard.press('Shift+Tab');
         await expect(trigger).toBeFocused();
         const keyboard = await appearance(trigger);
-        if (!baseline) expect(keyboard).toMatchObject({ border: '1px', outline: 'solid' });
+        if (!baseline) expect(keyboard).toMatchObject({ border: '1px', borderColor: 'rgba(0, 0, 0, 0)', outline: 'solid', outlineOffset: '-2px' });
       }
       await page.getByRole('button', { name: 'I know it', exact: true }).click();
     }
@@ -69,3 +69,35 @@ for (const width of [320, 390, 1440]) {
     if (evidence) await writeFile(prefix + '.json', JSON.stringify(records, null, 2));
   });
 }
+
+test('Review Dictionary keeps one border after touch dismissal and has distinct keyboard focus', async ({ page }) => {
+  test.skip(!cloudUrl, 'Requires configured cloud fixture');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockCloud(page, route => route.fulfill({ json: [sampleWord] }));
+  await page.route('**/api/dictionary?*', route => route.fulfill({
+    json: { word: sampleWord.word, phonetics: [], chinese: [], english: [], examples: [], synonyms: [] },
+  }));
+  await page.goto('/review');
+  await page.getByRole('button', { name: 'Reveal answer' }).click();
+  const trigger = page.getByRole('button', { name: 'Dictionary for ' + sampleWord.word });
+  const original = await appearance(trigger);
+  const touch = await page.evaluate(() => navigator.maxTouchPoints > 0);
+  if (touch) await trigger.tap();
+  else await trigger.click();
+  const close = page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true });
+  if (touch) await close.tap();
+  else await close.click();
+  await expect(trigger).toBeFocused();
+  expect(await appearance(trigger)).toEqual({ ...original, focused: true });
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(trigger).toBeFocused();
+  expect(await appearance(trigger)).toMatchObject({
+    border: '1px', borderColor: 'rgba(0, 0, 0, 0)', outline: 'solid', outlineOffset: '-2px',
+  });
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+  expect(await appearance(trigger)).toMatchObject({ outline: 'solid', outlineOffset: '-2px' });
+});

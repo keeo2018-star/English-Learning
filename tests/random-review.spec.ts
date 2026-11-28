@@ -42,7 +42,6 @@ test.describe('adaptive Random Review', () => {
         expect(size.height).toBeGreaterThanOrEqual(48); expect(size.width).toBeGreaterThanOrEqual(100);
       }
       await page.getByRole('button', { name: 'Sure', exact: true }).click();
-      await page.getByRole('button', { name: 'Continue', exact: true }).click();
     }
     await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     expect(store.writes).toHaveLength(3);
@@ -84,7 +83,6 @@ test.describe('adaptive Random Review', () => {
     await expect(page.getByRole('button', { name: 'Sure', exact: true })).toBeEnabled();
     store.fail(false);
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.locator('.review-card h2')).toHaveText('beta');
     await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeFocused();
     expect(store.entries()[0].review_state?.review_count).toBe(1);
@@ -96,7 +94,6 @@ test.describe('adaptive Random Review', () => {
     await page.goto('/review?mode=random');
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Not sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Review complete.' })).toBeVisible();
     await page.goto('/library'); await expect(page.locator('.wb-familiarity')).toHaveText('Not sure');
     expect(store.entries()[0].review_state?.last_rating).toBe('unsure');

@@ -50,7 +50,6 @@ test.describe('review recording lifecycle', () => {
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     expect(await plays(page)).toHaveLength(1);
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
     const log = await plays(page);
     expect(log[0].player).toBe(log[1].player);
@@ -71,7 +70,6 @@ test.describe('review recording lifecycle', () => {
     await expect.poll(async () => (await plays(page)).length).toBe(1);
     await expect(page.getByText('Tap the speaker to try pronunciation again.')).toHaveCount(0);
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
   });
   test('entering Due Review initializes the same player inside the navigation gesture', async ({ page }) => {
@@ -92,7 +90,6 @@ test.describe('review recording lifecycle', () => {
     await expect.poll(async () => (await plays(page)).length).toBe(1);
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
     expect((await plays(page))[0].player).toBe((await plays(page))[1].player);
   });
@@ -136,7 +133,6 @@ test.describe('review recording lifecycle', () => {
     expect(await plays(page)).toHaveLength(1);
     await page.getByRole('button', { name: 'Reveal answer' }).click();
     await page.getByRole('button', { name: 'Sure', exact: true }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect.poll(async () => (await plays(page)).length).toBe(2);
   });
   test('recording download overlaps lookup, but never plays before dictionary confirmation', async ({ page }) => {
@@ -178,7 +174,8 @@ test.describe('review recording lifecycle', () => {
     await page.getByRole('navigation', { name: 'Learning navigation' }).getByRole('link', { name: 'Library', exact: true }).click();
     await expect(page.getByLabel('Search library')).toBeVisible();
     release();
-    await expect(page.locator('.word-row').first().getByRole('button', { name: 'Play pronunciation', exact: true })).toBeEnabled();
+    await page.locator('.word-row').first().getByRole('button', { name: /^Dictionary for / }).click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Play pronunciation', exact: true }).first()).toBeEnabled();
     expect(await plays(page)).toHaveLength(0);
   });
 });

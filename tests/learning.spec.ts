@@ -38,7 +38,6 @@ test("collect, persist, search, review, and delete a word in local demo", async 
     page.locator(".review-card").getByText("A happy discovery by chance"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Sure", exact: true }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "You’re all caught up." }),
   ).toBeVisible();
