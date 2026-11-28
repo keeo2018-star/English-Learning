@@ -16,6 +16,7 @@ async function fixture(page:Page,ai=false){
  await page.route(cloudOrigin+'/rest/v1/rpc/noted_collections_snapshot',route=>route.fulfill({json:{version:1,multilingual_enabled:true,learning_ready:true,collections:[en,fr]}}));
  await page.route('**/api/ai-dictionary*',route=>{
   if(route.request().method()==='GET')return route.fulfill({json:{available:ai}});
+  if(route.request().postDataJSON().mode==='enrichment-cache')return route.fulfill({json:{available:ai,result:null}});
   aiCalls.push(route.request().postDataJSON());return route.fulfill({status:429,json:{message:'Quota exhausted'}});
  });
  await page.route('**/api/dictionary?*',route=>route.fulfill({json:{word:'satsuma',phonetics:[],chinese:[fruit,'萨摩藩，日本历史上的氏族'],english:[{partOfSpeech:'noun',definition:'A citrus fruit.'},{partOfSpeech:'noun',definition:'A historical Japanese clan.'}],examples:[{source:clan,translation:'萨摩氏族支持叛乱。'},{source:sentence,translation:'她剥了一颗蜜柑，吃了甜甜的水果。'}],synonyms:[]}}));
@@ -69,18 +70,18 @@ test('Visual Viewport keeps editor/actions above keyboard, stable reading positi
   Object.assign(window,{resizeKeyboard:(height:number)=>{Object.assign(view,{height});view.dispatchEvent(new Event('resize'));}});
  });
  const state=await fixture(page);await page.goto('/library');const sheet=await openDictionary(page);
- await sheet.getByRole('button',{name:'Edit my meaning'}).click();const input=sheet.getByRole('textbox',{name:'My meaning',exact:true});
+ await sheet.getByRole('button',{name:'Edit my meaning'}).click();const editor=page.getByRole('dialog',{name:'Edit meaning'});const input=editor.getByRole('textbox',{name:'My meaning',exact:true});
  await input.evaluate(el=>{el.setAttribute('data-original-node','yes');el.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:'mi'}));(el as HTMLTextAreaElement).value='mi';el.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true,data:'mi'}));});
  await page.evaluate(()=>(window as unknown as {resizeKeyboard:(height:number)=>void}).resizeKeyboard(420));
- await expect(sheet.getByRole('button',{name:'Done',exact:true})).toBeVisible();
+ await expect(editor.getByRole('button',{name:'Done',exact:true})).toBeVisible();
  await expect(input).toHaveAttribute('data-original-node','yes');await expect(input).toHaveValue('mi');
- const bounds=(await sheet.boundingBox())!,edit=(await input.boundingBox())!,save=(await sheet.getByRole('button',{name:'Save meaning',exact:true}).boundingBox())!;
+ const bounds=(await editor.boundingBox())!,edit=(await input.boundingBox())!,save=(await editor.getByRole('button',{name:'Save meaning',exact:true}).boundingBox())!;
  expect(bounds.y+bounds.height).toBeLessThanOrEqual(421);expect(edit.y).toBeGreaterThan(bounds.y);expect(save.y+save.height).toBeLessThanOrEqual(420);
  await input.press('Enter');expect(state.writes).toHaveLength(0);
  await input.evaluate(el=>{(el as HTMLTextAreaElement).value='蜜柑';el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'蜜柑'}));});
- await sheet.getByRole('button',{name:'Done',exact:true}).click();
+ await editor.getByRole('button',{name:'Done',exact:true}).click();
  await page.evaluate(()=>(window as unknown as {resizeKeyboard:(height:number)=>void}).resizeKeyboard(844));
- await sheet.getByRole('button',{name:'Save meaning',exact:true}).click();await expect(sheet.locator('aside p')).toHaveText('蜜柑');
+ await editor.getByRole('button',{name:'Save meaning',exact:true}).click();await expect(sheet.locator('aside p')).toHaveText('蜜柑');
  expect(state.writes).toEqual([{meaning:'蜜柑'}]);await shot(page,'dictionary-after-keyboard');
 });
 
@@ -106,7 +107,7 @@ for(const width of [320,390,430])test(`minimal Add, clear focus, multiline and l
  expect(before.y).toBeLessThan(170);await expect(page.getByRole('region',{name:'Vocabulary card preview'})).toHaveCount(0);await expect(page.getByRole('button',{name:/Add to my library/})).toHaveCount(0);
  await input.click();expect(Math.abs((await input.boundingBox())!.y-before.y)).toBeLessThan(2);
  await input.fill('caught off guard');await page.getByRole('textbox',{name:'Meaning',exact:true}).fill('措手不及');
- await expect(page.getByRole('textbox',{name:'My Context'})).not.toBeVisible();await page.getByText('Add a note',{exact:true}).click();await page.getByRole('textbox',{name:'My Context'}).fill('My personal note');
+ await expect(page.getByRole('textbox',{name:'My Context'})).not.toBeVisible();await page.locator('summary').filter({hasText:'Personal notes'}).click();await page.getByRole('textbox',{name:'My Context'}).fill('My personal note');
  await input.fill('A longer expression on the first line\nand a sentence on the next line.');expect((await input.boundingBox())!.height).toBeGreaterThan(before.height);
  await page.getByRole('button',{name:'Context',exact:true}).click();await page.getByRole('button',{name:'Clear input'}).click();await expect(input).toBeFocused();await expect(input).toHaveValue('');await expect(page.getByRole('textbox',{name:'Meaning',exact:true})).toHaveValue('措手不及');
  await page.getByRole('button',{name:'Paste from clipboard'}).click();await expect(input).toHaveValue('word '.repeat(1000).trim());
@@ -117,6 +118,7 @@ test('successful AI notes and grounded comparisons cache across reopening withou
  const state=await fixture(page,true);let generated=0;
  await page.route('**/api/ai-dictionary*',route=>{
   if(route.request().method()==='GET')return route.fulfill({json:{available:true}});
+  if(route.request().postDataJSON().mode==='enrichment-cache')return route.fulfill({json:{available:true,result:null}});
   generated++;return route.fulfill({json:{result:{word:'satsuma',target:'en',explanationLanguage:'zh-CN',comparisons:[{expression:'mandarin',explanation:'都是柑橘水果，mandarin 是更宽泛的类别。',coreMeaning:'柑橘水果',register:'日常用语',situation:'谈论水果的种类。',example:'I ate a mandarin after lunch.'},{expression:'samurai',explanation:'日本历史上的武士。'}],contexts:['谈论柑橘水果。'],usage:'日常用来指蜜柑。'}}});
  });
  await page.goto('/library');let sheet=await openDictionary(page);await sheet.locator('summary').filter({hasText:'Learning notes'}).click();await sheet.getByRole('button',{name:'Generate learning notes'}).click();await sheet.locator('summary').filter({hasText:'Compare words'}).click();
